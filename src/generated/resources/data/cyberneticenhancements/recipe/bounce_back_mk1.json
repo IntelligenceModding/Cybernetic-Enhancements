@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "item": "minecraft:glass_bottle"
+    },
+    "P": {
+      "item": "cyberneticenhancements:conductive_paste"
+    },
+    "S": {
+      "item": "minecraft:sugar"
+    }
+  },
+  "pattern": [
+    " G ",
+    " S ",
+    " P "
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:bounce_back_mk1"
+  }
+}

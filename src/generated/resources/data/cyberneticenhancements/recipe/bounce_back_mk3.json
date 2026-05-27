@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "minecraft:golden_apple"
+    },
+    "C": {
+      "item": "cyberneticenhancements:basic_circuit_plate"
+    },
+    "G": {
+      "item": "minecraft:glass_bottle"
+    }
+  },
+  "pattern": [
+    " G ",
+    " A ",
+    " C "
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:bounce_back_mk3"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "C": {
+      "item": "cyberneticenhancements:basic_circuit_plate"
+    },
+    "M": {
+      "item": "minecraft:emerald"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "T": {
+      "item": "minecraft:diamond"
+    }
+  },
+  "pattern": [
+    " T ",
+    "CMC",
+    " R "
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:trader_skillchip"
+  }
+}

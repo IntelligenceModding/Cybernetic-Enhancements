@@ -1,25 +1,17 @@
+# Cybernetic Enhancements
 
-Installation information
-=======
+Cybernetic Enhancements is a NeoForge mod for Minecraft focused on cybernetic body upgrades, augmentation, and android-themed progression.
 
-This template repository can be directly cloned to get you started with a new
-mod. Simply create a new repository cloned from this one, by following the
-instructions provided by [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+This repository is intentionally set up as a clean project baseline. Its Gradle configuration, package layout, and overall mod structure mirror the same style used in `Matterworks`, but the gameplay implementation is still largely blank.
 
-Once you have your clone, simply open the repository in the IDE of your choice. The usual recommendation for an IDE is either IntelliJ IDEA or Eclipse.
+Built for:
 
-If at any point you are missing libraries in your IDE, or you've run into problems you can
-run `gradlew --refresh-dependencies` to refresh the local cache. `gradlew clean` to reset everything 
-{this does not affect your code} and then start the process again.
+* **Minecraft:** 1.21.1
+* **Mod Loader:** NeoForge
 
-Mapping Names:
-============
-By default, the MDK is configured to use the official mapping names from Mojang for methods and fields 
-in the Minecraft codebase. These names are covered by a specific license. All modders should be aware of this
-license. For the latest license text, refer to the mapping file itself, or the reference copy here:
-https://github.com/NeoForged/NeoForm/blob/main/Mojang.md
+Current baseline:
 
-Additional Resources: 
-==========
-Community Documentation: https://docs.neoforged.net/  
-NeoForged Discord: https://discord.neoforged.net/
+* `client` and `common` package split
+* placeholder registry classes for blocks, items, and creative tabs
+* datagen hook and client entrypoint wiring
+* template-driven `neoforge.mods.toml`

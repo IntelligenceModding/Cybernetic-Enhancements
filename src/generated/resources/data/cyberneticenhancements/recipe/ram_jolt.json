@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "cyberneticenhancements:basic_circuit_plate"
+    },
+    "M": {
+      "item": "cyberneticenhancements:micro_battery"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    }
+  },
+  "pattern": [
+    " R ",
+    " M ",
+    " C "
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:ram_jolt"
+  }
+}

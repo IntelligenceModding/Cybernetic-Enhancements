@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "cyberneticenhancements:basic_circuit_plate"
+    },
+    "F": {
+      "item": "minecraft:fermented_spider_eye"
+    },
+    "H": {
+      "item": "minecraft:ghast_tear"
+    }
+  },
+  "pattern": [
+    " F ",
+    " H ",
+    " C "
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:immunoblockers"
+  }
+}

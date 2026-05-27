@@ -1,0 +1,201 @@
+package de.artemis.cyberneticenhancements.common.cyberware;
+
+import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
+import de.artemis.cyberneticenhancements.common.item.CyberwareModuleItem;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.NonNullList;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
+import net.neoforged.neoforge.items.IItemHandlerModifiable;
+
+public final class CyberwareModuleHandler implements IItemHandlerModifiable {
+    private static final String MODULES_KEY = "InstalledModules";
+    private static final String SLOT_KEY = "Slot";
+    private static final String STACK_KEY = "Stack";
+    public static final int MAX_MODULE_SLOTS = 3;
+
+    private final PlayerCyberwareInventory cyberwareInventory;
+    private final Player player;
+    private final int parentSlot;
+    private final CyberwareModuleCategory category;
+
+    public CyberwareModuleHandler(PlayerCyberwareInventory cyberwareInventory, Player player, int parentSlot, CyberwareModuleCategory category) {
+        this.cyberwareInventory = cyberwareInventory;
+        this.player = player;
+        this.parentSlot = parentSlot;
+        this.category = category;
+    }
+
+    @Override
+    public int getSlots() {
+        return MAX_MODULE_SLOTS;
+    }
+
+    @Override
+    public ItemStack getStackInSlot(int slot) {
+        validateSlot(slot);
+        if (!isSlotUnlocked(slot)) {
+            return ItemStack.EMPTY;
+        }
+        return readModules().get(slot);
+    }
+
+    @Override
+    public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+        validateSlot(slot);
+        if (stack.isEmpty() || !isItemValid(slot, stack) || !getStackInSlot(slot).isEmpty()) {
+            return stack;
+        }
+
+        ItemStack remaining = stack.copy();
+        remaining.shrink(1);
+        if (!simulate) {
+            NonNullList<ItemStack> modules = readModules();
+            modules.set(slot, stack.copyWithCount(1));
+            writeModules(modules);
+        }
+        return remaining;
+    }
+
+    @Override
+    public ItemStack extractItem(int slot, int amount, boolean simulate) {
+        validateSlot(slot);
+        if (amount <= 0) {
+            return ItemStack.EMPTY;
+        }
+
+        ItemStack current = getStackInSlot(slot);
+        if (current.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+
+        if (!simulate) {
+            NonNullList<ItemStack> modules = readModules();
+            modules.set(slot, ItemStack.EMPTY);
+            writeModules(modules);
+        }
+
+        return current.copyWithCount(1);
+    }
+
+    @Override
+    public int getSlotLimit(int slot) {
+        return 1;
+    }
+
+    @Override
+    public boolean isItemValid(int slot, ItemStack stack) {
+        if (!isSlotUnlocked(slot) || !(stack.getItem() instanceof CyberwareModuleItem moduleItem)) {
+            return false;
+        }
+        return moduleItem.getDefinition().category() == category;
+    }
+
+    @Override
+    public void setStackInSlot(int slot, ItemStack stack) {
+        validateSlot(slot);
+        NonNullList<ItemStack> modules = readModules();
+        modules.set(slot, stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
+        writeModules(modules);
+    }
+
+    public boolean isSlotUnlocked(int slot) {
+        return slot >= 0 && slot < getUnlockedSlotCount();
+    }
+
+    public int getUnlockedSlotCount() {
+        CyberwareDefinition definition = getHostDefinition();
+        return definition == null || definition.moduleCategory() != category ? 0 : definition.moduleSlotCount();
+    }
+
+    public String getHostDisplayName() {
+        ItemStack parentStack = getParentStack();
+        return parentStack.isEmpty() ? "" : parentStack.getHoverName().getString();
+    }
+
+    private ItemStack getParentStack() {
+        return cyberwareInventory.getStackInSlot(parentSlot);
+    }
+
+    private CyberwareDefinition getHostDefinition() {
+        ItemStack parentStack = getParentStack();
+        if (!(parentStack.getItem() instanceof CyberwareItem cyberwareItem) || !cyberwareItem.getDefinition().supportsModules()) {
+            return null;
+        }
+        return cyberwareItem.getDefinition();
+    }
+
+    private NonNullList<ItemStack> readModules() {
+        NonNullList<ItemStack> modules = NonNullList.withSize(MAX_MODULE_SLOTS, ItemStack.EMPTY);
+        ItemStack parentStack = getParentStack();
+        if (parentStack.isEmpty()) {
+            return modules;
+        }
+
+        CompoundTag tag = parentStack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        if (!tag.contains(MODULES_KEY, Tag.TAG_LIST)) {
+            return modules;
+        }
+
+        ListTag entries = tag.getList(MODULES_KEY, Tag.TAG_COMPOUND);
+        for (Tag entry : entries) {
+            if (!(entry instanceof CompoundTag entryTag) || !entryTag.contains(SLOT_KEY, Tag.TAG_INT) || !entryTag.contains(STACK_KEY, Tag.TAG_COMPOUND)) {
+                continue;
+            }
+
+            int slot = entryTag.getInt(SLOT_KEY);
+            if (slot < 0 || slot >= MAX_MODULE_SLOTS) {
+                continue;
+            }
+
+            ItemStack stack = ItemStack.parseOptional(player.level().registryAccess(), entryTag.getCompound(STACK_KEY));
+            modules.set(slot, stack);
+        }
+        return modules;
+    }
+
+    private void writeModules(NonNullList<ItemStack> modules) {
+        ItemStack parentStack = getParentStack();
+        if (parentStack.isEmpty()) {
+            return;
+        }
+
+        CompoundTag tag = parentStack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        ListTag entries = new ListTag();
+        for (int slot = 0; slot < modules.size(); slot++) {
+            ItemStack moduleStack = modules.get(slot);
+            if (moduleStack.isEmpty()) {
+                continue;
+            }
+
+            CompoundTag entryTag = new CompoundTag();
+            entryTag.putInt(SLOT_KEY, slot);
+            entryTag.put(STACK_KEY, moduleStack.save(player.level().registryAccess(), new CompoundTag()));
+            entries.add(entryTag);
+        }
+
+        if (entries.isEmpty()) {
+            tag.remove(MODULES_KEY);
+        } else {
+            tag.put(MODULES_KEY, entries);
+        }
+
+        if (tag.isEmpty()) {
+            parentStack.remove(DataComponents.CUSTOM_DATA);
+        } else {
+            parentStack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+        }
+
+        cyberwareInventory.save();
+    }
+
+    private static void validateSlot(int slot) {
+        if (slot < 0 || slot >= MAX_MODULE_SLOTS) {
+            throw new IllegalArgumentException("Module slot out of range: " + slot);
+        }
+    }
+}

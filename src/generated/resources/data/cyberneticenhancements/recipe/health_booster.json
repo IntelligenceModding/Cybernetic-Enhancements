@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "minecraft:golden_apple"
+    },
+    "G": {
+      "item": "minecraft:glass_bottle"
+    },
+    "P": {
+      "item": "cyberneticenhancements:conductive_paste"
+    }
+  },
+  "pattern": [
+    " A ",
+    " G ",
+    " P "
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:health_booster"
+  }
+}

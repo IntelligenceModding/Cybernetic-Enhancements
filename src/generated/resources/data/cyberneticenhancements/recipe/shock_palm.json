@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "C": {
+      "item": "cyberneticenhancements:basic_circuit_plate"
+    },
+    "M": {
+      "item": "minecraft:lightning_rod"
+    },
+    "R": {
+      "item": "cyberneticenhancements:replacement_joint"
+    },
+    "T": {
+      "item": "minecraft:diamond"
+    },
+    "W": {
+      "item": "cyberneticenhancements:copper_wiring"
+    }
+  },
+  "pattern": [
+    "TWT",
+    "CMC",
+    "TRT"
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:shock_palm"
+  }
+}

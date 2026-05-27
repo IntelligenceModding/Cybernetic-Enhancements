@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "minecraft:golden_apple"
+    },
+    "M": {
+      "item": "cyberneticenhancements:micro_battery"
+    },
+    "S": {
+      "item": "minecraft:sugar"
+    }
+  },
+  "pattern": [
+    " A ",
+    " M ",
+    " S "
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:capacity_booster"
+  }
+}

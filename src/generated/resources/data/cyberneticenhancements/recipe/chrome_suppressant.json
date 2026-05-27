@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "cyberneticenhancements:basic_circuit_plate"
+    },
+    "H": {
+      "item": "minecraft:ghast_tear"
+    },
+    "P": {
+      "item": "cyberneticenhancements:conductive_paste"
+    }
+  },
+  "pattern": [
+    " H ",
+    " P ",
+    " C "
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:chrome_suppressant"
+  }
+}

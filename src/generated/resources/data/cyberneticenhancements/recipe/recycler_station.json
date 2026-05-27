@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "minecraft:smooth_stone"
+    },
+    "C": {
+      "item": "cyberneticenhancements:basic_circuit_plate"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "P": {
+      "item": "cyberneticenhancements:conductive_paste"
+    },
+    "R": {
+      "item": "cyberneticenhancements:replacement_joint"
+    },
+    "S": {
+      "item": "cyberneticenhancements:servo_screws"
+    }
+  },
+  "pattern": [
+    "ISI",
+    "CBC",
+    "RPR"
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:recycler_station"
+  }
+}

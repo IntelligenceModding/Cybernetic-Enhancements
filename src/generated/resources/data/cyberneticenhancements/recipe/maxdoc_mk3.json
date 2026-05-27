@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "cyberneticenhancements:basic_circuit_plate"
+    },
+    "G": {
+      "item": "minecraft:glass_bottle"
+    },
+    "H": {
+      "item": "minecraft:ghast_tear"
+    }
+  },
+  "pattern": [
+    " G ",
+    " H ",
+    " C "
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:maxdoc_mk3"
+  }
+}

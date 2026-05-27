@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_conductive_paste": {
+      "conditions": {
+        "items": [
+          {
+            "items": "cyberneticenhancements:conductive_paste"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "cyberneticenhancements:stamina_booster"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_conductive_paste"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "cyberneticenhancements:stamina_booster"
+    ]
+  }
+}

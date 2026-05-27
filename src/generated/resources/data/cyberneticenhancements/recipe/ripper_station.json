@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "minecraft:smooth_stone"
+    },
+    "C": {
+      "item": "cyberneticenhancements:basic_circuit_plate"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "P": {
+      "item": "cyberneticenhancements:conductive_paste"
+    },
+    "S": {
+      "item": "cyberneticenhancements:sensor_lens"
+    }
+  },
+  "pattern": [
+    "ISI",
+    "CBC",
+    "IPI"
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:ripper_station"
+  }
+}
