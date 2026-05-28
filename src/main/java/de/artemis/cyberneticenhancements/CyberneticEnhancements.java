@@ -11,6 +11,7 @@ import de.artemis.cyberneticenhancements.common.registry.ModBlocks;
 import de.artemis.cyberneticenhancements.common.registry.ModCreativeModeTabs;
 import de.artemis.cyberneticenhancements.common.registry.ModItems;
 import de.artemis.cyberneticenhancements.common.registry.ModMenuTypes;
+import de.artemis.cyberneticenhancements.common.registry.ModSoundEvents;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.common.NeoForge;
@@ -25,6 +26,7 @@ public class CyberneticEnhancements {
         ModBlocks.register(modEventBus);
         ModMenuTypes.register(modEventBus);
         ModCreativeModeTabs.register(modEventBus);
+        ModSoundEvents.register(modEventBus);
         modEventBus.addListener(DataGenerators::gatherData);
         modEventBus.addListener(ModPayloads::register);
         NeoForge.EVENT_BUS.addListener(CyberwareEffects::onPlayerTick);

@@ -5,11 +5,13 @@ import de.artemis.cyberneticenhancements.common.cyberware.CyberwareModuleCategor
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareModuleHandler;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareSlot;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareSlotType;
+import de.artemis.cyberneticenhancements.common.cyberware.CyberwareTier;
 import de.artemis.cyberneticenhancements.common.cyberware.PlayerCyberwareInventory;
 import de.artemis.cyberneticenhancements.common.item.ChipwareItem;
 import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
 import de.artemis.cyberneticenhancements.common.item.CyberwareModuleItem;
 import de.artemis.cyberneticenhancements.common.registry.ModBlocks;
+import de.artemis.cyberneticenhancements.common.registry.ModItems;
 import de.artemis.cyberneticenhancements.common.registry.ModMenuTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -22,39 +24,6 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.items.SlotItemHandler;
 
 public final class RipperStationMenu extends AbstractBaseMenu implements NamedBlockMenu {
-    private static final int[] SLOT_X = {
-            194, 216, 238,
-            216,
-            216,
-            186,
-            246,
-            324, 346,
-            412, 434, 456,
-            412, 434, 456,
-            412, 434, 456,
-            335
-    };
-    private static final int[] SLOT_Y = {
-            58, 58, 58,
-            88,
-            116,
-            170,
-            170,
-            88, 88,
-            58, 58, 58,
-            116, 116, 116,
-            174, 174, 174,
-            224
-    };
-    private static final int[] CHIP_X = {20, 42, 64};
-    private static final int[] CHIP_Y = {278, 300, 322};
-    private static final int[] ARM_MODULE_X = {214, 236, 258};
-    private static final int[] LEG_MODULE_X = {548, 570, 592};
-    private static final int ARM_MODULE_Y = 286;
-    private static final int LEG_MODULE_Y = 286;
-    private static final int PLAYER_INVENTORY_X = 279;
-    private static final int PLAYER_INVENTORY_Y = 366;
-    private static final int PLAYER_HOTBAR_Y = 424;
     private static final int CHIP_HANDLER_COUNT = 3;
     private static final int CHIP_SLOT_COUNT = 3;
 
@@ -71,10 +40,13 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
     private int installedChromeClient;
     private int chromeCapacityClient;
     private int cyberstrainClient;
-    private int heatClient;
     private int integrityClient;
     private int installedCountClient;
     private int stageIndexClient;
+    private final int[] supportedTierClient = new int[PlayerCyberwareInventory.SLOT_COUNT];
+    private final int[][] chipSupportedTierClient = new int[CHIP_HANDLER_COUNT][CHIP_SLOT_COUNT];
+    private final int[] armModuleSupportedTierClient = new int[CyberwareModuleHandler.MAX_MODULE_SLOTS];
+    private final int[] legModuleSupportedTierClient = new int[CyberwareModuleHandler.MAX_MODULE_SLOTS];
 
     public RipperStationMenu(int containerId, Inventory playerInventory, RegistryFriendlyByteBuf extraData) {
         this(containerId, playerInventory, extraData.readBlockPos());
@@ -99,15 +71,15 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
         addModuleSlots();
         this.containerSlotCount = this.slots.size();
         this.playerInventoryStart = containerSlotCount;
-        addPlayerInventorySlots(playerInventory, PLAYER_INVENTORY_X, PLAYER_INVENTORY_Y);
+        addRipperPlayerInventorySlots(playerInventory);
         this.playerHotbarStart = this.slots.size();
-        addPlayerHotbarSlots(playerInventory, PLAYER_INVENTORY_X, PLAYER_HOTBAR_Y);
+        addRipperPlayerHotbarSlots(playerInventory);
         addStatSlots();
     }
 
     private void addCyberwareSlots() {
         for (int slot = 0; slot < PlayerCyberwareInventory.SLOT_COUNT; slot++) {
-            this.addSlot(new SlotItemHandler(cyberwareInventory, slot, SLOT_X[slot], SLOT_Y[slot]) {
+            this.addSlot(new SlotItemHandler(cyberwareInventory, slot, RipperStationLayout.CYBERWARE_SLOT_X[slot], RipperStationLayout.CYBERWARE_SLOT_Y[slot]) {
                 @Override
                 public boolean mayPlace(ItemStack stack) {
                     return cyberwareInventory.isItemValid(getContainerSlot(), stack);
@@ -133,7 +105,12 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
             ChipwareSocketHandler chipHandler = chipwareInventories[handlerIndex];
             for (int slot = 0; slot < CHIP_SLOT_COUNT; slot++) {
                 final int chipSlot = slot;
-                this.addSlot(new SlotItemHandler(chipHandler, chipSlot, CHIP_X[slot], CHIP_Y[handlerIndex]) {
+                this.addSlot(new SlotItemHandler(
+                        chipHandler,
+                        chipSlot,
+                        RipperStationLayout.CHIP_CLUSTER_X[handlerIndex] + RipperStationLayout.CHIP_SLOT_OFFSET_X[slot],
+                        RipperStationLayout.CHIP_SLOT_Y
+                ) {
                     @Override
                     public boolean mayPlace(ItemStack stack) {
                         return chipHandler.isItemValid(chipSlot, stack);
@@ -161,8 +138,8 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
     }
 
     private void addModuleSlots() {
-        addModuleSlotBank(armModuleInventory, ARM_MODULE_X, ARM_MODULE_Y);
-        addModuleSlotBank(legModuleInventory, LEG_MODULE_X, LEG_MODULE_Y);
+        addModuleSlotBank(armModuleInventory, RipperStationLayout.ARM_MODULE_X, RipperStationLayout.ARM_MODULE_Y);
+        addModuleSlotBank(legModuleInventory, RipperStationLayout.LEG_MODULE_X, RipperStationLayout.LEG_MODULE_Y);
     }
 
     private void addModuleSlotBank(CyberwareModuleHandler moduleHandler, int[] slotX, int y) {
@@ -191,6 +168,30 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
                     cyberwareInventory.save();
                 }
             });
+        }
+    }
+
+    private void addRipperPlayerInventorySlots(Inventory inventory) {
+        for (int row = 0; row < 3; row++) {
+            for (int column = 0; column < 9; column++) {
+                this.addSlot(new Slot(
+                        inventory,
+                        column + row * 9 + 9,
+                        RipperStationLayout.PLAYER_INVENTORY_X + column * RipperStationLayout.PLAYER_SLOT_SPACING,
+                        RipperStationLayout.PLAYER_INVENTORY_Y + row * RipperStationLayout.PLAYER_SLOT_SPACING
+                ));
+            }
+        }
+    }
+
+    private void addRipperPlayerHotbarSlots(Inventory inventory) {
+        for (int slot = 0; slot < 9; slot++) {
+            this.addSlot(new Slot(
+                    inventory,
+                    slot,
+                    RipperStationLayout.PLAYER_INVENTORY_X + slot * RipperStationLayout.PLAYER_SLOT_SPACING,
+                    RipperStationLayout.PLAYER_HOTBAR_Y
+            ));
         }
     }
 
@@ -231,17 +232,6 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
         addDataSlot(new DataSlot() {
             @Override
             public int get() {
-                return cyberwareInventory.getEstimatedHeat();
-            }
-
-            @Override
-            public void set(int value) {
-                heatClient = value;
-            }
-        });
-        addDataSlot(new DataSlot() {
-            @Override
-            public int get() {
                 return cyberwareInventory.getIntegrityRating();
             }
 
@@ -272,6 +262,62 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
                 stageIndexClient = value;
             }
         });
+        for (int slot = 0; slot < PlayerCyberwareInventory.SLOT_COUNT; slot++) {
+            final int cyberwareSlot = slot;
+            addDataSlot(new DataSlot() {
+                @Override
+                public int get() {
+                    return cyberwareInventory.getSupportedTier(cyberwareSlot).ordinal();
+                }
+
+                @Override
+                public void set(int value) {
+                    supportedTierClient[cyberwareSlot] = value;
+                }
+            });
+        }
+        for (int handlerIndex = 0; handlerIndex < CHIP_HANDLER_COUNT; handlerIndex++) {
+            final int chipHandlerIndex = handlerIndex;
+            for (int slot = 0; slot < CHIP_SLOT_COUNT; slot++) {
+                final int chipSlot = slot;
+                addDataSlot(new DataSlot() {
+                    @Override
+                    public int get() {
+                        return chipwareInventories[chipHandlerIndex].getSupportedTier(chipSlot).ordinal();
+                    }
+
+                    @Override
+                    public void set(int value) {
+                        chipSupportedTierClient[chipHandlerIndex][chipSlot] = value;
+                    }
+                });
+            }
+        }
+        for (int slot = 0; slot < CyberwareModuleHandler.MAX_MODULE_SLOTS; slot++) {
+            final int moduleSlot = slot;
+            addDataSlot(new DataSlot() {
+                @Override
+                public int get() {
+                    return armModuleInventory.getSupportedTier(moduleSlot).ordinal();
+                }
+
+                @Override
+                public void set(int value) {
+                    armModuleSupportedTierClient[moduleSlot] = value;
+                }
+            });
+            addDataSlot(new DataSlot() {
+                @Override
+                public int get() {
+                    return legModuleInventory.getSupportedTier(moduleSlot).ordinal();
+                }
+
+                @Override
+                public void set(int value) {
+                    legModuleSupportedTierClient[moduleSlot] = value;
+                }
+            });
+        }
     }
 
     @Override
@@ -474,10 +520,6 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
         return cyberstrainClient;
     }
 
-    public int getEstimatedHeat() {
-        return heatClient;
-    }
-
     public int getIntegrity() {
         return integrityClient;
     }
@@ -495,5 +537,154 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
             return 0;
         }
         return getInstalledChrome() * 100 / getChromeCapacity();
+    }
+
+    public CyberwareTier getSupportedTier(CyberwareSlot slot) {
+        int ordinal = supportedTierClient[slot.ordinal()];
+        return ordinal >= 0 && ordinal < CyberwareTier.values().length ? CyberwareTier.values()[ordinal] : CyberwareTier.TIER_1;
+    }
+
+    public CyberwareTier getNextSupportedTier(CyberwareSlot slot) {
+        CyberwareTier current = getSupportedTier(slot);
+        return current == CyberwareTier.TIER_5 ? CyberwareTier.TIER_5 : CyberwareTier.values()[current.ordinal() + 1];
+    }
+
+    public boolean canUpgradeSupportedTier(CyberwareSlot slot) {
+        int slotIndex = slot.ordinal();
+        return slotIndex >= 0
+                && slotIndex < cyberwareSlotCount
+                && this.slots.get(slotIndex).getItem().isEmpty()
+                && getSupportedTier(slot) != CyberwareTier.TIER_5
+                && !getRequiredUpgradeComponentStack(slot).isEmpty();
+    }
+
+    public boolean hasRequiredUpgradeComponent(CyberwareSlot slot) {
+        ItemStack required = getRequiredUpgradeComponentStack(slot);
+        return !required.isEmpty() && countAccessiblePlayerItems(required) > 0;
+    }
+
+    public ItemStack getRequiredUpgradeComponentStack(CyberwareSlot slot) {
+        return getRequiredUpgradeComponentStack(getSupportedTier(slot));
+    }
+
+    public boolean tryUpgradeSupportedTier(CyberwareSlot slot) {
+        return cyberwareInventory.tryUpgradeSupportedTier(slot.ordinal());
+    }
+
+    public CyberwareTier getChipSupportedTier(int handlerIndex, int slot) {
+        return getTierByOrdinal(chipSupportedTierClient[handlerIndex][slot]);
+    }
+
+    public CyberwareTier getNextChipSupportedTier(int handlerIndex, int slot) {
+        CyberwareTier current = getChipSupportedTier(handlerIndex, slot);
+        return current == CyberwareTier.TIER_5 ? CyberwareTier.TIER_5 : CyberwareTier.values()[current.ordinal() + 1];
+    }
+
+    public boolean canUpgradeChipSupportedTier(int handlerIndex, int slot) {
+        return chipwareInventories[handlerIndex].isSlotUnlocked(slot)
+                && getChipwareStack(handlerIndex, slot).isEmpty()
+                && getChipSupportedTier(handlerIndex, slot) != CyberwareTier.TIER_5
+                && !getRequiredChipUpgradeComponentStack(handlerIndex, slot).isEmpty();
+    }
+
+    public boolean hasRequiredChipUpgradeComponent(int handlerIndex, int slot) {
+        ItemStack required = getRequiredChipUpgradeComponentStack(handlerIndex, slot);
+        return !required.isEmpty() && countAccessiblePlayerItems(required) > 0;
+    }
+
+    public ItemStack getRequiredChipUpgradeComponentStack(int handlerIndex, int slot) {
+        return getRequiredUpgradeComponentStack(getChipSupportedTier(handlerIndex, slot));
+    }
+
+    public boolean tryUpgradeChipSupportedTier(int handlerIndex, int slot) {
+        return chipwareInventories[handlerIndex].tryUpgradeSupportedTier(slot);
+    }
+
+    public CyberwareTier getArmModuleSupportedTier(int slot) {
+        return getTierByOrdinal(armModuleSupportedTierClient[slot]);
+    }
+
+    public CyberwareTier getNextArmModuleSupportedTier(int slot) {
+        CyberwareTier current = getArmModuleSupportedTier(slot);
+        return current == CyberwareTier.TIER_5 ? CyberwareTier.TIER_5 : CyberwareTier.values()[current.ordinal() + 1];
+    }
+
+    public boolean canUpgradeArmModuleSupportedTier(int slot) {
+        return armModuleInventory.isSlotUnlocked(slot)
+                && getArmModuleStack(slot).isEmpty()
+                && getArmModuleSupportedTier(slot) != CyberwareTier.TIER_5
+                && !getRequiredArmModuleUpgradeComponentStack(slot).isEmpty();
+    }
+
+    public boolean hasRequiredArmModuleUpgradeComponent(int slot) {
+        ItemStack required = getRequiredArmModuleUpgradeComponentStack(slot);
+        return !required.isEmpty() && countAccessiblePlayerItems(required) > 0;
+    }
+
+    public ItemStack getRequiredArmModuleUpgradeComponentStack(int slot) {
+        return getRequiredUpgradeComponentStack(getArmModuleSupportedTier(slot));
+    }
+
+    public boolean tryUpgradeArmModuleSupportedTier(int slot) {
+        return armModuleInventory.tryUpgradeSupportedTier(slot);
+    }
+
+    public CyberwareTier getLegModuleSupportedTier(int slot) {
+        return getTierByOrdinal(legModuleSupportedTierClient[slot]);
+    }
+
+    public CyberwareTier getNextLegModuleSupportedTier(int slot) {
+        CyberwareTier current = getLegModuleSupportedTier(slot);
+        return current == CyberwareTier.TIER_5 ? CyberwareTier.TIER_5 : CyberwareTier.values()[current.ordinal() + 1];
+    }
+
+    public boolean canUpgradeLegModuleSupportedTier(int slot) {
+        return legModuleInventory.isSlotUnlocked(slot)
+                && getLegModuleStack(slot).isEmpty()
+                && getLegModuleSupportedTier(slot) != CyberwareTier.TIER_5
+                && !getRequiredLegModuleUpgradeComponentStack(slot).isEmpty();
+    }
+
+    public boolean hasRequiredLegModuleUpgradeComponent(int slot) {
+        ItemStack required = getRequiredLegModuleUpgradeComponentStack(slot);
+        return !required.isEmpty() && countAccessiblePlayerItems(required) > 0;
+    }
+
+    public ItemStack getRequiredLegModuleUpgradeComponentStack(int slot) {
+        return getRequiredUpgradeComponentStack(getLegModuleSupportedTier(slot));
+    }
+
+    public boolean tryUpgradeLegModuleSupportedTier(int slot) {
+        return legModuleInventory.tryUpgradeSupportedTier(slot);
+    }
+
+    private ItemStack getRequiredUpgradeComponentStack(CyberwareTier currentTier) {
+        return switch (currentTier) {
+            case TIER_1 -> ModItems.UNCOMMON_ITEM_COMPONENTS.get().getDefaultInstance();
+            case TIER_2 -> ModItems.RARE_ITEM_COMPONENTS.get().getDefaultInstance();
+            case TIER_3 -> ModItems.EPIC_ITEM_COMPONENTS.get().getDefaultInstance();
+            case TIER_4 -> ModItems.LEGENDARY_ITEM_COMPONENTS.get().getDefaultInstance();
+            case TIER_5 -> ItemStack.EMPTY;
+        };
+    }
+
+    private int countAccessiblePlayerItems(ItemStack required) {
+        int total = 0;
+        for (int slotIndex = playerInventoryStart; slotIndex < this.slots.size(); slotIndex++) {
+            ItemStack stack = this.slots.get(slotIndex).getItem();
+            if (ItemStack.isSameItemSameComponents(stack, required)) {
+                total += stack.getCount();
+            }
+        }
+
+        ItemStack carried = getCarried();
+        if (ItemStack.isSameItemSameComponents(carried, required)) {
+            total += carried.getCount();
+        }
+        return total;
+    }
+
+    private static CyberwareTier getTierByOrdinal(int ordinal) {
+        return ordinal >= 0 && ordinal < CyberwareTier.values().length ? CyberwareTier.values()[ordinal] : CyberwareTier.TIER_1;
     }
 }

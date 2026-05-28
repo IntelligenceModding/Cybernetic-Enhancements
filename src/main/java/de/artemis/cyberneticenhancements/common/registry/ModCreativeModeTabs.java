@@ -17,17 +17,28 @@ public final class ModCreativeModeTabs {
     public static final Supplier<CreativeModeTab> CYBERNETIC_ENHANCEMENTS_CREATIVE_TAB = CREATIVE_MODE_TAB.register(
             "cybernetic_enhancements_creative_tab",
             () -> CreativeModeTab.builder()
-                    .icon(() -> ModItems.cyberware("basic_kiroshi_optics").get().getDefaultInstance())
+                    .icon(() -> ModItems.COPPER_WIRING.get().getDefaultInstance())
                     .title(Component.translatable("itemGroup.cyberneticenhancements"))
                     .displayItems((parameters, output) -> {
                         ModItems.MATERIALS.forEach(item -> output.accept(item.get()));
                         ModItems.consumableItems().forEach(item -> output.accept(item.get()));
-                        ModItems.chipwareItems().forEach(item -> output.accept(item.get()));
-                        ModItems.moduleItems().forEach(item -> output.accept(item.get()));
-                        ModItems.cyberwareItems().forEach(item -> output.accept(item.get()));
                         output.accept(ModBlocks.RIPPER_STATION.get());
                         output.accept(ModBlocks.TECHSTATION.get());
                         output.accept(ModBlocks.RECYCLER_STATION.get());
+                    })
+                    .build()
+    );
+
+    @SuppressWarnings("unused")
+    public static final Supplier<CreativeModeTab> CYBERWARE_CREATIVE_TAB = CREATIVE_MODE_TAB.register(
+            "cyberware_creative_tab",
+            () -> CreativeModeTab.builder()
+                    .icon(() -> ModItems.cyberware("basic_kiroshi_optics").get().getDefaultInstance())
+                    .title(Component.translatable("itemGroup.cyberneticenhancements.cyberware"))
+                    .displayItems((parameters, output) -> {
+                        ModItems.chipwareItems().forEach(item -> output.accept(item.get()));
+                        ModItems.moduleItems().forEach(item -> output.accept(item.get()));
+                        ModItems.cyberwareItems().forEach(item -> output.accept(item.get()));
                     })
                     .build()
     );

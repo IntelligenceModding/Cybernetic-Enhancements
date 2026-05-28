@@ -40,6 +40,14 @@ public final class ModItems {
     public static final DeferredItem<Item> RARE_ITEM_COMPONENTS = register("rare_item_components", Item::new, properties -> properties.rarity(Rarity.RARE));
     public static final DeferredItem<Item> EPIC_ITEM_COMPONENTS = register("epic_item_components", Item::new, properties -> properties.rarity(Rarity.EPIC));
     public static final DeferredItem<Item> LEGENDARY_ITEM_COMPONENTS = register("legendary_item_components", Item::new, properties -> properties.rarity(Rarity.EPIC));
+    public static final DeferredItem<Item> WHOS_READY_FOR_TOMORROW_MUSIC_DISC = register(
+            "whos_ready_for_tomorrow_music_disc",
+            Item::new,
+            properties -> properties
+                    .stacksTo(1)
+                    .rarity(Rarity.RARE)
+                    .jukeboxPlayable(ModJukeboxSongs.WHOS_READY_FOR_TOMORROW_INSTRUMENTAL)
+    );
 
     private static final Map<String, DeferredItem<CyberwareItem>> CYBERWARE_BY_ID = createCyberwareRegistry();
 
@@ -55,7 +63,8 @@ public final class ModItems {
             UNCOMMON_ITEM_COMPONENTS,
             RARE_ITEM_COMPONENTS,
             EPIC_ITEM_COMPONENTS,
-            LEGENDARY_ITEM_COMPONENTS
+            LEGENDARY_ITEM_COMPONENTS,
+            WHOS_READY_FOR_TOMORROW_MUSIC_DISC
     );
 
     private static final List<DeferredItem<CyberwareItem>> CYBERWARE_ITEMS = List.copyOf(CYBERWARE_BY_ID.values());

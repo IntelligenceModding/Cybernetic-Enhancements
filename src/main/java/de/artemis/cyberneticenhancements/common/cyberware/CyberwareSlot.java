@@ -19,7 +19,9 @@ public enum CyberwareSlot {
     INTEGUMENTARY_SYSTEM_1(CyberwareSlotType.INTEGUMENTARY_SYSTEM, 1),
     INTEGUMENTARY_SYSTEM_2(CyberwareSlotType.INTEGUMENTARY_SYSTEM, 2),
     INTEGUMENTARY_SYSTEM_3(CyberwareSlotType.INTEGUMENTARY_SYSTEM, 3),
-    LEGS_1(CyberwareSlotType.LEGS, 1);
+    LEGS_1(CyberwareSlotType.LEGS, 1),
+    HANDS_2(CyberwareSlotType.HANDS, 2),
+    SKELETON_3(CyberwareSlotType.SKELETON, 3);
 
     private final CyberwareSlotType type;
     private final int slotNumber;

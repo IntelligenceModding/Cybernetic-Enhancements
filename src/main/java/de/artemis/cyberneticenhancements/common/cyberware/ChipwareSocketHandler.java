@@ -14,8 +14,10 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 public final class ChipwareSocketHandler implements IItemHandlerModifiable {
     private static final String CHIPWARE_KEY = "InstalledChipware";
+    private static final String SUPPORTED_TIERS_KEY = "SupportedChipwareTiers";
     private static final String SLOT_KEY = "Slot";
     private static final String STACK_KEY = "Stack";
+    private static final String TIER_KEY = "Tier";
     public static final int MAX_CHIP_SLOTS = 3;
 
     private final PlayerCyberwareInventory cyberwareInventory;
@@ -86,7 +88,9 @@ public final class ChipwareSocketHandler implements IItemHandlerModifiable {
 
     @Override
     public boolean isItemValid(int slot, ItemStack stack) {
-        return isSlotUnlocked(slot) && stack.getItem() instanceof ChipwareItem;
+        return isSlotUnlocked(slot)
+                && stack.getItem() instanceof ChipwareItem chipwareItem
+                && chipwareItem.getDefinition().tier().ordinal() <= getSupportedTier(slot).ordinal();
     }
 
     @Override
@@ -114,6 +118,47 @@ public final class ChipwareSocketHandler implements IItemHandlerModifiable {
 
         ItemStack parentStack = getParentStack();
         return parentStack.isEmpty() ? "" : parentStack.getHoverName().getString();
+    }
+
+    public CyberwareTier getSupportedTier(int slot) {
+        validateSlot(slot);
+        return readSupportedTiers()[slot];
+    }
+
+    public boolean canUpgradeSupportedTier(int slot) {
+        validateSlot(slot);
+        return isSlotUnlocked(slot)
+                && getStackInSlot(slot).isEmpty()
+                && getSupportedTier(slot) != CyberwareTier.TIER_5;
+    }
+
+    public CyberwareTier getNextSupportedTier(int slot) {
+        CyberwareTier currentTier = getSupportedTier(slot);
+        return currentTier == CyberwareTier.TIER_5 ? CyberwareTier.TIER_5 : CyberwareTier.values()[currentTier.ordinal() + 1];
+    }
+
+    public ItemStack getRequiredUpgradeComponentStack(int slot) {
+        return PlayerCyberwareInventory.getRequiredUpgradeComponentStack(getSupportedTier(slot));
+    }
+
+    public boolean hasRequiredUpgradeComponent(int slot) {
+        return cyberwareInventory.hasRequiredUpgradeComponent(getRequiredUpgradeComponentStack(slot));
+    }
+
+    public boolean tryUpgradeSupportedTier(int slot) {
+        if (!canUpgradeSupportedTier(slot)) {
+            return false;
+        }
+
+        ItemStack required = getRequiredUpgradeComponentStack(slot);
+        if (!cyberwareInventory.consumeRequiredUpgradeComponent(required)) {
+            return false;
+        }
+
+        CyberwareTier[] supportedTiers = readSupportedTiers();
+        supportedTiers[slot] = getNextSupportedTier(slot);
+        writeSupportedTiers(supportedTiers);
+        return true;
     }
 
     private ItemStack getParentStack() {
@@ -210,6 +255,85 @@ public final class ChipwareSocketHandler implements IItemHandlerModifiable {
         }
 
         cyberwareInventory.save();
+    }
+
+    private CyberwareTier[] readSupportedTiers() {
+        CyberwareTier[] supportedTiers = createDefaultSupportedTiers();
+        if (getHostDefinition() == null) {
+            return supportedTiers;
+        }
+
+        ItemStack parentStack = getParentStack();
+        if (parentStack.isEmpty()) {
+            return supportedTiers;
+        }
+
+        CompoundTag tag = parentStack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        if (!tag.contains(SUPPORTED_TIERS_KEY, Tag.TAG_LIST)) {
+            return supportedTiers;
+        }
+
+        ListTag entries = tag.getList(SUPPORTED_TIERS_KEY, Tag.TAG_COMPOUND);
+        for (Tag entry : entries) {
+            if (!(entry instanceof CompoundTag entryTag) || !entryTag.contains(SLOT_KEY, Tag.TAG_INT) || !entryTag.contains(TIER_KEY, Tag.TAG_INT)) {
+                continue;
+            }
+
+            int slot = entryTag.getInt(SLOT_KEY);
+            int tierOrdinal = entryTag.getInt(TIER_KEY);
+            if (slot < 0 || slot >= MAX_CHIP_SLOTS || tierOrdinal < 0 || tierOrdinal >= CyberwareTier.values().length) {
+                continue;
+            }
+
+            supportedTiers[slot] = CyberwareTier.values()[tierOrdinal];
+        }
+        return supportedTiers;
+    }
+
+    private void writeSupportedTiers(CyberwareTier[] supportedTiers) {
+        if (getHostDefinition() == null) {
+            return;
+        }
+
+        ItemStack parentStack = getParentStack();
+        if (parentStack.isEmpty()) {
+            return;
+        }
+
+        CompoundTag tag = parentStack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        ListTag entries = new ListTag();
+        for (int slot = 0; slot < supportedTiers.length; slot++) {
+            if (supportedTiers[slot] == CyberwareTier.TIER_1) {
+                continue;
+            }
+
+            CompoundTag entryTag = new CompoundTag();
+            entryTag.putInt(SLOT_KEY, slot);
+            entryTag.putInt(TIER_KEY, supportedTiers[slot].ordinal());
+            entries.add(entryTag);
+        }
+
+        if (entries.isEmpty()) {
+            tag.remove(SUPPORTED_TIERS_KEY);
+        } else {
+            tag.put(SUPPORTED_TIERS_KEY, entries);
+        }
+
+        if (tag.isEmpty()) {
+            parentStack.remove(DataComponents.CUSTOM_DATA);
+        } else {
+            parentStack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+        }
+
+        cyberwareInventory.save();
+    }
+
+    private static CyberwareTier[] createDefaultSupportedTiers() {
+        CyberwareTier[] supportedTiers = new CyberwareTier[MAX_CHIP_SLOTS];
+        for (int slot = 0; slot < MAX_CHIP_SLOTS; slot++) {
+            supportedTiers[slot] = CyberwareTier.TIER_1;
+        }
+        return supportedTiers;
     }
 
     private static void validateSlot(int slot) {

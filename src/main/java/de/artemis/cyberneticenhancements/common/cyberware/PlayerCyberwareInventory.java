@@ -3,6 +3,7 @@ package de.artemis.cyberneticenhancements.common.cyberware;
 import de.artemis.cyberneticenhancements.common.item.ChipwareItem;
 import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
 import de.artemis.cyberneticenhancements.common.item.CyberwareModuleItem;
+import de.artemis.cyberneticenhancements.common.registry.ModItems;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -22,15 +23,19 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
     private static final String ENTRIES_KEY = "Entries";
     private static final String SLOT_KEY = "Slot";
     private static final String STACK_KEY = "Stack";
+    private static final String SUPPORTED_TIERS_KEY = "SupportedTiers";
+    private static final String TIER_KEY = "Tier";
 
     private final Player player;
     private final ServerLevel serverLevel;
+    private final CyberwareTier[] supportedTiers = new CyberwareTier[SLOT_COUNT];
     private boolean suppressSave;
 
     public PlayerCyberwareInventory(Player player) {
         super(SLOT_COUNT);
         this.player = player;
         this.serverLevel = player.level() instanceof ServerLevel level ? level : null;
+        resetSupportedTiers();
         if (serverLevel != null) {
             CompoundTag storedData = getStoredInventoryTag(player);
             loadStoredInventory(serverLevel.registryAccess(), storedData);
@@ -78,7 +83,8 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
     @Override
     public boolean isItemValid(int slot, ItemStack stack) {
         return stack.getItem() instanceof CyberwareItem cyberwareItem
-                && cyberwareItem.getSlotType() == CyberwareSlot.values()[slot].getType();
+                && cyberwareItem.getSlotType() == CyberwareSlot.values()[slot].getType()
+                && cyberwareItem.getTier().ordinal() <= getSupportedTier(slot).ordinal();
     }
 
     @Override
@@ -121,6 +127,21 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
         if (!entries.isEmpty()) {
             tag.put(ENTRIES_KEY, entries);
         }
+
+        ListTag supportedTierEntries = new ListTag();
+        for (int slot = 0; slot < SLOT_COUNT; slot++) {
+            if (supportedTiers[slot] == CyberwareTier.TIER_1) {
+                continue;
+            }
+
+            CompoundTag tierTag = new CompoundTag();
+            tierTag.putInt(SLOT_KEY, slot);
+            tierTag.putInt(TIER_KEY, supportedTiers[slot].ordinal());
+            supportedTierEntries.add(tierTag);
+        }
+        if (!supportedTierEntries.isEmpty()) {
+            tag.put(SUPPORTED_TIERS_KEY, supportedTierEntries);
+        }
         return tag;
     }
 
@@ -128,12 +149,14 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
         suppressSave = true;
         try {
             clearSlots();
+            resetSupportedTiers();
             if (tag.isEmpty()) {
                 return;
             }
 
             if (tag.contains(ENTRIES_KEY, Tag.TAG_LIST)) {
                 loadCurrentFormat(registries, tag.getList(ENTRIES_KEY, Tag.TAG_COMPOUND));
+                loadSupportedTiers(tag);
                 return;
             }
 
@@ -219,6 +242,124 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
         for (int slot = 0; slot < SLOT_COUNT; slot++) {
             setStackInSlot(slot, ItemStack.EMPTY);
         }
+    }
+
+    private void resetSupportedTiers() {
+        for (int slot = 0; slot < SLOT_COUNT; slot++) {
+            supportedTiers[slot] = CyberwareTier.TIER_1;
+        }
+    }
+
+    private void loadSupportedTiers(CompoundTag tag) {
+        if (!tag.contains(SUPPORTED_TIERS_KEY, Tag.TAG_LIST)) {
+            return;
+        }
+
+        ListTag entries = tag.getList(SUPPORTED_TIERS_KEY, Tag.TAG_COMPOUND);
+        for (Tag entry : entries) {
+            if (!(entry instanceof CompoundTag tierTag) || !tierTag.contains(SLOT_KEY, Tag.TAG_INT) || !tierTag.contains(TIER_KEY, Tag.TAG_INT)) {
+                continue;
+            }
+
+            int slot = tierTag.getInt(SLOT_KEY);
+            int tierOrdinal = tierTag.getInt(TIER_KEY);
+            if (slot < 0 || slot >= SLOT_COUNT || tierOrdinal < 0 || tierOrdinal >= CyberwareTier.values().length) {
+                continue;
+            }
+
+            supportedTiers[slot] = CyberwareTier.values()[tierOrdinal];
+        }
+    }
+
+    public CyberwareTier getSupportedTier(int slot) {
+        return slot >= 0 && slot < SLOT_COUNT ? supportedTiers[slot] : CyberwareTier.TIER_1;
+    }
+
+    public boolean canUpgradeSupportedTier(int slot) {
+        return slot >= 0 && slot < SLOT_COUNT
+                && getStackInSlot(slot).isEmpty()
+                && supportedTiers[slot] != CyberwareTier.TIER_5
+                && getRequiredUpgradeComponent(supportedTiers[slot]) != null;
+    }
+
+    public CyberwareTier getNextSupportedTier(int slot) {
+        CyberwareTier currentTier = getSupportedTier(slot);
+        return currentTier == CyberwareTier.TIER_5 ? CyberwareTier.TIER_5 : CyberwareTier.values()[currentTier.ordinal() + 1];
+    }
+
+    public ItemStack getRequiredUpgradeComponentStack(int slot) {
+        return getRequiredUpgradeComponentStack(getSupportedTier(slot));
+    }
+
+    public boolean hasRequiredUpgradeComponent(int slot) {
+        ItemStack required = getRequiredUpgradeComponentStack(slot);
+        return hasRequiredUpgradeComponent(required);
+    }
+
+    public boolean tryUpgradeSupportedTier(int slot) {
+        if (!canUpgradeSupportedTier(slot)) {
+            return false;
+        }
+
+        ItemStack required = getRequiredUpgradeComponentStack(slot);
+        if (required.isEmpty() || !consumeRequiredUpgradeComponent(required)) {
+            return false;
+        }
+
+        supportedTiers[slot] = getNextSupportedTier(slot);
+        save();
+        return true;
+    }
+
+    public boolean hasRequiredUpgradeComponent(ItemStack required) {
+        return !required.isEmpty() && countMatchingInventoryItems(required) > 0;
+    }
+
+    public boolean consumeRequiredUpgradeComponent(ItemStack required) {
+        return !required.isEmpty() && consumeMatchingInventoryItem(required);
+    }
+
+    public static ItemStack getRequiredUpgradeComponentStack(CyberwareTier currentTier) {
+        var component = getRequiredUpgradeComponent(currentTier);
+        return component != null ? component.get().getDefaultInstance() : ItemStack.EMPTY;
+    }
+
+    private int countMatchingInventoryItems(ItemStack required) {
+        int total = 0;
+        for (int inventorySlot = 0; inventorySlot < player.getInventory().getContainerSize(); inventorySlot++) {
+            ItemStack stack = player.getInventory().getItem(inventorySlot);
+            if (ItemStack.isSameItemSameComponents(stack, required)) {
+                total += stack.getCount();
+            }
+        }
+        return total;
+    }
+
+    private boolean consumeMatchingInventoryItem(ItemStack required) {
+        for (int inventorySlot = 0; inventorySlot < player.getInventory().getContainerSize(); inventorySlot++) {
+            ItemStack stack = player.getInventory().getItem(inventorySlot);
+            if (!ItemStack.isSameItemSameComponents(stack, required)) {
+                continue;
+            }
+
+            stack.shrink(1);
+            if (stack.isEmpty()) {
+                player.getInventory().setItem(inventorySlot, ItemStack.EMPTY);
+            }
+            player.getInventory().setChanged();
+            return true;
+        }
+        return false;
+    }
+
+    private static net.neoforged.neoforge.registries.DeferredItem<?> getRequiredUpgradeComponent(CyberwareTier currentTier) {
+        return switch (currentTier) {
+            case TIER_1 -> ModItems.UNCOMMON_ITEM_COMPONENTS;
+            case TIER_2 -> ModItems.RARE_ITEM_COMPONENTS;
+            case TIER_3 -> ModItems.EPIC_ITEM_COMPONENTS;
+            case TIER_4 -> ModItems.LEGENDARY_ITEM_COMPONENTS;
+            case TIER_5 -> null;
+        };
     }
 
     public int getInstalledChromeCost() {
@@ -328,10 +469,6 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
 
     public int getCyberstrain() {
         return Math.max(0, getInstalledChromeCost() - getChromeCapacity());
-    }
-
-    public int getEstimatedHeat() {
-        return getInstalledChromeCost() * 2 + getInstalledCount() + getCyberstrain() * 3;
     }
 
     public int getIntegrityRating() {

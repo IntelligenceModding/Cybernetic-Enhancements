@@ -24,6 +24,7 @@ public final class ModLanguageProvider extends net.neoforged.neoforge.common.dat
     @Override
     protected void addTranslations() {
         add("itemGroup.cyberneticenhancements", "Cybernetic Enhancements");
+        add("itemGroup.cyberneticenhancements.cyberware", "Cyberware");
         add("key.categories.cyberneticenhancements", "Cybernetic Enhancements");
         add("key.cyberneticenhancements.activate_cyberware", "Activate Cyberware");
 
@@ -138,12 +139,17 @@ public final class ModLanguageProvider extends net.neoforged.neoforge.common.dat
         add("screen.cyberneticenhancements.ripper_station.stage.android", "Full Android");
         add("screen.cyberneticenhancements.ripper_station.chrome", "Chrome");
         add("screen.cyberneticenhancements.ripper_station.cyberstrain", "Cyberstrain");
-        add("screen.cyberneticenhancements.ripper_station.thermal_load", "Thermal Load");
         add("screen.cyberneticenhancements.ripper_station.integrity", "Integrity");
         add("screen.cyberneticenhancements.ripper_station.installed_parts", "Installed");
         add("screen.cyberneticenhancements.ripper_station.chrome_profile", "Chrome Profile");
         add("screen.cyberneticenhancements.ripper_station.empty", "Empty");
         add("screen.cyberneticenhancements.ripper_station.slot_hint", "Install matching cyberware here.");
+        add("screen.cyberneticenhancements.ripper_station.slot_supported_tier", "Supported Tier: %s");
+        add("screen.cyberneticenhancements.ripper_station.slot_upgrade_cost", "Upgrade Cost: %s");
+        add("screen.cyberneticenhancements.ripper_station.slot_upgrade_hold", "Hold LMB for 5s to unlock %s.");
+        add("screen.cyberneticenhancements.ripper_station.slot_upgrade_missing", "Missing: %s");
+        add("screen.cyberneticenhancements.ripper_station.slot_upgrade_progress", "Upgrade Progress: %s");
+        add("screen.cyberneticenhancements.ripper_station.slot_upgrade_maxed", "Slot already supports Tier 5.");
         add("screen.cyberneticenhancements.ripper_station.chipware", "Chipware");
         add("screen.cyberneticenhancements.ripper_station.chip_slot_hint", "Install a compatible skillchip here.");
         add("screen.cyberneticenhancements.ripper_station.chip_slot_locked", "Install a chipware socket to unlock this bay.");
@@ -185,6 +191,8 @@ public final class ModLanguageProvider extends net.neoforged.neoforge.common.dat
         addItem(ModItems.RARE_ITEM_COMPONENTS, "Rare Item Components");
         addItem(ModItems.EPIC_ITEM_COMPONENTS, "Epic Item Components");
         addItem(ModItems.LEGENDARY_ITEM_COMPONENTS, "Legendary Item Components");
+        addItem(ModItems.WHOS_READY_FOR_TOMORROW_MUSIC_DISC, "Music Disc");
+        add("jukebox_song.cyberneticenhancements.whos_ready_for_tomorrow_instrumental", "RAT BOY - Who's Ready for Tomorrow (Instrumental)");
     }
 
     private void addConsumableTranslations() {

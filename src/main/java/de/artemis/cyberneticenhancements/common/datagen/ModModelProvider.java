@@ -66,6 +66,12 @@ public final class ModModelProvider implements DataProvider {
         for (Map.Entry<String, String> material : materials.entrySet()) {
             futures.add(saveAliasedFlatItemModel(output, material.getKey(), material.getValue(), "minecraft:item/generated"));
         }
+        futures.add(saveAliasedFlatItemModel(
+                output,
+                "whos_ready_for_tomorrow_music_disc",
+                "minecraft:item/music_disc_pigstep",
+                "minecraft:item/template_music_disc"
+        ));
 
         for (CyberConsumableDefinition definition : CyberConsumableCatalog.definitions()) {
             futures.add(saveAliasedFlatItemModel(
