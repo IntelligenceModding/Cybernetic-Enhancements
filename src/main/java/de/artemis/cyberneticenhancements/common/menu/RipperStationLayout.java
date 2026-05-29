@@ -33,7 +33,7 @@ public final class RipperStationLayout {
             214
     };
 
-    public static final int[] CHIP_CLUSTER_X = {244, 378, 512};
+    public static final int[] CHIP_CLUSTER_X = {236, 370, 504};
     public static final int[] CHIP_SLOT_OFFSET_X = {0, 22, 44};
     public static final int CHIP_SLOT_Y = 304;
 
@@ -46,7 +46,7 @@ public final class RipperStationLayout {
     public static final int PLAYER_INVENTORY_X = 324;
     public static final int PLAYER_INVENTORY_Y = 355;
     public static final int PLAYER_HOTBAR_Y = 411;
-    public static final int PLAYER_SLOT_SPACING = 17;
+    public static final int PLAYER_SLOT_SPACING = 18;
 
     private RipperStationLayout() {
     }

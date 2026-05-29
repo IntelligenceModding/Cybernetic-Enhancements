@@ -3,6 +3,9 @@ package de.artemis.cyberneticenhancements.client;
 import de.artemis.cyberneticenhancements.client.screen.RecyclerStationScreen;
 import de.artemis.cyberneticenhancements.client.screen.RipperStationScreen;
 import de.artemis.cyberneticenhancements.client.screen.TechstationScreen;
+import de.artemis.cyberneticenhancements.client.tooltip.ModTooltipStyle;
+import de.artemis.cyberneticenhancements.client.tooltip.UpgradeProgressClientTooltip;
+import de.artemis.cyberneticenhancements.client.tooltip.UpgradeProgressTooltip;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberpsychosisClientState;
 import de.artemis.cyberneticenhancements.common.network.ActivateCyberwarePayload;
 import net.minecraft.client.Minecraft;
@@ -12,8 +15,10 @@ import de.artemis.cyberneticenhancements.common.registry.ModMenuTypes;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.client.event.RegisterClientTooltipComponentFactoriesEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.event.RenderTooltipEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 
 public final class ClientModEvents {
@@ -27,6 +32,10 @@ public final class ClientModEvents {
         event.register(ModMenuTypes.RIPPER_STATION.get(), RipperStationScreen::new);
         event.register(ModMenuTypes.TECHSTATION.get(), TechstationScreen::new);
         event.register(ModMenuTypes.RECYCLER_STATION.get(), RecyclerStationScreen::new);
+    }
+
+    public static void registerTooltipComponents(RegisterClientTooltipComponentFactoriesEvent event) {
+        event.register(UpgradeProgressTooltip.class, UpgradeProgressClientTooltip::new);
     }
 
     public static void onClientTick(ClientTickEvent.Post event) {
@@ -82,6 +91,12 @@ public final class ClientModEvents {
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {
         if (CyberpsychosisClientState.isControlLocked()) {
             event.setCanceled(true);
+        }
+    }
+
+    public static void onTooltipColor(RenderTooltipEvent.Color event) {
+        if (ModTooltipStyle.shouldStyle(event.getItemStack())) {
+            ModTooltipStyle.apply(event);
         }
     }
 

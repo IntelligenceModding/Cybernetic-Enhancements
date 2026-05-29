@@ -2,6 +2,7 @@ package de.artemis.cyberneticenhancements.common.cyberware;
 
 import de.artemis.cyberneticenhancements.common.item.ChipwareItem;
 import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
@@ -161,6 +162,36 @@ public final class ChipwareSocketHandler implements IItemHandlerModifiable {
         return true;
     }
 
+    public static NonNullList<ItemStack> getStoredChipware(ItemStack parentStack, HolderLookup.Provider registries) {
+        NonNullList<ItemStack> chips = NonNullList.withSize(MAX_CHIP_SLOTS, ItemStack.EMPTY);
+        if (parentStack.isEmpty()) {
+            return chips;
+        }
+
+        CompoundTag tag = parentStack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        if (!tag.contains(CHIPWARE_KEY, Tag.TAG_LIST)) {
+            return chips;
+        }
+
+        ListTag entries = tag.getList(CHIPWARE_KEY, Tag.TAG_COMPOUND);
+        for (Tag entry : entries) {
+            if (!(entry instanceof CompoundTag entryTag) || !entryTag.contains(SLOT_KEY, Tag.TAG_INT) || !entryTag.contains(STACK_KEY, Tag.TAG_COMPOUND)) {
+                continue;
+            }
+
+            int slot = entryTag.getInt(SLOT_KEY);
+            if (slot < 0 || slot >= MAX_CHIP_SLOTS) {
+                continue;
+            }
+
+            ItemStack chipStack = ItemStack.parseOptional(registries, entryTag.getCompound(STACK_KEY));
+            if (!chipStack.isEmpty()) {
+                chips.set(slot, chipStack);
+            }
+        }
+        return chips;
+    }
+
     private ItemStack getParentStack() {
         if (parentSlot < 0) {
             for (CyberwareSlot slot : CyberwareSlot.values()) {
@@ -187,35 +218,12 @@ public final class ChipwareSocketHandler implements IItemHandlerModifiable {
     }
 
     private NonNullList<ItemStack> readChips() {
-        NonNullList<ItemStack> chips = NonNullList.withSize(MAX_CHIP_SLOTS, ItemStack.EMPTY);
-        if (getHostDefinition() == null) {
-            return chips;
-        }
-
         ItemStack parentStack = getParentStack();
-        if (parentStack.isEmpty()) {
+        NonNullList<ItemStack> chips = NonNullList.withSize(MAX_CHIP_SLOTS, ItemStack.EMPTY);
+        if (getHostDefinition() == null || parentStack.isEmpty()) {
             return chips;
         }
-
-        CompoundTag tag = parentStack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        if (!tag.contains(CHIPWARE_KEY, Tag.TAG_LIST)) {
-            return chips;
-        }
-
-        ListTag entries = tag.getList(CHIPWARE_KEY, Tag.TAG_COMPOUND);
-        for (Tag entry : entries) {
-            if (!(entry instanceof CompoundTag entryTag) || !entryTag.contains(SLOT_KEY, Tag.TAG_INT) || !entryTag.contains(STACK_KEY, Tag.TAG_COMPOUND)) {
-                continue;
-            }
-
-            int slot = entryTag.getInt(SLOT_KEY);
-            if (slot < 0 || slot >= MAX_CHIP_SLOTS) {
-                continue;
-            }
-
-            chips.set(slot, ItemStack.parseOptional(player.level().registryAccess(), entryTag.getCompound(STACK_KEY)));
-        }
-        return chips;
+        return getStoredChipware(parentStack, player.level().registryAccess());
     }
 
     private void writeChips(NonNullList<ItemStack> chips) {

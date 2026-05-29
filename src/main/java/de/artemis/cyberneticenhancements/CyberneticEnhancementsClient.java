@@ -12,11 +12,13 @@ public class CyberneticEnhancementsClient {
     public CyberneticEnhancementsClient(IEventBus modEventBus) {
         modEventBus.addListener(ClientModEvents::onClientSetup);
         modEventBus.addListener(ClientModEvents::registerScreens);
+        modEventBus.addListener(ClientModEvents::registerTooltipComponents);
         modEventBus.addListener(ModKeyMappings::register);
         NeoForge.EVENT_BUS.addListener(ClientModEvents::onClientTick);
         NeoForge.EVENT_BUS.addListener(ClientModEvents::onMovementInput);
         NeoForge.EVENT_BUS.addListener(ClientModEvents::onInteractionInput);
         NeoForge.EVENT_BUS.addListener(ClientModEvents::onMouseButton);
+        NeoForge.EVENT_BUS.addListener(ClientModEvents::onTooltipColor);
         NeoForge.EVENT_BUS.addListener(ClientModEvents::onClientLogout);
     }
 }

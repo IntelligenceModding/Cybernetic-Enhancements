@@ -4,6 +4,7 @@ import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
 import de.artemis.cyberneticenhancements.common.item.CyberwareModuleItem;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -161,21 +162,8 @@ public final class CyberwareModuleHandler implements IItemHandlerModifiable {
         return true;
     }
 
-    private ItemStack getParentStack() {
-        return cyberwareInventory.getStackInSlot(parentSlot);
-    }
-
-    private CyberwareDefinition getHostDefinition() {
-        ItemStack parentStack = getParentStack();
-        if (!(parentStack.getItem() instanceof CyberwareItem cyberwareItem) || !cyberwareItem.getDefinition().supportsModules()) {
-            return null;
-        }
-        return cyberwareItem.getDefinition();
-    }
-
-    private NonNullList<ItemStack> readModules() {
+    public static NonNullList<ItemStack> getStoredModules(ItemStack parentStack, HolderLookup.Provider registries) {
         NonNullList<ItemStack> modules = NonNullList.withSize(MAX_MODULE_SLOTS, ItemStack.EMPTY);
-        ItemStack parentStack = getParentStack();
         if (parentStack.isEmpty()) {
             return modules;
         }
@@ -196,10 +184,33 @@ public final class CyberwareModuleHandler implements IItemHandlerModifiable {
                 continue;
             }
 
-            ItemStack stack = ItemStack.parseOptional(player.level().registryAccess(), entryTag.getCompound(STACK_KEY));
-            modules.set(slot, stack);
+            ItemStack moduleStack = ItemStack.parseOptional(registries, entryTag.getCompound(STACK_KEY));
+            if (!moduleStack.isEmpty()) {
+                modules.set(slot, moduleStack);
+            }
         }
         return modules;
+    }
+
+    private ItemStack getParentStack() {
+        return cyberwareInventory.getStackInSlot(parentSlot);
+    }
+
+    private CyberwareDefinition getHostDefinition() {
+        ItemStack parentStack = getParentStack();
+        if (!(parentStack.getItem() instanceof CyberwareItem cyberwareItem) || !cyberwareItem.getDefinition().supportsModules()) {
+            return null;
+        }
+        return cyberwareItem.getDefinition();
+    }
+
+    private NonNullList<ItemStack> readModules() {
+        ItemStack parentStack = getParentStack();
+        NonNullList<ItemStack> modules = NonNullList.withSize(MAX_MODULE_SLOTS, ItemStack.EMPTY);
+        if (parentStack.isEmpty()) {
+            return modules;
+        }
+        return getStoredModules(parentStack, player.level().registryAccess());
     }
 
     private void writeModules(NonNullList<ItemStack> modules) {

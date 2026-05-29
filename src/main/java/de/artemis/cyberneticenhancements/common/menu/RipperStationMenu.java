@@ -532,6 +532,65 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
         return stageIndexClient;
     }
 
+    public int getInstalledCyberwareCount() {
+        return installedCountClient;
+    }
+
+    public int getTotalCyberwareSlotCount() {
+        return PlayerCyberwareInventory.SLOT_COUNT;
+    }
+
+    public int getInstalledChipwareCount() {
+        int total = 0;
+        for (int handlerIndex = 0; handlerIndex < chipwareInventories.length; handlerIndex++) {
+            int unlockedSlots = chipwareInventories[handlerIndex].getUnlockedSlotCount();
+            for (int slot = 0; slot < unlockedSlots; slot++) {
+                if (!getChipwareStack(handlerIndex, slot).isEmpty()) {
+                    total++;
+                }
+            }
+        }
+        return total;
+    }
+
+    public int getTotalChipwareSlotCount() {
+        int total = 0;
+        for (ChipwareSocketHandler chipwareInventory : chipwareInventories) {
+            total += chipwareInventory.getUnlockedSlotCount();
+        }
+        return total;
+    }
+
+    public int getInstalledArmModuleCount() {
+        int total = 0;
+        int unlockedSlots = armModuleInventory.getUnlockedSlotCount();
+        for (int slot = 0; slot < unlockedSlots; slot++) {
+            if (!getArmModuleStack(slot).isEmpty()) {
+                total++;
+            }
+        }
+        return total;
+    }
+
+    public int getTotalArmModuleSlotCount() {
+        return armModuleInventory.getUnlockedSlotCount();
+    }
+
+    public int getInstalledLegModuleCount() {
+        int total = 0;
+        int unlockedSlots = legModuleInventory.getUnlockedSlotCount();
+        for (int slot = 0; slot < unlockedSlots; slot++) {
+            if (!getLegModuleStack(slot).isEmpty()) {
+                total++;
+            }
+        }
+        return total;
+    }
+
+    public int getTotalLegModuleSlotCount() {
+        return legModuleInventory.getUnlockedSlotCount();
+    }
+
     public int getChromePercent() {
         if (getChromeCapacity() <= 0) {
             return 0;

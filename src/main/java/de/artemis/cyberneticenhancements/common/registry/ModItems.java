@@ -9,10 +9,12 @@ import de.artemis.cyberneticenhancements.common.cyberware.CyberwareCatalog;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareDefinition;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareModuleCatalog;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareModuleDefinition;
+import de.artemis.cyberneticenhancements.common.cyberware.CyberwareTier;
 import de.artemis.cyberneticenhancements.common.item.CyberConsumableItem;
 import de.artemis.cyberneticenhancements.common.item.ChipwareItem;
 import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
 import de.artemis.cyberneticenhancements.common.item.CyberwareModuleItem;
+import de.artemis.cyberneticenhancements.common.item.StyledNameItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;
 import net.neoforged.bus.api.IEventBus;
@@ -35,11 +37,11 @@ public final class ModItems {
     public static final DeferredItem<Item> MICRO_BATTERY = register("micro_battery", Item::new, properties -> properties.rarity(Rarity.UNCOMMON));
     public static final DeferredItem<Item> REPLACEMENT_JOINT = register("replacement_joint", Item::new, UnaryOperator.identity());
     public static final DeferredItem<Item> BASIC_CIRCUIT_PLATE = register("basic_circuit_plate", Item::new, properties -> properties.rarity(Rarity.UNCOMMON));
-    public static final DeferredItem<Item> COMMON_ITEM_COMPONENTS = register("common_item_components", Item::new, UnaryOperator.identity());
-    public static final DeferredItem<Item> UNCOMMON_ITEM_COMPONENTS = register("uncommon_item_components", Item::new, properties -> properties.rarity(Rarity.UNCOMMON));
-    public static final DeferredItem<Item> RARE_ITEM_COMPONENTS = register("rare_item_components", Item::new, properties -> properties.rarity(Rarity.RARE));
-    public static final DeferredItem<Item> EPIC_ITEM_COMPONENTS = register("epic_item_components", Item::new, properties -> properties.rarity(Rarity.EPIC));
-    public static final DeferredItem<Item> LEGENDARY_ITEM_COMPONENTS = register("legendary_item_components", Item::new, properties -> properties.rarity(Rarity.EPIC));
+    public static final DeferredItem<Item> COMMON_ITEM_COMPONENTS = register("common_item_components", properties -> new StyledNameItem(properties, CyberwareTier.TIER_1.getColor()), UnaryOperator.identity());
+    public static final DeferredItem<Item> UNCOMMON_ITEM_COMPONENTS = register("uncommon_item_components", properties -> new StyledNameItem(properties.rarity(Rarity.UNCOMMON), CyberwareTier.TIER_2.getColor()), UnaryOperator.identity());
+    public static final DeferredItem<Item> RARE_ITEM_COMPONENTS = register("rare_item_components", properties -> new StyledNameItem(properties.rarity(Rarity.RARE), CyberwareTier.TIER_3.getColor()), UnaryOperator.identity());
+    public static final DeferredItem<Item> EPIC_ITEM_COMPONENTS = register("epic_item_components", properties -> new StyledNameItem(properties.rarity(Rarity.EPIC), CyberwareTier.TIER_4.getColor()), UnaryOperator.identity());
+    public static final DeferredItem<Item> LEGENDARY_ITEM_COMPONENTS = register("legendary_item_components", properties -> new StyledNameItem(properties.rarity(Rarity.EPIC), CyberwareTier.TIER_5.getColor()), UnaryOperator.identity());
     public static final DeferredItem<Item> WHOS_READY_FOR_TOMORROW_MUSIC_DISC = register(
             "whos_ready_for_tomorrow_music_disc",
             Item::new,

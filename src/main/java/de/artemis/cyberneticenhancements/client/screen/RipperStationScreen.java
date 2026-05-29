@@ -5,6 +5,9 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import de.artemis.cyberneticenhancements.CyberneticEnhancements;
+import de.artemis.cyberneticenhancements.client.tooltip.ModTooltipStyle;
+import de.artemis.cyberneticenhancements.client.tooltip.UpgradeProgressClientTooltip;
+import de.artemis.cyberneticenhancements.client.tooltip.UpgradeProgressTooltip;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareSlot;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareSlotType;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareTier;
@@ -27,6 +30,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.PlayerModelPart;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -73,7 +77,6 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
     private static final int TANK_INTERIOR = 0xAA0C131A;
     private static final int TANK_SEGMENT = 0x443A4A58;
     private static final long SLOT_UPGRADE_HOLD_MS = 5000L;
-    private static final int SLOT_UPGRADE_BAR_SEGMENTS = 12;
     private static final int MATRIX_MODEL_CENTER_X = 400;
     private static final int MATRIX_MODEL_CENTER_Y = 130;
     private static final int MATRIX_MODEL_HALF_WIDTH = 84;
@@ -99,12 +102,15 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
     private record UpgradeTarget(UpgradeTargetKind kind, int primaryIndex, int slotIndex) {
     }
 
+    private record SlotTooltip(List<Component> lines, Optional<TooltipComponent> visualComponent) {
+    }
+
     public RipperStationScreen(RipperStationMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
         this.imageWidth = RipperStationLayout.IMAGE_WIDTH;
         this.imageHeight = RipperStationLayout.IMAGE_HEIGHT;
         this.inventoryLabelX = RipperStationLayout.PLAYER_INVENTORY_X;
-        this.inventoryLabelY = 343;
+        this.inventoryLabelY = RipperStationLayout.PLAYER_INVENTORY_Y - 12;
     }
 
     @Override
@@ -114,6 +120,7 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         guiGraphics.blit(BACKGROUND_TEXTURE, x0, y0, 0, 0, imageWidth, imageHeight, imageWidth, imageHeight);
 
         drawPlayerModel(guiGraphics, mouseX, mouseY);
+        drawPlayerSlotBacks(guiGraphics);
         drawSlotFrames(guiGraphics);
         drawStatusTanks(guiGraphics);
     }
@@ -129,7 +136,39 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         drawStatLine(guiGraphics, Component.translatable("screen.cyberneticenhancements.ripper_station.chrome"), Component.literal(menu.getInstalledChrome() + " / " + menu.getChromeCapacity()), 18, 64, 178);
         drawStatLine(guiGraphics, Component.translatable("screen.cyberneticenhancements.ripper_station.cyberstrain"), Component.literal(Integer.toString(menu.getCyberstrain())), 18, 82, 178);
         drawStatLine(guiGraphics, Component.translatable("screen.cyberneticenhancements.ripper_station.integrity"), Component.literal(menu.getIntegrity() + "%"), 18, 100, 178);
-        drawStatLine(guiGraphics, Component.translatable("screen.cyberneticenhancements.ripper_station.installed_parts"), Component.literal(Integer.toString(menu.getInstalledCount())), 18, 118, 178);
+        int overviewY = 118;
+        overviewY = drawOverviewSlotLine(guiGraphics,
+                Component.translatable("screen.cyberneticenhancements.ripper_station.cyberware_slots"),
+                menu.getInstalledCyberwareCount(),
+                menu.getTotalCyberwareSlotCount(),
+                overviewY);
+
+        int armModuleSlots = menu.getTotalArmModuleSlotCount();
+        if (armModuleSlots > 0) {
+            overviewY = drawOverviewSlotLine(guiGraphics,
+                    Component.translatable("screen.cyberneticenhancements.ripper_station.arm_modules"),
+                    menu.getInstalledArmModuleCount(),
+                    armModuleSlots,
+                    overviewY);
+        }
+
+        int legModuleSlots = menu.getTotalLegModuleSlotCount();
+        if (legModuleSlots > 0) {
+            overviewY = drawOverviewSlotLine(guiGraphics,
+                    Component.translatable("screen.cyberneticenhancements.ripper_station.leg_modules"),
+                    menu.getInstalledLegModuleCount(),
+                    legModuleSlots,
+                    overviewY);
+        }
+
+        int chipwareSlots = menu.getTotalChipwareSlotCount();
+        if (chipwareSlots > 0) {
+            drawOverviewSlotLine(guiGraphics,
+                    Component.translatable("screen.cyberneticenhancements.ripper_station.chipware"),
+                    menu.getInstalledChipwareCount(),
+                    chipwareSlots,
+                    overviewY);
+        }
 
         renderBodyLabels(guiGraphics);
         renderSystemSummary(guiGraphics);
@@ -176,6 +215,11 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
     private void drawStatLine(GuiGraphics guiGraphics, Component label, Component value, int x, int y, int rightX) {
         guiGraphics.drawString(font, label, x, y, TEXT_SECONDARY, false);
         guiGraphics.drawString(font, value, rightX - font.width(value), y, TEXT_PRIMARY, false);
+    }
+
+    private int drawOverviewSlotLine(GuiGraphics guiGraphics, Component label, int installed, int total, int y) {
+        drawStatLine(guiGraphics, label, Component.literal(installed + " / " + total), 18, y, 178);
+        return y + 18;
     }
 
     private void drawPlayerModel(GuiGraphics guiGraphics, int mouseX, int mouseY) {
@@ -487,17 +531,19 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
 
     private void drawSlotFrames(GuiGraphics guiGraphics) {
         for (CyberwareSlot slot : CyberwareSlot.values()) {
-            int x = leftPos + RipperStationLayout.CYBERWARE_SLOT_X[slot.ordinal()] - 2;
-            int y = topPos + RipperStationLayout.CYBERWARE_SLOT_Y[slot.ordinal()] - 2;
-            boolean installed = !menu.getCyberwareStack(slot).isEmpty();
-            int outline = getTierFrameColor(menu.getSupportedTier(slot));
-            guiGraphics.fill(x, y, x + 20, y + 20, installed ? SLOT_ACTIVE : SLOT_BACKGROUND);
-            guiGraphics.renderOutline(x, y, 20, 20, outline);
+            drawStationSlotBack(
+                    guiGraphics,
+                    RipperStationLayout.CYBERWARE_SLOT_X[slot.ordinal()],
+                    RipperStationLayout.CYBERWARE_SLOT_Y[slot.ordinal()],
+                    true,
+                    !menu.getCyberwareStack(slot).isEmpty(),
+                    menu.getSupportedTier(slot)
+            );
         }
 
         for (int cluster = 0; cluster < RipperStationLayout.CHIP_CLUSTER_X.length; cluster++) {
             for (int slot = 0; slot < RipperStationLayout.CHIP_SLOT_OFFSET_X.length; slot++) {
-                drawInsetSlot(
+                drawStationSlotBack(
                         guiGraphics,
                         RipperStationLayout.CHIP_CLUSTER_X[cluster] + RipperStationLayout.CHIP_SLOT_OFFSET_X[slot],
                         RipperStationLayout.CHIP_SLOT_Y,
@@ -509,8 +555,8 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         }
 
         for (int slot = 0; slot < RipperStationLayout.ARM_MODULE_X.length; slot++) {
-            drawInsetSlot(guiGraphics, RipperStationLayout.ARM_MODULE_X[slot], RipperStationLayout.ARM_MODULE_Y, menu.isArmModuleSlotUnlocked(slot), !menu.getArmModuleStack(slot).isEmpty(), menu.getArmModuleSupportedTier(slot));
-            drawInsetSlot(guiGraphics, RipperStationLayout.LEG_MODULE_X[slot], RipperStationLayout.LEG_MODULE_Y, menu.isLegModuleSlotUnlocked(slot), !menu.getLegModuleStack(slot).isEmpty(), menu.getLegModuleSupportedTier(slot));
+            drawStationSlotBack(guiGraphics, RipperStationLayout.ARM_MODULE_X[slot], RipperStationLayout.ARM_MODULE_Y, menu.isArmModuleSlotUnlocked(slot), !menu.getArmModuleStack(slot).isEmpty(), menu.getArmModuleSupportedTier(slot));
+            drawStationSlotBack(guiGraphics, RipperStationLayout.LEG_MODULE_X[slot], RipperStationLayout.LEG_MODULE_Y, menu.isLegModuleSlotUnlocked(slot), !menu.getLegModuleStack(slot).isEmpty(), menu.getLegModuleSupportedTier(slot));
         }
     }
 
@@ -636,7 +682,7 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
             Component host = hostName.isEmpty()
                     ? Component.translatable("screen.cyberneticenhancements.ripper_station.no_chip_socket")
                     : Component.literal(hostName);
-            int clusterCenterX = RipperStationLayout.CHIP_CLUSTER_X[cluster] + 22;
+            int clusterCenterX = getSlotBankCenterX(RipperStationLayout.CHIP_CLUSTER_X[cluster], RipperStationLayout.CHIP_SLOT_OFFSET_X);
             int hostY = RipperStationLayout.CHIP_SLOT_Y - 12;
             int hostX = clusterCenterX - font.width(host) / 2;
             guiGraphics.drawString(font, host, hostX, hostY, hostName.isEmpty() ? TEXT_SECONDARY : PANEL_ACCENT, false);
@@ -651,22 +697,30 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         Component armHostComponent = armHost.isEmpty()
                 ? Component.translatable("screen.cyberneticenhancements.ripper_station.no_arm_cyberware")
                 : Component.literal(armHost);
-        int armCenterX = RipperStationLayout.ARM_MODULE_X[0] + 22;
-        guiGraphics.drawString(font, armHostComponent, armCenterX - font.width(armHostComponent) / 2, 292, armHost.isEmpty() ? TEXT_SECONDARY : PANEL_ACCENT, false);
+        int armCenterX = getExplicitSlotBankCenterX(RipperStationLayout.ARM_MODULE_X);
+        guiGraphics.drawString(font, armHostComponent, armCenterX - font.width(armHostComponent) / 2, RipperStationLayout.ARM_MODULE_Y - 12, armHost.isEmpty() ? TEXT_SECONDARY : PANEL_ACCENT, false);
 
         String legHost = menu.getLegModuleHostName();
         Component legHostComponent = legHost.isEmpty()
                 ? Component.translatable("screen.cyberneticenhancements.ripper_station.no_leg_cyberware")
                 : Component.literal(legHost);
-        int legCenterX = RipperStationLayout.LEG_MODULE_X[0] + 22;
-        guiGraphics.drawString(font, legHostComponent, legCenterX - font.width(legHostComponent) / 2, 292, legHost.isEmpty() ? TEXT_SECONDARY : PANEL_ACCENT, false);
+        int legCenterX = getExplicitSlotBankCenterX(RipperStationLayout.LEG_MODULE_X);
+        guiGraphics.drawString(font, legHostComponent, legCenterX - font.width(legHostComponent) / 2, RipperStationLayout.LEG_MODULE_Y - 12, legHost.isEmpty() ? TEXT_SECONDARY : PANEL_ACCENT, false);
+    }
+
+    private int getSlotBankCenterX(int firstSlotX, int[] slotOffsets) {
+        return firstSlotX + slotOffsets[slotOffsets.length - 1] / 2 + StationSlotRenderer.SLOT_SIZE / 2;
+    }
+
+    private int getExplicitSlotBankCenterX(int[] slotX) {
+        return (slotX[0] + slotX[slotX.length - 1] + StationSlotRenderer.SLOT_SIZE) / 2;
     }
 
     private void renderSlotTooltips(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         for (CyberwareSlot cyberwareSlot : CyberwareSlot.values()) {
             Slot slot = menu.slots.get(cyberwareSlot.ordinal());
             if (isHovering(slot.x, slot.y, 16, 16, mouseX, mouseY) && !slot.hasItem()) {
-                guiGraphics.renderTooltip(font, buildCyberwareSlotTooltip(cyberwareSlot), Optional.empty(), mouseX, mouseY);
+                renderSlotTooltip(guiGraphics, buildCyberwareSlotTooltip(cyberwareSlot), mouseX, mouseY);
                 return;
             }
         }
@@ -682,11 +736,11 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
                                 Component.translatable("screen.cyberneticenhancements.ripper_station.chip_slot_locked")
                         ), Optional.empty(), mouseX, mouseY);
                     } else {
-                        guiGraphics.renderTooltip(font, buildSubSlotTooltip(
+                        renderSlotTooltip(guiGraphics, buildSubSlotTooltip(
                                 new UpgradeTarget(UpgradeTargetKind.CHIPWARE, cluster, slot),
                                 Component.translatable("screen.cyberneticenhancements.ripper_station.chipware"),
                                 "screen.cyberneticenhancements.ripper_station.chip_slot_hint"
-                        ), Optional.empty(), mouseX, mouseY);
+                        ), mouseX, mouseY);
                     }
                     return;
                 }
@@ -702,11 +756,11 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
                             Component.translatable("screen.cyberneticenhancements.ripper_station.module_slot_locked")
                     ), Optional.empty(), mouseX, mouseY);
                 } else {
-                    guiGraphics.renderTooltip(font, buildSubSlotTooltip(
+                    renderSlotTooltip(guiGraphics, buildSubSlotTooltip(
                             new UpgradeTarget(UpgradeTargetKind.ARM_MODULE, 0, i),
                             Component.translatable("screen.cyberneticenhancements.ripper_station.arm_modules"),
                             "screen.cyberneticenhancements.ripper_station.module_slot_hint"
-                    ), Optional.empty(), mouseX, mouseY);
+                    ), mouseX, mouseY);
                 }
                 return;
             }
@@ -719,11 +773,11 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
                             Component.translatable("screen.cyberneticenhancements.ripper_station.module_slot_locked")
                     ), Optional.empty(), mouseX, mouseY);
                 } else {
-                    guiGraphics.renderTooltip(font, buildSubSlotTooltip(
+                    renderSlotTooltip(guiGraphics, buildSubSlotTooltip(
                             new UpgradeTarget(UpgradeTargetKind.LEG_MODULE, 0, i),
                             Component.translatable("screen.cyberneticenhancements.ripper_station.leg_modules"),
                             "screen.cyberneticenhancements.ripper_station.module_slot_hint"
-                    ), Optional.empty(), mouseX, mouseY);
+                    ), mouseX, mouseY);
                 }
                 return;
             }
@@ -740,31 +794,105 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         });
     }
 
-    private void drawInsetSlot(GuiGraphics guiGraphics, int x, int y, boolean unlocked, boolean installed, CyberwareTier tier) {
-        int drawX = leftPos + x - 2;
-        int drawY = topPos + y - 2;
+    private void drawPlayerSlotBacks(GuiGraphics guiGraphics) {
+        for (int row = 0; row < 3; row++) {
+            for (int column = 0; column < 9; column++) {
+                drawVanillaSlotBack(guiGraphics,
+                    RipperStationLayout.PLAYER_INVENTORY_X + column * RipperStationLayout.PLAYER_SLOT_SPACING,
+                    RipperStationLayout.PLAYER_INVENTORY_Y + row * RipperStationLayout.PLAYER_SLOT_SPACING,
+                        SLOT_BACKGROUND);
+            }
+        }
+        for (int slot = 0; slot < 9; slot++) {
+            drawVanillaSlotBack(guiGraphics,
+                    RipperStationLayout.PLAYER_INVENTORY_X + slot * RipperStationLayout.PLAYER_SLOT_SPACING,
+                    RipperStationLayout.PLAYER_HOTBAR_Y,
+                    SLOT_BACKGROUND);
+        }
+    }
+
+    private void drawStationSlotBack(GuiGraphics guiGraphics, int x, int y, boolean unlocked, boolean installed, CyberwareTier tier) {
         int fill = !unlocked ? 0xFF171D24 : installed ? SLOT_ACTIVE : SLOT_BACKGROUND;
         int outline = !unlocked ? 0xFF28323C : getTierFrameColor(tier);
-        guiGraphics.fill(drawX, drawY, drawX + 20, drawY + 20, fill);
-        guiGraphics.renderOutline(drawX, drawY, 20, 20, outline);
+        StationSlotRenderer.drawUpgradeableSlot(guiGraphics, leftPos, topPos, x, y, fill, outline);
     }
 
-    private List<Component> buildCyberwareSlotTooltip(CyberwareSlot slot) {
+    private void drawVanillaSlotBack(GuiGraphics guiGraphics, int x, int y, int fill) {
+        StationSlotRenderer.drawStandardSlot(guiGraphics, leftPos, topPos, x, y, fill);
+    }
+
+    private void renderSlotTooltip(GuiGraphics guiGraphics, SlotTooltip tooltip, int mouseX, int mouseY) {
+        if (tooltip.visualComponent().isPresent() && tooltip.visualComponent().get() instanceof UpgradeProgressTooltip progressTooltip) {
+            renderProgressSlotTooltip(guiGraphics, tooltip.lines(), progressTooltip.progress(), mouseX, mouseY);
+            return;
+        }
+        guiGraphics.renderTooltip(font, tooltip.lines(), Optional.empty(), mouseX, mouseY);
+    }
+
+    private void renderProgressSlotTooltip(GuiGraphics guiGraphics, List<Component> lines, float progress, int mouseX, int mouseY) {
+        int textWidth = 0;
+        for (Component line : lines) {
+            textWidth = Math.max(textWidth, font.width(line));
+        }
+
+        int barWidth = UpgradeProgressClientTooltip.getBarWidth();
+        int barHeight = UpgradeProgressClientTooltip.getBarHeight();
+        int contentWidth = Math.max(textWidth, barWidth);
+        int lineAdvance = font.lineHeight + ModTooltipStyle.LINE_SPACING;
+        int textHeight = lines.size() * lineAdvance - ModTooltipStyle.LINE_SPACING;
+        int tooltipWidth = contentWidth + ModTooltipStyle.CONTENT_PADDING * 2;
+        int tooltipHeight = ModTooltipStyle.CONTENT_PADDING + textHeight + ModTooltipStyle.BAR_GAP + barHeight + ModTooltipStyle.BAR_BOTTOM_PADDING;
+
+        int tooltipX = mouseX + ModTooltipStyle.TOOLTIP_CURSOR_OFFSET_X;
+        if (tooltipX + tooltipWidth > width - ModTooltipStyle.SCREEN_EDGE_MARGIN) {
+            tooltipX = mouseX - ModTooltipStyle.TOOLTIP_CURSOR_OFFSET_X - tooltipWidth;
+        }
+        tooltipX = Math.max(ModTooltipStyle.SCREEN_EDGE_MARGIN, tooltipX);
+
+        int tooltipY = mouseY - ModTooltipStyle.TOOLTIP_CURSOR_OFFSET_Y;
+        if (tooltipY + tooltipHeight > height - ModTooltipStyle.SCREEN_EDGE_MARGIN) {
+            tooltipY = height - ModTooltipStyle.SCREEN_EDGE_MARGIN - tooltipHeight;
+        }
+        tooltipY = Math.max(ModTooltipStyle.SCREEN_EDGE_MARGIN, tooltipY);
+
+        int tooltipX2 = tooltipX + tooltipWidth;
+        int tooltipY2 = tooltipY + tooltipHeight;
+        guiGraphics.flush();
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(0.0F, 0.0F, 400.0F);
+        RenderSystem.disableDepthTest();
+
+        ModTooltipStyle.drawTooltipFrame(guiGraphics, tooltipX, tooltipY, tooltipX2, tooltipY2);
+
+        int textX = tooltipX + ModTooltipStyle.CONTENT_PADDING;
+        int textY = tooltipY + ModTooltipStyle.CONTENT_PADDING;
+        for (Component line : lines) {
+            guiGraphics.drawString(font, line.getVisualOrderText(), textX, textY, ModTooltipStyle.TEXT_FALLBACK, false);
+            textY += lineAdvance;
+        }
+
+        int barX = tooltipX + ModTooltipStyle.CONTENT_PADDING;
+        int barY = tooltipY + ModTooltipStyle.CONTENT_PADDING + textHeight + ModTooltipStyle.BAR_GAP;
+        UpgradeProgressClientTooltip.renderBar(guiGraphics, barX, barY, progress);
+
+        guiGraphics.flush();
+        RenderSystem.enableDepthTest();
+        guiGraphics.pose().popPose();
+    }
+
+    private SlotTooltip buildCyberwareSlotTooltip(CyberwareSlot slot) {
         List<Component> tooltip = new ArrayList<>();
         tooltip.add(Component.translatable(slot.displayKey()));
-        tooltip.addAll(buildUpgradeLines(new UpgradeTarget(UpgradeTargetKind.CYBERWARE, slot.ordinal(), 0), "screen.cyberneticenhancements.ripper_station.slot_hint"));
-        return tooltip;
+        return appendUpgradeLines(tooltip, new UpgradeTarget(UpgradeTargetKind.CYBERWARE, slot.ordinal(), 0), "screen.cyberneticenhancements.ripper_station.slot_hint");
     }
 
-    private List<Component> buildSubSlotTooltip(UpgradeTarget target, Component title, String defaultHintKey) {
+    private SlotTooltip buildSubSlotTooltip(UpgradeTarget target, Component title, String defaultHintKey) {
         List<Component> tooltip = new ArrayList<>();
         tooltip.add(title);
-        tooltip.addAll(buildUpgradeLines(target, defaultHintKey));
-        return tooltip;
+        return appendUpgradeLines(tooltip, target, defaultHintKey);
     }
 
-    private List<Component> buildUpgradeLines(UpgradeTarget target, String defaultHintKey) {
-        List<Component> tooltip = new ArrayList<>();
+    private SlotTooltip appendUpgradeLines(List<Component> tooltip, UpgradeTarget target, String defaultHintKey) {
         CyberwareTier supportedTier = getSupportedTier(target);
         tooltip.add(Component.translatable(
                 "screen.cyberneticenhancements.ripper_station.slot_supported_tier",
@@ -773,7 +901,7 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
 
         if (supportedTier == CyberwareTier.TIER_5) {
             tooltip.add(Component.translatable("screen.cyberneticenhancements.ripper_station.slot_upgrade_maxed"));
-            return tooltip;
+            return new SlotTooltip(tooltip, Optional.empty());
         }
 
         CyberwareTier nextTier = getNextSupportedTier(target);
@@ -799,22 +927,7 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
             ));
         }
 
-        tooltip.add(Component.translatable(
-                "screen.cyberneticenhancements.ripper_station.slot_upgrade_progress",
-                buildUpgradeProgressBar(getHeldUpgradeProgress(target))
-        ));
-        return tooltip;
-    }
-
-    private Component buildUpgradeProgressBar(float progress) {
-        int filledSegments = Math.max(0, Math.min(SLOT_UPGRADE_BAR_SEGMENTS, Math.round(progress * SLOT_UPGRADE_BAR_SEGMENTS)));
-        StringBuilder bar = new StringBuilder(SLOT_UPGRADE_BAR_SEGMENTS + 8);
-        bar.append('[');
-        for (int i = 0; i < SLOT_UPGRADE_BAR_SEGMENTS; i++) {
-            bar.append(i < filledSegments ? '#' : '-');
-        }
-        bar.append("] ").append(Math.round(progress * 100.0F)).append('%');
-        return Component.literal(bar.toString());
+        return new SlotTooltip(tooltip, Optional.of(new UpgradeProgressTooltip(getHeldUpgradeProgress(target))));
     }
 
     private float getHeldUpgradeProgress(UpgradeTarget target) {

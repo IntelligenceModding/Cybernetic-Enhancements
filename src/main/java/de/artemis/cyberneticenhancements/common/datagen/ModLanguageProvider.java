@@ -37,6 +37,8 @@ public final class ModLanguageProvider extends net.neoforged.neoforge.common.dat
         add("tooltip.cyberneticenhancements.capacity_bonus", "Chrome Capacity: +%s");
         add("tooltip.cyberneticenhancements.placeholder_effect", "Special functionality not implemented yet.");
         add("tooltip.cyberneticenhancements.chipware", "Chip Load: %s");
+        add("tooltip.cyberneticenhancements.installed_chipware", "Installed Chipware: %s");
+        add("tooltip.cyberneticenhancements.installed_modules", "Installed Modules: %s");
         add("tooltip.cyberneticenhancements.module_category", "Module Bay: %s");
         add("tooltip.cyberneticenhancements.consumable_category", "Category: %s");
         add("tooltip.cyberneticenhancements.consumable_cooldown", "Cooldown: %s s");
@@ -140,6 +142,7 @@ public final class ModLanguageProvider extends net.neoforged.neoforge.common.dat
         add("screen.cyberneticenhancements.ripper_station.chrome", "Chrome");
         add("screen.cyberneticenhancements.ripper_station.cyberstrain", "Cyberstrain");
         add("screen.cyberneticenhancements.ripper_station.integrity", "Integrity");
+        add("screen.cyberneticenhancements.ripper_station.cyberware_slots", "Cyberware");
         add("screen.cyberneticenhancements.ripper_station.installed_parts", "Installed");
         add("screen.cyberneticenhancements.ripper_station.chrome_profile", "Chrome Profile");
         add("screen.cyberneticenhancements.ripper_station.empty", "Empty");

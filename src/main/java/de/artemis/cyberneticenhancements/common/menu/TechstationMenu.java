@@ -16,22 +16,14 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 public final class TechstationMenu extends AbstractBaseMenu implements NamedBlockMenu {
-    private static final int INPUT_SLOT = 0;
-    private static final int PRIMARY_MATERIAL_SLOT = 1;
-    private static final int SECONDARY_MATERIAL_SLOT = 2;
-    private static final int RESULT_SLOT = 3;
-    private static final int MACHINE_SLOT_COUNT = 4;
-    private static final int INPUT_X = 44;
-    private static final int INPUT_Y = 60;
-    private static final int PRIMARY_X = 116;
-    private static final int PRIMARY_Y = 42;
-    private static final int SECONDARY_X = 116;
-    private static final int SECONDARY_Y = 78;
-    private static final int RESULT_X = 206;
-    private static final int RESULT_Y = 60;
-    private static final int PLAYER_INVENTORY_X = 48;
-    private static final int PLAYER_INVENTORY_Y = 136;
-    private static final int PLAYER_HOTBAR_Y = 194;
+    private static final int REPAIR_INPUT_SLOT = 0;
+    private static final int REPAIR_MATERIAL_SLOT = 1;
+    private static final int UPGRADE_INPUT_SLOT = 2;
+    private static final int UPGRADE_PRIMARY_SLOT = 3;
+    private static final int UPGRADE_SECONDARY_SLOT = 4;
+    private static final int REPAIR_RESULT_SLOT = 5;
+    private static final int UPGRADE_RESULT_SLOT = 6;
+    private static final int MACHINE_SLOT_COUNT = 7;
 
     private final Container serviceInventory;
     private final Container resultInventory;
@@ -46,31 +38,38 @@ public final class TechstationMenu extends AbstractBaseMenu implements NamedBloc
         super(ModMenuTypes.TECHSTATION.get(), containerId);
         this.blockPos = blockPos.immutable();
         this.blockDisplayName = ModBlocks.TECHSTATION.get().getName().getString();
-        this.serviceInventory = new SimpleContainer(3) {
+        this.serviceInventory = new SimpleContainer(5) {
             @Override
             public void setChanged() {
                 super.setChanged();
                 TechstationMenu.this.slotsChanged(this);
             }
         };
-        this.resultInventory = new SimpleContainer(1);
+        this.resultInventory = new SimpleContainer(2);
 
         addStationSlots();
-        addPlayerInventorySlots(playerInventory, PLAYER_INVENTORY_X, PLAYER_INVENTORY_Y);
-        addPlayerHotbarSlots(playerInventory, PLAYER_INVENTORY_X, PLAYER_HOTBAR_Y);
-        updateResult();
+        addPlayerInventorySlots(playerInventory, TechstationLayout.PLAYER_INVENTORY_X, TechstationLayout.PLAYER_INVENTORY_Y);
+        addPlayerHotbarSlots(playerInventory, TechstationLayout.PLAYER_INVENTORY_X, TechstationLayout.PLAYER_HOTBAR_Y);
+        updateResults();
     }
 
     private void addStationSlots() {
-        this.addSlot(new Slot(serviceInventory, INPUT_SLOT, INPUT_X, INPUT_Y) {
+        this.addSlot(new Slot(serviceInventory, REPAIR_INPUT_SLOT, TechstationLayout.REPAIR_INPUT_X, TechstationLayout.REPAIR_INPUT_Y) {
             @Override
             public boolean mayPlace(ItemStack stack) {
                 return stack.getItem() instanceof CyberwareItem;
             }
         });
-        this.addSlot(new Slot(serviceInventory, PRIMARY_MATERIAL_SLOT, PRIMARY_X, PRIMARY_Y));
-        this.addSlot(new Slot(serviceInventory, SECONDARY_MATERIAL_SLOT, SECONDARY_X, SECONDARY_Y));
-        this.addSlot(new Slot(resultInventory, 0, RESULT_X, RESULT_Y) {
+        this.addSlot(new Slot(serviceInventory, REPAIR_MATERIAL_SLOT, TechstationLayout.REPAIR_MATERIAL_X, TechstationLayout.REPAIR_MATERIAL_Y));
+        this.addSlot(new Slot(serviceInventory, UPGRADE_INPUT_SLOT, TechstationLayout.UPGRADE_INPUT_X, TechstationLayout.UPGRADE_INPUT_Y) {
+            @Override
+            public boolean mayPlace(ItemStack stack) {
+                return stack.getItem() instanceof CyberwareItem;
+            }
+        });
+        this.addSlot(new Slot(serviceInventory, UPGRADE_PRIMARY_SLOT, TechstationLayout.UPGRADE_PRIMARY_X, TechstationLayout.UPGRADE_PRIMARY_Y));
+        this.addSlot(new Slot(serviceInventory, UPGRADE_SECONDARY_SLOT, TechstationLayout.UPGRADE_SECONDARY_X, TechstationLayout.UPGRADE_SECONDARY_Y));
+        this.addSlot(new Slot(resultInventory, 0, TechstationLayout.REPAIR_RESULT_X, TechstationLayout.REPAIR_RESULT_Y) {
             @Override
             public boolean mayPlace(ItemStack stack) {
                 return false;
@@ -78,12 +77,28 @@ public final class TechstationMenu extends AbstractBaseMenu implements NamedBloc
 
             @Override
             public void onTake(Player player, ItemStack stack) {
-                CyberwareServicePlan plan = getResolvedPlan();
+                CyberwareServicePlan plan = getRepairResolvedPlan();
                 if (plan.isAvailable()) {
-                    consumeInputs(plan);
+                    consumeRepairInputs(plan);
                 }
                 super.onTake(player, stack);
-                updateResult();
+                updateResults();
+            }
+        });
+        this.addSlot(new Slot(resultInventory, 1, TechstationLayout.UPGRADE_RESULT_X, TechstationLayout.UPGRADE_RESULT_Y) {
+            @Override
+            public boolean mayPlace(ItemStack stack) {
+                return false;
+            }
+
+            @Override
+            public void onTake(Player player, ItemStack stack) {
+                CyberwareServicePlan plan = getUpgradeResolvedPlan();
+                if (plan.isAvailable()) {
+                    consumeUpgradeInputs(plan);
+                }
+                super.onTake(player, stack);
+                updateResults();
             }
         });
     }
@@ -91,35 +106,44 @@ public final class TechstationMenu extends AbstractBaseMenu implements NamedBloc
     @Override
     public void slotsChanged(Container container) {
         super.slotsChanged(container);
-        updateResult();
+        updateResults();
     }
 
-    private void updateResult() {
-        CyberwareServicePlan plan = getResolvedPlan();
-        resultInventory.setItem(0, plan.isAvailable() ? plan.output().copy() : ItemStack.EMPTY);
+    private void updateResults() {
+        CyberwareServicePlan repairPlan = getRepairResolvedPlan();
+        CyberwareServicePlan upgradePlan = getUpgradeResolvedPlan();
+        resultInventory.setItem(0, repairPlan.isAvailable() ? repairPlan.output().copy() : ItemStack.EMPTY);
+        resultInventory.setItem(1, upgradePlan.isAvailable() ? upgradePlan.output().copy() : ItemStack.EMPTY);
         broadcastChanges();
     }
 
-    private void consumeInputs(CyberwareServicePlan plan) {
-        serviceInventory.removeItem(INPUT_SLOT, 1);
+    private void consumeRepairInputs(CyberwareServicePlan plan) {
+        serviceInventory.removeItem(REPAIR_INPUT_SLOT, 1);
+        ItemStack material = serviceInventory.getItem(REPAIR_MATERIAL_SLOT);
+        material.shrink(plan.primaryCount());
+        if (material.isEmpty()) {
+            serviceInventory.setItem(REPAIR_MATERIAL_SLOT, ItemStack.EMPTY);
+        }
+    }
 
-        ItemStack firstMaterial = serviceInventory.getItem(PRIMARY_MATERIAL_SLOT);
-        ItemStack secondMaterial = serviceInventory.getItem(SECONDARY_MATERIAL_SLOT);
+    private void consumeUpgradeInputs(CyberwareServicePlan plan) {
+        serviceInventory.removeItem(UPGRADE_INPUT_SLOT, 1);
+
+        ItemStack firstMaterial = serviceInventory.getItem(UPGRADE_PRIMARY_SLOT);
+        ItemStack secondMaterial = serviceInventory.getItem(UPGRADE_SECONDARY_SLOT);
         if (ItemStack.isSameItemSameComponents(firstMaterial.copyWithCount(1), plan.primaryMaterial().copyWithCount(1))) {
             firstMaterial.shrink(plan.primaryCount());
-            if (plan.requiresSecondaryMaterial()) {
-                secondMaterial.shrink(plan.secondaryCount());
-            }
-        } else if (plan.requiresSecondaryMaterial()) {
+            secondMaterial.shrink(plan.secondaryCount());
+        } else {
             firstMaterial.shrink(plan.secondaryCount());
             secondMaterial.shrink(plan.primaryCount());
         }
 
         if (firstMaterial.isEmpty()) {
-            serviceInventory.setItem(PRIMARY_MATERIAL_SLOT, ItemStack.EMPTY);
+            serviceInventory.setItem(UPGRADE_PRIMARY_SLOT, ItemStack.EMPTY);
         }
         if (secondMaterial.isEmpty()) {
-            serviceInventory.setItem(SECONDARY_MATERIAL_SLOT, ItemStack.EMPTY);
+            serviceInventory.setItem(UPGRADE_SECONDARY_SLOT, ItemStack.EMPTY);
         }
     }
 
@@ -133,7 +157,7 @@ public final class TechstationMenu extends AbstractBaseMenu implements NamedBloc
         ItemStack sourceStack = sourceSlot.getItem();
         ItemStack copiedStack = sourceStack.copy();
 
-        if (index == RESULT_SLOT) {
+        if (index == REPAIR_RESULT_SLOT || index == UPGRADE_RESULT_SLOT) {
             if (!this.moveItemStackTo(sourceStack, MACHINE_SLOT_COUNT, this.slots.size(), true)) {
                 return ItemStack.EMPTY;
             }
@@ -146,10 +170,10 @@ public final class TechstationMenu extends AbstractBaseMenu implements NamedBloc
                 return ItemStack.EMPTY;
             }
         } else if (sourceStack.getItem() instanceof CyberwareItem) {
-            if (!moveToContainerSlot(sourceStack, MACHINE_SLOT_COUNT, INPUT_SLOT)) {
+            if (!moveCyberwareIntoBays(sourceStack)) {
                 return ItemStack.EMPTY;
             }
-        } else if (!moveMaterialIntoServiceSlots(sourceStack)) {
+        } else if (!moveMaterialIntoBays(sourceStack)) {
             return ItemStack.EMPTY;
         }
 
@@ -165,38 +189,59 @@ public final class TechstationMenu extends AbstractBaseMenu implements NamedBloc
         return copiedStack;
     }
 
-    private boolean moveMaterialIntoServiceSlots(ItemStack sourceStack) {
+    private boolean moveCyberwareIntoBays(ItemStack sourceStack) {
+        if (canRepair(sourceStack) && moveToContainerSlot(sourceStack, MACHINE_SLOT_COUNT, REPAIR_INPUT_SLOT)) {
+            return true;
+        }
+        if (canUpgrade(sourceStack) && moveToContainerSlot(sourceStack, MACHINE_SLOT_COUNT, UPGRADE_INPUT_SLOT)) {
+            return true;
+        }
+        if (moveToContainerSlot(sourceStack, MACHINE_SLOT_COUNT, REPAIR_INPUT_SLOT)) {
+            return true;
+        }
+        return moveToContainerSlot(sourceStack, MACHINE_SLOT_COUNT, UPGRADE_INPUT_SLOT);
+    }
+
+    private boolean moveMaterialIntoBays(ItemStack sourceStack) {
         int preferredSlot = findPreferredMaterialSlot(sourceStack);
         if (preferredSlot >= 0 && this.moveItemStackTo(sourceStack, preferredSlot, preferredSlot + 1, false)) {
             return true;
         }
-        return this.moveItemStackTo(sourceStack, PRIMARY_MATERIAL_SLOT, SECONDARY_MATERIAL_SLOT + 1, false);
+        if (this.moveItemStackTo(sourceStack, REPAIR_MATERIAL_SLOT, REPAIR_MATERIAL_SLOT + 1, false)) {
+            return true;
+        }
+        return this.moveItemStackTo(sourceStack, UPGRADE_PRIMARY_SLOT, UPGRADE_SECONDARY_SLOT + 1, false);
     }
 
     private int findPreferredMaterialSlot(ItemStack sourceStack) {
-        CyberwareServicePlan upgradePlan = getUpgradePlan();
-        int slot = findPreferredMaterialSlot(sourceStack, upgradePlan);
-        if (slot >= 0) {
-            return slot;
+        CyberwareServicePlan repairPlan = getRepairPlan();
+        if (repairPlan.isAvailable()
+                && isMatchingMaterial(sourceStack, repairPlan.primaryMaterial())
+                && canMergeInto(REPAIR_MATERIAL_SLOT, sourceStack)) {
+            return REPAIR_MATERIAL_SLOT;
         }
 
-        CyberwareServicePlan repairPlan = getRepairPlan();
-        return findPreferredMaterialSlot(sourceStack, repairPlan);
-    }
-
-    private int findPreferredMaterialSlot(ItemStack sourceStack, CyberwareServicePlan plan) {
-        if (!plan.isAvailable()) {
+        CyberwareServicePlan upgradePlan = getUpgradePlan();
+        if (!upgradePlan.isAvailable()) {
             return -1;
         }
-        if (isMatchingMaterial(sourceStack, plan.primaryMaterial()) && canMergeInto(PRIMARY_MATERIAL_SLOT, sourceStack)) {
-            return PRIMARY_MATERIAL_SLOT;
+        if (isMatchingMaterial(sourceStack, upgradePlan.primaryMaterial()) && canMergeInto(UPGRADE_PRIMARY_SLOT, sourceStack)) {
+            return UPGRADE_PRIMARY_SLOT;
         }
-        if (plan.requiresSecondaryMaterial()
-                && isMatchingMaterial(sourceStack, plan.secondaryMaterial())
-                && canMergeInto(SECONDARY_MATERIAL_SLOT, sourceStack)) {
-            return SECONDARY_MATERIAL_SLOT;
+        if (upgradePlan.requiresSecondaryMaterial()
+                && isMatchingMaterial(sourceStack, upgradePlan.secondaryMaterial())
+                && canMergeInto(UPGRADE_SECONDARY_SLOT, sourceStack)) {
+            return UPGRADE_SECONDARY_SLOT;
         }
         return -1;
+    }
+
+    private boolean canRepair(ItemStack sourceStack) {
+        return CyberwareServiceHelper.getRepairPlan(sourceStack).isAvailable();
+    }
+
+    private boolean canUpgrade(ItemStack sourceStack) {
+        return CyberwareServiceHelper.getUpgradePlan(sourceStack).isAvailable();
     }
 
     private boolean isMatchingMaterial(ItemStack sourceStack, ItemStack expectedStack) {
@@ -230,27 +275,43 @@ public final class TechstationMenu extends AbstractBaseMenu implements NamedBloc
         return blockDisplayName;
     }
 
-    public ItemStack getInputStack() {
-        return serviceInventory.getItem(INPUT_SLOT);
+    public ItemStack getRepairInputStack() {
+        return serviceInventory.getItem(REPAIR_INPUT_SLOT);
     }
 
-    public ItemStack getPrimaryMaterialStack() {
-        return serviceInventory.getItem(PRIMARY_MATERIAL_SLOT);
+    public ItemStack getRepairMaterialStack() {
+        return serviceInventory.getItem(REPAIR_MATERIAL_SLOT);
     }
 
-    public ItemStack getSecondaryMaterialStack() {
-        return serviceInventory.getItem(SECONDARY_MATERIAL_SLOT);
+    public ItemStack getUpgradeInputStack() {
+        return serviceInventory.getItem(UPGRADE_INPUT_SLOT);
     }
 
-    public CyberwareServicePlan getResolvedPlan() {
-        return CyberwareServiceHelper.resolve(getInputStack(), getPrimaryMaterialStack(), getSecondaryMaterialStack());
+    public ItemStack getUpgradePrimaryMaterialStack() {
+        return serviceInventory.getItem(UPGRADE_PRIMARY_SLOT);
+    }
+
+    public ItemStack getUpgradeSecondaryMaterialStack() {
+        return serviceInventory.getItem(UPGRADE_SECONDARY_SLOT);
     }
 
     public CyberwareServicePlan getRepairPlan() {
-        return CyberwareServiceHelper.getRepairPlan(getInputStack());
+        return CyberwareServiceHelper.getRepairPlan(getRepairInputStack());
     }
 
     public CyberwareServicePlan getUpgradePlan() {
-        return CyberwareServiceHelper.getUpgradePlan(getInputStack());
+        return CyberwareServiceHelper.getUpgradePlan(getUpgradeInputStack());
+    }
+
+    public CyberwareServicePlan getRepairResolvedPlan() {
+        return CyberwareServiceHelper.matchesMaterials(getRepairPlan(), getRepairMaterialStack(), ItemStack.EMPTY)
+                ? getRepairPlan()
+                : CyberwareServicePlan.empty();
+    }
+
+    public CyberwareServicePlan getUpgradeResolvedPlan() {
+        return CyberwareServiceHelper.matchesMaterials(getUpgradePlan(), getUpgradePrimaryMaterialStack(), getUpgradeSecondaryMaterialStack())
+                ? getUpgradePlan()
+                : CyberwareServicePlan.empty();
     }
 }
