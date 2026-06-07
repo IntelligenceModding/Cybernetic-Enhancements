@@ -1,0 +1,10 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "ingredient": {
+    "item": "cyberneticenhancements:scout_skillchip"
+  },
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:uncommon_item_components"
+  }
+}

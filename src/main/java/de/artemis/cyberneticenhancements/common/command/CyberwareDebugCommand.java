@@ -1,10 +1,14 @@
 package de.artemis.cyberneticenhancements.common.command;
 
-import de.artemis.cyberneticenhancements.common.consumable.CyberConsumableManager;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import de.artemis.cyberneticenhancements.common.consumable.CyberConsumableManager;
+import de.artemis.cyberneticenhancements.common.cyberware.CyberwareAbilities;
+import de.artemis.cyberneticenhancements.common.cyberware.CyberwareEffects;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareSlot;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberstrainManager;
 import de.artemis.cyberneticenhancements.common.cyberware.PlayerCyberwareInventory;
+import de.artemis.cyberneticenhancements.common.cyberware.TemporaryCyberwareEffectManager;
 import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -18,12 +22,25 @@ public final class CyberwareDebugCommand {
     }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        LiteralArgumentBuilder<CommandSourceStack> debugCommand = Commands.literal("debug")
+                .then(Commands.literal("cyberware")
+                        .executes(context -> execute(context.getSource())))
+                .then(Commands.literal("reset")
+                        .then(Commands.literal("cooldowns")
+                                .executes(context -> resetCooldowns(context.getSource())))
+                        .then(Commands.literal("buffs")
+                                .executes(context -> resetBuffs(context.getSource())))
+                        .then(Commands.literal("statuses")
+                                .executes(context -> resetBuffs(context.getSource())))
+                        .then(Commands.literal("all")
+                                .executes(context -> resetAll(context.getSource())))
+                        .then(Commands.literal("both")
+                                .executes(context -> resetAll(context.getSource()))));
+
         dispatcher.register(
                 Commands.literal("cyberneticenhancements")
                         .requires(source -> source.hasPermission(Commands.LEVEL_ALL))
-                        .then(Commands.literal("debug")
-                                .then(Commands.literal("cyberware")
-                                        .executes(context -> execute(context.getSource()))))
+                        .then(debugCommand)
         );
     }
 
@@ -66,6 +83,35 @@ public final class CyberwareDebugCommand {
             source.sendSuccess(() -> Component.literal("No installed cyberware found in live inventory wrapper."), false);
         }
 
+        return 1;
+    }
+
+    private static int resetCooldowns(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        CyberConsumableManager.clearCooldowns(player);
+        CyberwareAbilities.clearCooldowns(player);
+        CyberwareEffects.refreshPlayerCyberware(player);
+        source.sendSuccess(() -> Component.literal("Cleared all cyberware and consumable cooldowns."), false);
+        return 1;
+    }
+
+    private static int resetBuffs(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        TemporaryCyberwareEffectManager.clearEffects(player);
+        CyberstrainManager.clearTemporaryStatuses(player);
+        CyberwareEffects.refreshPlayerCyberware(player);
+        source.sendSuccess(() -> Component.literal("Cleared all temporary cyberware statuses and buffs."), false);
+        return 1;
+    }
+
+    private static int resetAll(CommandSourceStack source) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        CyberConsumableManager.clearCooldowns(player);
+        CyberwareAbilities.clearCooldowns(player);
+        TemporaryCyberwareEffectManager.clearEffects(player);
+        CyberstrainManager.clearTemporaryStatuses(player);
+        CyberwareEffects.refreshPlayerCyberware(player);
+        source.sendSuccess(() -> Component.literal("Cleared all cooldowns and temporary cyberware statuses."), false);
         return 1;
     }
 }

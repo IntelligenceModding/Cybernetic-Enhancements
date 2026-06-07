@@ -41,9 +41,9 @@ public final class ModModelProvider implements DataProvider {
         futures.add(saveSimpleBlockstate(output, "ripper_station"));
         futures.add(saveBlockItemDefinition(output, "ripper_station"));
 
-        futures.add(saveCubeBlockModel(output, "techstation", "minecraft:block/gray_concrete"));
-        futures.add(saveSimpleBlockstate(output, "techstation"));
-        futures.add(saveBlockItemDefinition(output, "techstation"));
+        futures.add(saveCubeBlockModel(output, "tech_station", "minecraft:block/gray_concrete"));
+        futures.add(saveSimpleBlockstate(output, "tech_station"));
+        futures.add(saveBlockItemDefinition(output, "tech_station"));
 
         futures.add(saveCubeBlockModel(output, "recycler_station", "minecraft:block/deepslate_tiles"));
         futures.add(saveSimpleBlockstate(output, "recycler_station"));

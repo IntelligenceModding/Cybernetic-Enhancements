@@ -1,0 +1,11 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "damage_sensitive": true,
+  "ingredient": {
+    "item": "cyberneticenhancements:electromag_recycler"
+  },
+  "result": {
+    "count": 4,
+    "id": "cyberneticenhancements:epic_item_components"
+  }
+}

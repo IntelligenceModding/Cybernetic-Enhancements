@@ -1,0 +1,11 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "damage_sensitive": true,
+  "ingredient": {
+    "item": "cyberneticenhancements:quantum_tuner"
+  },
+  "result": {
+    "count": 5,
+    "id": "cyberneticenhancements:legendary_item_components"
+  }
+}

@@ -3,7 +3,7 @@ package de.artemis.cyberneticenhancements.common.registry;
 import de.artemis.cyberneticenhancements.CyberneticEnhancements;
 import de.artemis.cyberneticenhancements.common.block.RecyclerStationBlock;
 import de.artemis.cyberneticenhancements.common.block.RipperStationBlock;
-import de.artemis.cyberneticenhancements.common.block.TechstationBlock;
+import de.artemis.cyberneticenhancements.common.block.TechStationBlock;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
@@ -24,9 +24,9 @@ public final class ModBlocks {
             properties -> properties.strength(3.5F).sound(SoundType.METAL)
     );
 
-    public static final DeferredBlock<TechstationBlock> TECHSTATION = register(
-            "techstation",
-            TechstationBlock::new,
+    public static final DeferredBlock<TechStationBlock> TECH_STATION = register(
+            "tech_station",
+            TechStationBlock::new,
             properties -> properties.strength(3.5F).sound(SoundType.METAL)
     );
 

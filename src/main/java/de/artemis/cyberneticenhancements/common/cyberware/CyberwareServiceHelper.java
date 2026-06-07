@@ -5,7 +5,16 @@ import de.artemis.cyberneticenhancements.common.registry.ModItems;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ItemLike;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public final class CyberwareServiceHelper {
+    public record MaterialRequirement(ItemStack stack, int count) {
+        public boolean isRequired() {
+            return count > 0 && !stack.isEmpty();
+        }
+    }
+
     private CyberwareServiceHelper() {
     }
 
@@ -22,14 +31,17 @@ public final class CyberwareServiceHelper {
         double missingRatio = 1.0D - CyberwareConditionHelper.getIntegrityRatio(inputStack, definition);
         int tierFactor = definition.tier().ordinal() + 1;
         int primaryCount = Math.max(1, (int) Math.ceil(missingRatio * tierFactor * 2.0D));
+        int secondaryCount = Math.max(1, (int) Math.ceil(missingRatio * tierFactor));
         ItemStack output = CyberwareConditionHelper.createServiceCopy(inputStack, definition, true);
         return new CyberwareServicePlan(
                 CyberwareServicePlan.Type.REPAIR,
                 output,
                 componentStack(definition.tier()),
                 primaryCount,
-                ItemStack.EMPTY,
-                0
+                new ItemStack(slotSupportItem(definition.slotType())),
+                secondaryCount,
+                new ItemStack(definition.motifItem()),
+                1
         );
     }
 
@@ -39,57 +51,89 @@ public final class CyberwareServiceHelper {
         }
 
         CyberwareDefinition sourceDefinition = cyberwareItem.getDefinition();
-        CyberwareDefinition targetDefinition = CyberwareCatalog.findUpgradeStep(sourceDefinition);
-        if (targetDefinition == null) {
+        if (!CyberwareUpgradeHelper.canUpgrade(inputStack)) {
             return CyberwareServicePlan.empty();
         }
 
-        int targetTierFactor = targetDefinition.tier().ordinal() + 1;
-        int primaryCount = Math.max(2, targetTierFactor);
-        int secondaryCount = Math.max(1, sourceDefinition.tier().ordinal() + 1);
-        ItemStack output = CyberwareConditionHelper.createServiceCopy(inputStack, targetDefinition, true);
+        int currentLevel = CyberwareUpgradeHelper.getUpgradeLevel(inputStack);
+        int tierFactor = sourceDefinition.tier().ordinal() + 1;
+        int primaryCount = Math.max(2, tierFactor + currentLevel);
+        int secondaryCount = Math.max(1, 1 + currentLevel / 2);
+        ItemStack output = CyberwareUpgradeHelper.createUpgradedCopy(inputStack, sourceDefinition);
         return new CyberwareServicePlan(
                 CyberwareServicePlan.Type.UPGRADE,
                 output,
-                componentStack(targetDefinition.tier()),
+                componentStack(sourceDefinition.tier()),
                 primaryCount,
                 new ItemStack(slotSupportItem(sourceDefinition.slotType())),
-                secondaryCount
+                secondaryCount,
+                ItemStack.EMPTY,
+                0
         );
     }
 
-    public static CyberwareServicePlan resolve(ItemStack inputStack, ItemStack firstMaterial, ItemStack secondMaterial) {
+    public static CyberwareServicePlan resolve(ItemStack inputStack, ItemStack... materials) {
         CyberwareServicePlan upgradePlan = getUpgradePlan(inputStack);
-        if (matchesMaterials(upgradePlan, firstMaterial, secondMaterial)) {
+        if (matchesMaterials(upgradePlan, materials)) {
             return upgradePlan;
         }
 
         CyberwareServicePlan repairPlan = getRepairPlan(inputStack);
-        if (matchesMaterials(repairPlan, firstMaterial, secondMaterial)) {
+        if (matchesMaterials(repairPlan, materials)) {
             return repairPlan;
         }
         return CyberwareServicePlan.empty();
     }
 
-    public static boolean matchesMaterials(CyberwareServicePlan plan, ItemStack firstMaterial, ItemStack secondMaterial) {
+    public static boolean matchesMaterials(CyberwareServicePlan plan, ItemStack... providedMaterials) {
         if (!plan.isAvailable()) {
             return false;
         }
 
-        return matchesOrdered(plan, firstMaterial, secondMaterial) || matchesOrdered(plan, secondMaterial, firstMaterial);
-    }
-
-    private static boolean matchesOrdered(CyberwareServicePlan plan, ItemStack primarySlot, ItemStack secondarySlot) {
-        boolean primaryMatches = ItemStack.isSameItemSameComponents(primarySlot.copyWithCount(1), plan.primaryMaterial().copyWithCount(1))
-                && primarySlot.getCount() >= plan.primaryCount();
-        if (!primaryMatches) {
-            return false;
-        }
-        if (!plan.requiresSecondaryMaterial()) {
+        List<MaterialRequirement> requirements = getRequiredMaterials(plan);
+        if (requirements.isEmpty()) {
             return true;
         }
-        return ItemStack.isSameItemSameComponents(secondarySlot.copyWithCount(1), plan.secondaryMaterial().copyWithCount(1))
-                && secondarySlot.getCount() >= plan.secondaryCount();
+        return matchesRequirements(requirements, providedMaterials, new boolean[providedMaterials.length], 0);
+    }
+
+    public static List<MaterialRequirement> getRequiredMaterials(CyberwareServicePlan plan) {
+        List<MaterialRequirement> requirements = new ArrayList<>(3);
+        addRequirement(requirements, plan.primaryMaterial(), plan.primaryCount());
+        addRequirement(requirements, plan.secondaryMaterial(), plan.secondaryCount());
+        addRequirement(requirements, plan.tertiaryMaterial(), plan.tertiaryCount());
+        return requirements;
+    }
+
+    private static void addRequirement(List<MaterialRequirement> requirements, ItemStack stack, int count) {
+        if (count > 0 && !stack.isEmpty()) {
+            requirements.add(new MaterialRequirement(stack, count));
+        }
+    }
+
+    private static boolean matchesRequirements(List<MaterialRequirement> requirements, ItemStack[] providedMaterials, boolean[] usedSlots, int requirementIndex) {
+        if (requirementIndex >= requirements.size()) {
+            return true;
+        }
+
+        MaterialRequirement requirement = requirements.get(requirementIndex);
+        for (int slotIndex = 0; slotIndex < providedMaterials.length; slotIndex++) {
+            if (usedSlots[slotIndex] || !matchesRequirement(providedMaterials[slotIndex], requirement)) {
+                continue;
+            }
+            usedSlots[slotIndex] = true;
+            if (matchesRequirements(requirements, providedMaterials, usedSlots, requirementIndex + 1)) {
+                return true;
+            }
+            usedSlots[slotIndex] = false;
+        }
+        return false;
+    }
+
+    private static boolean matchesRequirement(ItemStack candidate, MaterialRequirement requirement) {
+        return !candidate.isEmpty()
+                && ItemStack.isSameItemSameComponents(candidate.copyWithCount(1), requirement.stack().copyWithCount(1))
+                && candidate.getCount() >= requirement.count();
     }
 
     public static ItemStack componentStack(CyberwareTier tier) {

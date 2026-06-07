@@ -4,6 +4,7 @@ import de.artemis.cyberneticenhancements.common.consumable.CyberConsumableManage
 import de.artemis.cyberneticenhancements.common.item.ChipwareItem;
 import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
 import de.artemis.cyberneticenhancements.common.item.CyberwareModuleItem;
+import de.artemis.cyberneticenhancements.common.network.CyberwareHudPayload;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
@@ -11,7 +12,9 @@ import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 import java.util.EnumMap;
@@ -34,6 +37,9 @@ public final class CyberwareEffects {
         CyberwareConditionManager.onPlayerTick(player);
         CyberstrainManager.onPlayerTick(player);
         handleJumpAugmentation(player);
+        if (player instanceof ServerPlayer serverPlayer && player.tickCount % 4 == 0) {
+            PacketDistributor.sendToPlayer(serverPlayer, CyberwareHudPayload.capture(serverPlayer));
+        }
         if (player.tickCount % 20 != 0) {
             return;
         }
@@ -93,7 +99,7 @@ public final class CyberwareEffects {
             }
 
             double integrityScale = CyberwareConditionHelper.getIntegrityRatio(stack, cyberwareItem.getDefinition());
-            mergeEffects(totals, cyberwareItem.getEffects(), integrityScale);
+            mergeEffects(totals, cyberwareItem.getEffects(stack), integrityScale);
         }
         for (CyberwareModuleItem moduleItem : inventory.getInstalledModuleItems()) {
             mergeEffects(totals, moduleItem.getDefinition().effects());

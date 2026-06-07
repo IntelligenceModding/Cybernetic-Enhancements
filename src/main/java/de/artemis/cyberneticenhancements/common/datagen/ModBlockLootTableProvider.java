@@ -13,7 +13,7 @@ import java.util.Set;
 public final class ModBlockLootTableProvider extends BlockLootSubProvider {
     private static final Set<Block> DIRECT_BLOCKS = Set.of(
             ModBlocks.RIPPER_STATION.get(),
-            ModBlocks.TECHSTATION.get(),
+            ModBlocks.TECH_STATION.get(),
             ModBlocks.RECYCLER_STATION.get()
     );
 

@@ -1,0 +1,10 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "ingredient": {
+    "item": "cyberneticenhancements:mining_accelerator"
+  },
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:replacement_joint"
+  }
+}

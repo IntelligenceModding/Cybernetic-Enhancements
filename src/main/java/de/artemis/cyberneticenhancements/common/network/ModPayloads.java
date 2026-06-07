@@ -4,7 +4,10 @@ import de.artemis.cyberneticenhancements.common.cyberware.CyberwareAbilities;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareSlot;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberpsychosisClientState;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareModuleHandler;
+import de.artemis.cyberneticenhancements.client.CyberwareHudClientState;
+import de.artemis.cyberneticenhancements.common.menu.RecyclerStationMenu;
 import de.artemis.cyberneticenhancements.common.menu.RipperStationMenu;
+import de.artemis.cyberneticenhancements.common.menu.TechStationMenu;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 public final class ModPayloads {
@@ -15,6 +18,8 @@ public final class ModPayloads {
         event.registrar("1")
                 .playToClient(CyberpsychosisControlPayload.TYPE, CyberpsychosisControlPayload.STREAM_CODEC, (payload, context) ->
                         context.enqueueWork(() -> CyberpsychosisClientState.setControlLocked(payload.locked())))
+                .playToClient(CyberwareHudPayload.TYPE, CyberwareHudPayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> CyberwareHudClientState.update(payload)))
                 .playToServer(ActivateCyberwarePayload.TYPE, ActivateCyberwarePayload.STREAM_CODEC, (payload, context) ->
                         context.enqueueWork(() -> CyberwareAbilities.activate(context.player())))
                 .playToServer(UpgradeCyberwareSlotPayload.TYPE, UpgradeCyberwareSlotPayload.STREAM_CODEC, (payload, context) ->
@@ -50,6 +55,24 @@ public final class ModPayloads {
                                 }
                                 default -> {
                                 }
+                            }
+                        }))
+                .playToServer(UpgradeStationInputSlotPayload.TYPE, UpgradeStationInputSlotPayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> {
+                            if (payload.slotIndex() < 0) {
+                                return;
+                            }
+                            if (context.player().containerMenu instanceof TechStationMenu techStationMenu) {
+                                switch (payload.slotIndex()) {
+                                    case 0 -> techStationMenu.tryUpgradeRepairSupportedTier();
+                                    case 1 -> techStationMenu.tryUpgradeUpgradeSupportedTier();
+                                    default -> {
+                                    }
+                                }
+                                return;
+                            }
+                            if (context.player().containerMenu instanceof RecyclerStationMenu recyclerStationMenu && payload.slotIndex() == 0) {
+                                recyclerStationMenu.tryUpgradeSupportedTier();
                             }
                         }));
     }

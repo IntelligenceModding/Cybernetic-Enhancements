@@ -1,0 +1,10 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "ingredient": {
+    "item": "cyberneticenhancements:maxdoc_mk2"
+  },
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:conductive_paste"
+  }
+}

@@ -23,7 +23,7 @@ public final class ModCreativeModeTabs {
                         ModItems.MATERIALS.forEach(item -> output.accept(item.get()));
                         ModItems.consumableItems().forEach(item -> output.accept(item.get()));
                         output.accept(ModBlocks.RIPPER_STATION.get());
-                        output.accept(ModBlocks.TECHSTATION.get());
+                        output.accept(ModBlocks.TECH_STATION.get());
                         output.accept(ModBlocks.RECYCLER_STATION.get());
                     })
                     .build()

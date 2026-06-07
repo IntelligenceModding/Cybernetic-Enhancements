@@ -12,6 +12,8 @@ import net.minecraft.world.entity.player.Player;
 public final class CyberConsumableManager {
     private static final String OVERDOSE_POINTS_KEY = "cyberneticenhancements.consumable_overdose_points";
     private static final String OVERDOSE_DECAY_UNTIL_KEY = "cyberneticenhancements.consumable_overdose_decay_until";
+    private static final String CATEGORY_COOLDOWN_UNTIL_PREFIX = "cyberneticenhancements.consumable_cooldown_until.";
+    private static final String CATEGORY_COOLDOWN_DURATION_PREFIX = "cyberneticenhancements.consumable_cooldown_duration.";
 
     private CyberConsumableManager() {
     }
@@ -52,29 +54,28 @@ public final class CyberConsumableManager {
         CompoundTag toData = toPlayer.getPersistentData();
         copyInt(fromData, toData, OVERDOSE_POINTS_KEY);
         copyLong(fromData, toData, OVERDOSE_DECAY_UNTIL_KEY);
+        for (CyberConsumableCategory category : CyberConsumableCategory.values()) {
+            copyLong(fromData, toData, categoryCooldownKey(category));
+            copyInt(fromData, toData, categoryCooldownDurationKey(category));
+        }
+    }
+
+    public static void clearCooldowns(Player player) {
+        CompoundTag persistentData = player.getPersistentData();
+        persistentData.remove(OVERDOSE_POINTS_KEY);
+        persistentData.remove(OVERDOSE_DECAY_UNTIL_KEY);
+        for (CyberConsumableCategory category : CyberConsumableCategory.values()) {
+            persistentData.remove(categoryCooldownKey(category));
+            persistentData.remove(categoryCooldownDurationKey(category));
+        }
+        for (var item : ModItems.consumableItems()) {
+            player.getCooldowns().removeCooldown(item.get());
+        }
     }
 
     public static int getRemainingCategoryCooldownSeconds(Player player, CyberConsumableCategory category) {
-        int remainingTicks = 0;
-        for (var item : ModItems.consumableItems()) {
-            CyberConsumableDefinition definition = item.get().getDefinition();
-            if (definition.category() != category) {
-                continue;
-            }
-            remainingTicks = Math.max(remainingTicks, player.getCooldowns().getCooldownPercent(item.get(), 0.0F) > 0.0F ? 1 : 0);
-        }
-
-        if (remainingTicks == 0) {
-            return 0;
-        }
-
-        for (var item : ModItems.consumableItems()) {
-            CyberConsumableDefinition definition = item.get().getDefinition();
-            if (definition.category() == category && player.getCooldowns().isOnCooldown(item.get())) {
-                return Math.max(1, definition.cooldownTicks() / 20);
-            }
-        }
-        return 0;
+        long remainingTicks = getRemainingCategoryCooldownTicks(player, category);
+        return remainingTicks <= 0L ? 0 : (int) ((remainingTicks + 19L) / 20L);
     }
 
     private static boolean hasCategoryCooldown(Player player, CyberConsumableCategory category) {
@@ -88,12 +89,39 @@ public final class CyberConsumableManager {
     }
 
     private static void applyCategoryCooldown(Player player, CyberConsumableCategory category, int cooldownTicks) {
+        player.getPersistentData().putLong(categoryCooldownKey(category), player.level().getGameTime() + cooldownTicks);
+        player.getPersistentData().putInt(categoryCooldownDurationKey(category), cooldownTicks);
         for (var item : ModItems.consumableItems()) {
             CyberConsumableItem consumableItem = item.get();
             if (consumableItem.getDefinition().category() == category) {
                 player.getCooldowns().addCooldown(consumableItem, cooldownTicks);
             }
         }
+    }
+
+    private static long getRemainingCategoryCooldownTicks(Player player, CyberConsumableCategory category) {
+        String key = categoryCooldownKey(category);
+        CompoundTag persistentData = player.getPersistentData();
+        long remaining = persistentData.getLong(key) - player.level().getGameTime();
+        if (remaining <= 0L) {
+            persistentData.remove(key);
+            persistentData.remove(categoryCooldownDurationKey(category));
+            return 0L;
+        }
+        return remaining;
+    }
+
+    public static int getCategoryCooldownTotalSeconds(Player player, CyberConsumableCategory category) {
+        int totalTicks = player.getPersistentData().getInt(categoryCooldownDurationKey(category));
+        return totalTicks <= 0 ? 0 : Math.max(1, (totalTicks + 19) / 20);
+    }
+
+    private static String categoryCooldownKey(CyberConsumableCategory category) {
+        return CATEGORY_COOLDOWN_UNTIL_PREFIX + category.name().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private static String categoryCooldownDurationKey(CyberConsumableCategory category) {
+        return CATEGORY_COOLDOWN_DURATION_PREFIX + category.name().toLowerCase(java.util.Locale.ROOT);
     }
 
     private static void addOverdosePoints(Player player, int amount, long gameTime) {

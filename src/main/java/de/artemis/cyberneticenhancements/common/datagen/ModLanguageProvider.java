@@ -27,13 +27,17 @@ public final class ModLanguageProvider extends net.neoforged.neoforge.common.dat
         add("itemGroup.cyberneticenhancements.cyberware", "Cyberware");
         add("key.categories.cyberneticenhancements", "Cybernetic Enhancements");
         add("key.cyberneticenhancements.activate_cyberware", "Activate Cyberware");
+        add("key.cyberneticenhancements.toggle_hud", "Toggle HUD");
 
         add("tooltip.cyberneticenhancements.cyberware_slot", "Slot: %s");
         add("tooltip.cyberneticenhancements.cyberware_tier", "Tier: %s");
         add("tooltip.cyberneticenhancements.chrome_cost", "Chrome Cost: %s");
         add("tooltip.cyberneticenhancements.integrity", "Integrity: %s / %s");
+        add("tooltip.cyberneticenhancements.upgrades", "Upgrades: %s/%s");
         add("tooltip.cyberneticenhancements.chip_slots", "Chip Sockets: %s");
         add("tooltip.cyberneticenhancements.module_slots", "Module Bays: %s");
+        add("tooltip.cyberneticenhancements.upgrade_chip_slots", "+%s Chip Sockets");
+        add("tooltip.cyberneticenhancements.upgrade_module_slots", "+%s Module Bays");
         add("tooltip.cyberneticenhancements.capacity_bonus", "Chrome Capacity: +%s");
         add("tooltip.cyberneticenhancements.placeholder_effect", "Special functionality not implemented yet.");
         add("tooltip.cyberneticenhancements.chipware", "Chip Load: %s");
@@ -100,6 +104,8 @@ public final class ModLanguageProvider extends net.neoforged.neoforge.common.dat
         add("message.cyberneticenhancements.psychosis.triggered", "Cyberpsychosis episode triggered. You are losing control.");
         add("message.cyberneticenhancements.psychosis.forced", "Forced cyberpsychosis test episode started.");
         add("message.cyberneticenhancements.psychosis.ended", "You regained control of your body.");
+        add("message.cyberneticenhancements.hud.enabled", "Cyberware HUD enabled.");
+        add("message.cyberneticenhancements.hud.disabled", "Cyberware HUD disabled.");
     }
 
     private void addSlotTranslations() {
@@ -142,6 +148,16 @@ public final class ModLanguageProvider extends net.neoforged.neoforge.common.dat
         add("screen.cyberneticenhancements.ripper_station.chrome", "Chrome");
         add("screen.cyberneticenhancements.ripper_station.cyberstrain", "Cyberstrain");
         add("screen.cyberneticenhancements.ripper_station.integrity", "Integrity");
+        add("screen.cyberneticenhancements.ripper_station.overview_health", "Health");
+        add("screen.cyberneticenhancements.ripper_station.overview_recovery", "Recovery");
+        add("screen.cyberneticenhancements.ripper_station.overview_armor", "Armor");
+        add("screen.cyberneticenhancements.ripper_station.overview_resistance", "Resistance");
+        add("screen.cyberneticenhancements.ripper_station.overview_power", "Power");
+        add("screen.cyberneticenhancements.ripper_station.overview_speed", "Speed");
+        add("screen.cyberneticenhancements.ripper_station.overview_mobility", "Mobility");
+        add("screen.cyberneticenhancements.ripper_station.overview_reach", "Reach");
+        add("screen.cyberneticenhancements.ripper_station.overview_utility", "Utility");
+        add("screen.cyberneticenhancements.ripper_station.overview_systems", "Systems");
         add("screen.cyberneticenhancements.ripper_station.cyberware_slots", "Cyberware");
         add("screen.cyberneticenhancements.ripper_station.installed_parts", "Installed");
         add("screen.cyberneticenhancements.ripper_station.chrome_profile", "Chrome Profile");
@@ -163,22 +179,53 @@ public final class ModLanguageProvider extends net.neoforged.neoforge.common.dat
         add("screen.cyberneticenhancements.ripper_station.module_slot_locked", "Higher-tier limb cyberware unlocks this module bay.");
         add("screen.cyberneticenhancements.ripper_station.no_arm_cyberware", "No arm cyberware installed");
         add("screen.cyberneticenhancements.ripper_station.no_leg_cyberware", "No leg cyberware installed");
-        add("screen.cyberneticenhancements.techstation.service_bay", "Techstation Service Bay");
-        add("screen.cyberneticenhancements.techstation.operation", "Operation");
-        add("screen.cyberneticenhancements.techstation.input", "Input");
-        add("screen.cyberneticenhancements.techstation.materials", "Materials");
-        add("screen.cyberneticenhancements.techstation.output", "Output");
-        add("screen.cyberneticenhancements.techstation.repair", "Repair");
-        add("screen.cyberneticenhancements.techstation.upgrade", "Upgrade");
-        add("screen.cyberneticenhancements.techstation.unavailable", "Unavailable");
-        add("screen.cyberneticenhancements.techstation.no_valid_operation", "Load the right materials to service this implant.");
-        add("screen.cyberneticenhancements.techstation.ready_repair", "Repair package ready.");
-        add("screen.cyberneticenhancements.techstation.ready_upgrade", "Upgrade package ready.");
+        add("screen.cyberneticenhancements.tech_station.service_bay", "Service Bay");
+        add("screen.cyberneticenhancements.tech_station.upgrade_bay", "Upgrade Bay");
+        add("screen.cyberneticenhancements.tech_station.operation", "Operation");
+        add("screen.cyberneticenhancements.tech_station.input", "Input");
+        add("screen.cyberneticenhancements.tech_station.materials", "Materials");
+        add("screen.cyberneticenhancements.tech_station.upgrade_parts", "Parts");
+        add("screen.cyberneticenhancements.tech_station.output", "Output");
+        add("screen.cyberneticenhancements.tech_station.repair", "Repair");
+        add("screen.cyberneticenhancements.tech_station.upgrade", "Upgrade");
+        add("screen.cyberneticenhancements.tech_station.unavailable", "Unavailable");
+        add("screen.cyberneticenhancements.tech_station.no_valid_operation", "Load the right materials to service this implant.");
+        add("screen.cyberneticenhancements.tech_station.ready_repair", "Repair package ready.");
+        add("screen.cyberneticenhancements.tech_station.ready_upgrade", "Upgrade package ready.");
+        add("screen.cyberneticenhancements.tech_station.insert_repair_target", "Insert cyberware to inspect repair materials.");
+        add("screen.cyberneticenhancements.tech_station.repair_unavailable", "This item cannot be repaired here.");
+        add("screen.cyberneticenhancements.tech_station.insert_upgrade_target", "Insert cyberware to inspect upgrade materials.");
+        add("screen.cyberneticenhancements.tech_station.upgrade_unavailable", "This item cannot be upgraded here.");
+        add("screen.cyberneticenhancements.tech_station.upgrade_progress_preview", "Upgrades: %s/%s -> %s/%s");
+        add("screen.cyberneticenhancements.tech_station.repair_slot_hint", "Insert repairable cyberware here.");
+        add("screen.cyberneticenhancements.tech_station.upgrade_slot_hint", "Insert upgradeable cyberware here.");
         add("screen.cyberneticenhancements.recycler_station.recycler_bay", "Recycler Station");
         add("screen.cyberneticenhancements.recycler_station.scrap_input", "Scrap Input");
         add("screen.cyberneticenhancements.recycler_station.reclaimed_output", "Recovered Output");
+        add("screen.cyberneticenhancements.recycler_station.recycle_target", "Recycle Target");
+        add("screen.cyberneticenhancements.recycler_station.recovered_parts", "Recovered Parts");
+        add("screen.cyberneticenhancements.recycler_station.insert_recycle_target", "Insert cyberware, chips, modules, or consumables to break them down.");
+        add("screen.cyberneticenhancements.recycler_station.recovered_parts_hint", "Recovered materials appear here once a valid item is loaded.");
         add("screen.cyberneticenhancements.recycler_station.no_recycle_output", "Insert cyberware, chips, modules, or consumables to recycle them.");
         add("screen.cyberneticenhancements.recycler_station.recovery", "Recovery Yield");
+        add("screen.cyberneticenhancements.recycler_station.input_slot_hint", "Insert recyclable cyberware here.");
+        add("hud.cyberneticenhancements.chrome", "Chrome");
+        add("hud.cyberneticenhancements.cyberstrain", "Cyberstrain");
+        add("hud.cyberneticenhancements.statuses", "Statuses");
+        add("hud.cyberneticenhancements.cooldowns", "Cooldowns");
+        add("hud.cyberneticenhancements.ready", "Ready");
+        add("hud.cyberneticenhancements.cooldown_short", "CD %ss");
+        add("hud.cyberneticenhancements.ability_offline", "No active ability");
+        add("hud.cyberneticenhancements.suppression", "Suppression %s");
+        add("hud.cyberneticenhancements.ram_jolt", "RAM Jolt x%s");
+        add("hud.cyberneticenhancements.ability.sandevistan", "Sandevistan");
+        add("hud.cyberneticenhancements.ability.berserk", "Berserk");
+        add("hud.cyberneticenhancements.state.stable", "Stable");
+        add("hud.cyberneticenhancements.state.strained", "Strained");
+        add("hud.cyberneticenhancements.state.unstable", "Unstable");
+        add("hud.cyberneticenhancements.state.critical", "Critical");
+        add("hud.cyberneticenhancements.state.episode_risk", "Episode Risk");
+        add("hud.cyberneticenhancements.state.psychotic", "Psychotic");
     }
 
     private void addMaterialTranslations() {
@@ -237,7 +284,7 @@ public final class ModLanguageProvider extends net.neoforged.neoforge.common.dat
 
     private void addBlockTranslations() {
         addBlock(ModBlocks.RIPPER_STATION, "Ripper Station");
-        addBlock(ModBlocks.TECHSTATION, "Techstation");
+        addBlock(ModBlocks.TECH_STATION, "Tech Station");
         addBlock(ModBlocks.RECYCLER_STATION, "Recycler Station");
     }
 

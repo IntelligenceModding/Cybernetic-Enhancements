@@ -25,8 +25,10 @@ import java.util.List;
 public final class CyberstrainManager {
     private static final String SUPPRESSION_VALUE_KEY = "cyberneticenhancements.cyberstrain_suppression";
     private static final String SUPPRESSION_UNTIL_KEY = "cyberneticenhancements.cyberstrain_suppression_until";
+    private static final String SUPPRESSION_DURATION_KEY = "cyberneticenhancements.cyberstrain_suppression_duration";
     private static final String RAM_JOLT_UNTIL_KEY = "cyberneticenhancements.ram_jolt_until";
     private static final String RAM_JOLT_MULTIPLIER_KEY = "cyberneticenhancements.ram_jolt_multiplier";
+    private static final String RAM_JOLT_DURATION_KEY = "cyberneticenhancements.ram_jolt_duration";
     private static final String PSYCHOSIS_UNTIL_KEY = "cyberneticenhancements.psychosis_until";
     private static final String PSYCHOSIS_COOLDOWN_UNTIL_KEY = "cyberneticenhancements.psychosis_cooldown_until";
     private static final String PSYCHOSIS_LAST_ATTACK_KEY = "cyberneticenhancements.psychosis_last_attack";
@@ -152,11 +154,17 @@ public final class CyberstrainManager {
         return getSuppressionAmount(player, player.level().getGameTime());
     }
 
+    public static int getSuppressionSecondsRemaining(Player player) {
+        long remainingTicks = Math.max(0L, player.getPersistentData().getLong(SUPPRESSION_UNTIL_KEY) - player.level().getGameTime());
+        return (int) ((remainingTicks + 19L) / 20L);
+    }
+
     public static void applySuppressionDose(Player player, int suppressionAmount, long durationTicks, boolean hallucinationSideEffect) {
         CompoundTag persistentData = player.getPersistentData();
         long until = player.level().getGameTime() + durationTicks;
         persistentData.putInt(SUPPRESSION_VALUE_KEY, Math.max(suppressionAmount, persistentData.getInt(SUPPRESSION_VALUE_KEY)));
         persistentData.putLong(SUPPRESSION_UNTIL_KEY, Math.max(until, persistentData.getLong(SUPPRESSION_UNTIL_KEY)));
+        persistentData.putLong(SUPPRESSION_DURATION_KEY, Math.max(durationTicks, persistentData.getLong(SUPPRESSION_DURATION_KEY)));
 
         if (hallucinationSideEffect) {
             player.addEffect(new MobEffectInstance(MobEffects.CONFUSION, 200, 0, true, false, false));
@@ -173,7 +181,27 @@ public final class CyberstrainManager {
         long until = player.level().getGameTime() + durationTicks;
         persistentData.putLong(RAM_JOLT_UNTIL_KEY, Math.max(until, persistentData.getLong(RAM_JOLT_UNTIL_KEY)));
         persistentData.putDouble(RAM_JOLT_MULTIPLIER_KEY, Math.min(cooldownMultiplier, persistentData.contains(RAM_JOLT_MULTIPLIER_KEY) ? persistentData.getDouble(RAM_JOLT_MULTIPLIER_KEY) : 1.0D));
+        persistentData.putLong(RAM_JOLT_DURATION_KEY, Math.max(durationTicks, persistentData.getLong(RAM_JOLT_DURATION_KEY)));
         player.displayClientMessage(Component.translatable("message.cyberneticenhancements.consumable.ram_jolt"), true);
+    }
+
+    public static int getRamJoltSecondsRemaining(Player player) {
+        long remainingTicks = Math.max(0L, player.getPersistentData().getLong(RAM_JOLT_UNTIL_KEY) - player.level().getGameTime());
+        return (int) ((remainingTicks + 19L) / 20L);
+    }
+
+    public static double getRamJoltCooldownMultiplier(Player player) {
+        return getRamJoltSecondsRemaining(player) > 0 ? player.getPersistentData().getDouble(RAM_JOLT_MULTIPLIER_KEY) : 1.0D;
+    }
+
+    public static int getSuppressionTotalSeconds(Player player) {
+        long totalTicks = player.getPersistentData().getLong(SUPPRESSION_DURATION_KEY);
+        return totalTicks <= 0L ? 0 : (int) Math.max(1L, (totalTicks + 19L) / 20L);
+    }
+
+    public static int getRamJoltTotalSeconds(Player player) {
+        long totalTicks = player.getPersistentData().getLong(RAM_JOLT_DURATION_KEY);
+        return totalTicks <= 0L ? 0 : (int) Math.max(1L, (totalTicks + 19L) / 20L);
     }
 
     public static void forcePsychosisEpisode(ServerPlayer player, int durationSeconds) {
@@ -187,6 +215,17 @@ public final class CyberstrainManager {
         persistentData.remove(PSYCHOSIS_LAST_ATTACK_KEY);
         persistentData.remove(PSYCHOSIS_WANDER_YAW_KEY);
         syncControlLock(player);
+    }
+
+    public static void clearTemporaryStatuses(ServerPlayer player) {
+        CompoundTag persistentData = player.getPersistentData();
+        persistentData.remove(SUPPRESSION_VALUE_KEY);
+        persistentData.remove(SUPPRESSION_UNTIL_KEY);
+        persistentData.remove(SUPPRESSION_DURATION_KEY);
+        persistentData.remove(RAM_JOLT_UNTIL_KEY);
+        persistentData.remove(RAM_JOLT_MULTIPLIER_KEY);
+        persistentData.remove(RAM_JOLT_DURATION_KEY);
+        clearPsychosis(player);
     }
 
     public static boolean isPsychosisActive(Player player) {
@@ -232,8 +271,10 @@ public final class CyberstrainManager {
         CompoundTag fromData = fromPlayer.getPersistentData();
         CompoundTag toData = toPlayer.getPersistentData();
         copyLong(fromData, toData, SUPPRESSION_UNTIL_KEY);
+        copyLong(fromData, toData, SUPPRESSION_DURATION_KEY);
         copyInt(fromData, toData, SUPPRESSION_VALUE_KEY);
         copyLong(fromData, toData, RAM_JOLT_UNTIL_KEY);
+        copyLong(fromData, toData, RAM_JOLT_DURATION_KEY);
         copyDouble(fromData, toData, RAM_JOLT_MULTIPLIER_KEY);
         copyLong(fromData, toData, PSYCHOSIS_UNTIL_KEY);
         copyLong(fromData, toData, PSYCHOSIS_COOLDOWN_UNTIL_KEY);
@@ -423,10 +464,12 @@ public final class CyberstrainManager {
         if (persistentData.contains(SUPPRESSION_UNTIL_KEY) && persistentData.getLong(SUPPRESSION_UNTIL_KEY) <= gameTime) {
             persistentData.remove(SUPPRESSION_UNTIL_KEY);
             persistentData.remove(SUPPRESSION_VALUE_KEY);
+            persistentData.remove(SUPPRESSION_DURATION_KEY);
         }
         if (persistentData.contains(RAM_JOLT_UNTIL_KEY) && persistentData.getLong(RAM_JOLT_UNTIL_KEY) <= gameTime) {
             persistentData.remove(RAM_JOLT_UNTIL_KEY);
             persistentData.remove(RAM_JOLT_MULTIPLIER_KEY);
+            persistentData.remove(RAM_JOLT_DURATION_KEY);
         }
         if (persistentData.contains(PSYCHOSIS_UNTIL_KEY) && persistentData.getLong(PSYCHOSIS_UNTIL_KEY) <= gameTime) {
             persistentData.remove(PSYCHOSIS_UNTIL_KEY);

@@ -46,7 +46,7 @@ public final class RipperStationLayout {
     public static final int PLAYER_INVENTORY_X = 324;
     public static final int PLAYER_INVENTORY_Y = 355;
     public static final int PLAYER_HOTBAR_Y = 411;
-    public static final int PLAYER_SLOT_SPACING = 18;
+    public static final int PLAYER_SLOT_SPACING = AbstractBaseMenu.SLOT_SPACING;
 
     private RipperStationLayout() {
     }

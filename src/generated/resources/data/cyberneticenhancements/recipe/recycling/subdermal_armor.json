@@ -1,0 +1,11 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "damage_sensitive": true,
+  "ingredient": {
+    "item": "cyberneticenhancements:subdermal_armor"
+  },
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:common_item_components"
+  }
+}

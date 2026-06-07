@@ -1,0 +1,11 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "damage_sensitive": true,
+  "ingredient": {
+    "item": "cyberneticenhancements:ram_upgrade"
+  },
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:common_item_components"
+  }
+}

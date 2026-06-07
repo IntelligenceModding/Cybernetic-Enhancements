@@ -107,8 +107,12 @@ public final class ChipwareSocketHandler implements IItemHandlerModifiable {
     }
 
     public int getUnlockedSlotCount() {
-        CyberwareDefinition definition = getHostDefinition();
-        return definition == null ? 0 : definition.chipSlotCount();
+        ItemStack parentStack = getParentStack();
+        if (!(parentStack.getItem() instanceof CyberwareItem cyberwareItem)) {
+            return 0;
+        }
+        CyberwareDefinition definition = cyberwareItem.getDefinition();
+        return definition.supportsChipware() ? CyberwareUpgradeHelper.getChipSlotCount(parentStack, definition) : 0;
     }
 
     public String getHostDisplayName() {

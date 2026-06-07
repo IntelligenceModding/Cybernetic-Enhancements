@@ -1,0 +1,10 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "ingredient": {
+    "item": "cyberneticenhancements:asskick"
+  },
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:copper_wiring"
+  }
+}

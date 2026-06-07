@@ -1,6 +1,9 @@
 package de.artemis.cyberneticenhancements.common.menu;
 
 import de.artemis.cyberneticenhancements.common.cyberware.ChipwareSocketHandler;
+import de.artemis.cyberneticenhancements.common.cyberware.CyberwareConditionHelper;
+import de.artemis.cyberneticenhancements.common.cyberware.CyberwareEffect;
+import de.artemis.cyberneticenhancements.common.cyberware.CyberwareEffectType;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareModuleCategory;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareModuleHandler;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareSlot;
@@ -23,11 +26,14 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.items.SlotItemHandler;
 
+import java.util.EnumMap;
+
 public final class RipperStationMenu extends AbstractBaseMenu implements NamedBlockMenu {
     private static final int CHIP_HANDLER_COUNT = 3;
     private static final int CHIP_SLOT_COUNT = 3;
 
     private final PlayerCyberwareInventory cyberwareInventory;
+    private final Player player;
     private final ChipwareSocketHandler[] chipwareInventories;
     private final CyberwareModuleHandler armModuleInventory;
     private final CyberwareModuleHandler legModuleInventory;
@@ -54,14 +60,15 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
 
     public RipperStationMenu(int containerId, Inventory playerInventory, BlockPos blockPos) {
         super(ModMenuTypes.RIPPER_STATION.get(), containerId);
-        this.cyberwareInventory = new PlayerCyberwareInventory(playerInventory.player);
+        this.player = playerInventory.player;
+        this.cyberwareInventory = new PlayerCyberwareInventory(player);
         this.chipwareInventories = new ChipwareSocketHandler[] {
-                new ChipwareSocketHandler(cyberwareInventory, playerInventory.player, CyberwareSlot.FRONTAL_CORTEX_1.ordinal()),
-                new ChipwareSocketHandler(cyberwareInventory, playerInventory.player, CyberwareSlot.FRONTAL_CORTEX_2.ordinal()),
-                new ChipwareSocketHandler(cyberwareInventory, playerInventory.player, CyberwareSlot.FRONTAL_CORTEX_3.ordinal())
+                new ChipwareSocketHandler(cyberwareInventory, player, CyberwareSlot.FRONTAL_CORTEX_1.ordinal()),
+                new ChipwareSocketHandler(cyberwareInventory, player, CyberwareSlot.FRONTAL_CORTEX_2.ordinal()),
+                new ChipwareSocketHandler(cyberwareInventory, player, CyberwareSlot.FRONTAL_CORTEX_3.ordinal())
         };
-        this.armModuleInventory = new CyberwareModuleHandler(cyberwareInventory, playerInventory.player, CyberwareSlot.ARMS_1.ordinal(), CyberwareModuleCategory.ARMS);
-        this.legModuleInventory = new CyberwareModuleHandler(cyberwareInventory, playerInventory.player, CyberwareSlot.LEGS_1.ordinal(), CyberwareModuleCategory.LEGS);
+        this.armModuleInventory = new CyberwareModuleHandler(cyberwareInventory, player, CyberwareSlot.ARMS_1.ordinal(), CyberwareModuleCategory.ARMS);
+        this.legModuleInventory = new CyberwareModuleHandler(cyberwareInventory, player, CyberwareSlot.LEGS_1.ordinal(), CyberwareModuleCategory.LEGS);
         this.blockPos = blockPos.immutable();
         this.blockDisplayName = ModBlocks.RIPPER_STATION.get().getName().getString();
 
@@ -346,18 +353,15 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
                 return ItemStack.EMPTY;
             }
         } else if (sourceStack.getItem() instanceof ChipwareItem) {
-            int targetSlot = findPreferredChipMenuSlot();
-            if (targetSlot < 0 || !this.moveItemStackTo(sourceStack, targetSlot, targetSlot + 1, false)) {
+            if (!moveIntoChipMenuSlots(sourceStack)) {
                 return moveWithinPlayerInventory(index, sourceStack) ? copiedStack : ItemStack.EMPTY;
             }
         } else if (sourceStack.getItem() instanceof CyberwareModuleItem moduleItem) {
-            int targetSlot = findPreferredModuleMenuSlot(moduleItem.getDefinition().category());
-            if (targetSlot < 0 || !this.moveItemStackTo(sourceStack, targetSlot, targetSlot + 1, false)) {
+            if (!moveIntoModuleMenuSlots(sourceStack, moduleItem.getDefinition().category())) {
                 return moveWithinPlayerInventory(index, sourceStack) ? copiedStack : ItemStack.EMPTY;
             }
         } else if (sourceStack.getItem() instanceof CyberwareItem cyberwareItem) {
-            int targetSlot = findPreferredCyberwareMenuSlot(cyberwareItem.getSlotType());
-            if (targetSlot < 0 || !this.moveItemStackTo(sourceStack, targetSlot, targetSlot + 1, false)) {
+            if (!moveIntoCyberwareMenuSlots(sourceStack, cyberwareItem.getSlotType())) {
                 return moveWithinPlayerInventory(index, sourceStack) ? copiedStack : ItemStack.EMPTY;
             }
         } else if (!moveWithinPlayerInventory(index, sourceStack)) {
@@ -385,8 +389,7 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
         return this.moveItemStackTo(sourceStack, playerInventoryStart, playerHotbarStart, false);
     }
 
-    private int findPreferredCyberwareMenuSlot(CyberwareSlotType slotType) {
-        int fallback = -1;
+    private boolean moveIntoCyberwareMenuSlots(ItemStack sourceStack, CyberwareSlotType slotType) {
         for (CyberwareSlot slot : CyberwareSlot.values()) {
             if (slot.getType() != slotType) {
                 continue;
@@ -396,56 +399,41 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
             if (menuIndex < 0) {
                 continue;
             }
-            if (!this.slots.get(menuIndex).hasItem()) {
-                return menuIndex;
-            }
-            if (fallback < 0) {
-                fallback = menuIndex;
+            Slot targetSlot = this.slots.get(menuIndex);
+            if (targetSlot.mayPlace(sourceStack) && this.moveItemStackTo(sourceStack, menuIndex, menuIndex + 1, false)) {
+                return true;
             }
         }
-        return fallback;
+        return false;
     }
 
-    private int findPreferredChipMenuSlot() {
-        int fallback = -1;
+    private boolean moveIntoChipMenuSlots(ItemStack sourceStack) {
         for (int handlerIndex = 0; handlerIndex < chipwareInventories.length; handlerIndex++) {
-            ChipwareSocketHandler chipHandler = chipwareInventories[handlerIndex];
             int startIndex = cyberwareSlotCount + handlerIndex * CHIP_SLOT_COUNT;
             for (int slot = 0; slot < CHIP_SLOT_COUNT; slot++) {
                 int menuIndex = startIndex + slot;
-                if (!chipHandler.isSlotUnlocked(slot)) {
-                    continue;
-                }
-                if (!this.slots.get(menuIndex).hasItem()) {
-                    return menuIndex;
-                }
-                if (fallback < 0) {
-                    fallback = menuIndex;
+                Slot targetSlot = this.slots.get(menuIndex);
+                if (targetSlot.mayPlace(sourceStack) && this.moveItemStackTo(sourceStack, menuIndex, menuIndex + 1, false)) {
+                    return true;
                 }
             }
         }
-        return fallback;
+        return false;
     }
 
-    private int findPreferredModuleMenuSlot(CyberwareModuleCategory category) {
+    private boolean moveIntoModuleMenuSlots(ItemStack sourceStack, CyberwareModuleCategory category) {
         CyberwareModuleHandler handler = category == CyberwareModuleCategory.ARMS ? armModuleInventory : legModuleInventory;
         int startIndex = category == CyberwareModuleCategory.ARMS
                 ? cyberwareSlotCount + CHIP_HANDLER_COUNT * CHIP_SLOT_COUNT
                 : cyberwareSlotCount + CHIP_HANDLER_COUNT * CHIP_SLOT_COUNT + CyberwareModuleHandler.MAX_MODULE_SLOTS;
-        int fallback = -1;
         for (int slot = 0; slot < handler.getSlots(); slot++) {
             int menuIndex = startIndex + slot;
-            if (!handler.isSlotUnlocked(slot)) {
-                continue;
-            }
-            if (!this.slots.get(menuIndex).hasItem()) {
-                return menuIndex;
-            }
-            if (fallback < 0) {
-                fallback = menuIndex;
+            Slot targetSlot = this.slots.get(menuIndex);
+            if (targetSlot.mayPlace(sourceStack) && this.moveItemStackTo(sourceStack, menuIndex, menuIndex + 1, false)) {
+                return true;
             }
         }
-        return fallback;
+        return false;
     }
 
     @Override
@@ -598,6 +586,30 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
         return getInstalledChrome() * 100 / getChromeCapacity();
     }
 
+    public EnumMap<CyberwareEffectType, Double> getInstalledEffectTotals() {
+        EnumMap<CyberwareEffectType, Double> totals = new EnumMap<>(CyberwareEffectType.class);
+        for (int slot = 0; slot < cyberwareInventory.getSlots(); slot++) {
+            ItemStack stack = cyberwareInventory.getStackInSlot(slot);
+            if (!(stack.getItem() instanceof CyberwareItem cyberwareItem)) {
+                continue;
+            }
+
+            double integrityScale = CyberwareConditionHelper.getIntegrityRatio(stack, cyberwareItem.getDefinition());
+            mergeEffects(totals, cyberwareItem.getEffects(stack), integrityScale);
+        }
+        for (CyberwareModuleItem moduleItem : cyberwareInventory.getInstalledModuleItems()) {
+            mergeEffects(totals, moduleItem.getDefinition().effects(), 1.0D);
+        }
+        for (ChipwareItem chipwareItem : cyberwareInventory.getInstalledChipwareItems()) {
+            mergeEffects(totals, chipwareItem.getDefinition().effects(), 1.0D);
+        }
+        return totals;
+    }
+
+    public int getChromeHeadroomBonus() {
+        return getChromeCapacity() - PlayerCyberwareInventory.BASE_CHROME_CAPACITY;
+    }
+
     public CyberwareTier getSupportedTier(CyberwareSlot slot) {
         int ordinal = supportedTierClient[slot.ordinal()];
         return ordinal >= 0 && ordinal < CyberwareTier.values().length ? CyberwareTier.values()[ordinal] : CyberwareTier.TIER_1;
@@ -619,7 +631,7 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
 
     public boolean hasRequiredUpgradeComponent(CyberwareSlot slot) {
         ItemStack required = getRequiredUpgradeComponentStack(slot);
-        return !required.isEmpty() && countAccessiblePlayerItems(required) > 0;
+        return !required.isEmpty() && (hasCreativeUpgradeBypass() || countAccessiblePlayerItems(required) > 0);
     }
 
     public ItemStack getRequiredUpgradeComponentStack(CyberwareSlot slot) {
@@ -628,6 +640,22 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
 
     public boolean tryUpgradeSupportedTier(CyberwareSlot slot) {
         return cyberwareInventory.tryUpgradeSupportedTier(slot.ordinal());
+    }
+
+    private static void mergeEffects(EnumMap<CyberwareEffectType, Double> totals, Iterable<CyberwareEffect> effects, double scale) {
+        if (scale <= 0.0001D) {
+            return;
+        }
+
+        for (CyberwareEffect effect : effects) {
+            if (effect.type().isMobEffect()) {
+                if (scale >= 0.35D) {
+                    totals.merge(effect.type(), effect.amount(), Math::max);
+                }
+                continue;
+            }
+            totals.merge(effect.type(), effect.amount() * scale, Double::sum);
+        }
     }
 
     public CyberwareTier getChipSupportedTier(int handlerIndex, int slot) {
@@ -648,7 +676,7 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
 
     public boolean hasRequiredChipUpgradeComponent(int handlerIndex, int slot) {
         ItemStack required = getRequiredChipUpgradeComponentStack(handlerIndex, slot);
-        return !required.isEmpty() && countAccessiblePlayerItems(required) > 0;
+        return !required.isEmpty() && (hasCreativeUpgradeBypass() || countAccessiblePlayerItems(required) > 0);
     }
 
     public ItemStack getRequiredChipUpgradeComponentStack(int handlerIndex, int slot) {
@@ -677,7 +705,7 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
 
     public boolean hasRequiredArmModuleUpgradeComponent(int slot) {
         ItemStack required = getRequiredArmModuleUpgradeComponentStack(slot);
-        return !required.isEmpty() && countAccessiblePlayerItems(required) > 0;
+        return !required.isEmpty() && (hasCreativeUpgradeBypass() || countAccessiblePlayerItems(required) > 0);
     }
 
     public ItemStack getRequiredArmModuleUpgradeComponentStack(int slot) {
@@ -706,7 +734,7 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
 
     public boolean hasRequiredLegModuleUpgradeComponent(int slot) {
         ItemStack required = getRequiredLegModuleUpgradeComponentStack(slot);
-        return !required.isEmpty() && countAccessiblePlayerItems(required) > 0;
+        return !required.isEmpty() && (hasCreativeUpgradeBypass() || countAccessiblePlayerItems(required) > 0);
     }
 
     public ItemStack getRequiredLegModuleUpgradeComponentStack(int slot) {
@@ -741,6 +769,10 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
             total += carried.getCount();
         }
         return total;
+    }
+
+    private boolean hasCreativeUpgradeBypass() {
+        return player.getAbilities().instabuild;
     }
 
     private static CyberwareTier getTierByOrdinal(int ordinal) {

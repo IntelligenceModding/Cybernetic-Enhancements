@@ -1,0 +1,11 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "damage_sensitive": true,
+  "ingredient": {
+    "item": "cyberneticenhancements:tyrosine_injector"
+  },
+  "result": {
+    "count": 3,
+    "id": "cyberneticenhancements:rare_item_components"
+  }
+}

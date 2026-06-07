@@ -1,16 +1,19 @@
 package de.artemis.cyberneticenhancements.common.datagen;
 
+import de.artemis.cyberneticenhancements.CyberneticEnhancements;
 import de.artemis.cyberneticenhancements.common.consumable.CyberConsumableCatalog;
 import de.artemis.cyberneticenhancements.common.consumable.CyberConsumableDefinition;
 import de.artemis.cyberneticenhancements.common.cyberware.ChipwareCatalog;
 import de.artemis.cyberneticenhancements.common.cyberware.ChipwareDefinition;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareCatalog;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareDefinition;
+import de.artemis.cyberneticenhancements.common.cyberware.CyberwareRecycleHelper;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareModuleCatalog;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareModuleCategory;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareModuleDefinition;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareSlotType;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareTier;
+import de.artemis.cyberneticenhancements.common.recipe.RecyclerRecipe;
 import de.artemis.cyberneticenhancements.common.registry.ModBlocks;
 import de.artemis.cyberneticenhancements.common.registry.ModItems;
 import net.minecraft.core.HolderLookup;
@@ -19,6 +22,9 @@ import net.minecraft.data.recipes.RecipeCategory;
 import net.minecraft.data.recipes.RecipeOutput;
 import net.minecraft.data.recipes.RecipeProvider;
 import net.minecraft.data.recipes.ShapedRecipeBuilder;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ItemLike;
 import org.jetbrains.annotations.NotNull;
@@ -35,6 +41,7 @@ public final class ModRecipeProvider extends RecipeProvider {
         buildConsumableRecipes(recipeOutput);
         buildChipwareRecipes(recipeOutput);
         buildModuleRecipes(recipeOutput);
+        buildRecyclerRecipes(recipeOutput);
         buildStationRecipes(recipeOutput);
     }
 
@@ -159,7 +166,7 @@ public final class ModRecipeProvider extends RecipeProvider {
                 .unlockedBy("has_basic_circuit_plate", has(ModItems.BASIC_CIRCUIT_PLATE.get()))
                 .save(recipeOutput);
 
-        ShapedRecipeBuilder.shaped(RecipeCategory.DECORATIONS, ModBlocks.TECHSTATION.get())
+        ShapedRecipeBuilder.shaped(RecipeCategory.DECORATIONS, ModBlocks.TECH_STATION.get())
                 .pattern("ICI")
                 .pattern("RBR")
                 .pattern("EPE")
@@ -184,5 +191,55 @@ public final class ModRecipeProvider extends RecipeProvider {
                 .define('P', ModItems.CONDUCTIVE_PASTE.get())
                 .unlockedBy("has_basic_circuit_plate", has(ModItems.BASIC_CIRCUIT_PLATE.get()))
                 .save(recipeOutput);
+    }
+
+    private void buildRecyclerRecipes(RecipeOutput recipeOutput) {
+        for (CyberwareDefinition definition : CyberwareCatalog.definitions()) {
+            saveRecyclerRecipe(
+                    recipeOutput,
+                    definition.id(),
+                    ModItems.cyberware(definition.id()).get(),
+                    CyberwareRecycleHelper.createCyberwareResult(definition),
+                    true
+            );
+        }
+
+        for (ChipwareDefinition definition : ChipwareCatalog.definitions()) {
+            saveRecyclerRecipe(
+                    recipeOutput,
+                    definition.id(),
+                    ModItems.chipware(definition.id()).get(),
+                    CyberwareRecycleHelper.createChipwareResult(definition),
+                    false
+            );
+        }
+
+        for (CyberwareModuleDefinition definition : CyberwareModuleCatalog.definitions()) {
+            saveRecyclerRecipe(
+                    recipeOutput,
+                    definition.id(),
+                    ModItems.module(definition.id()).get(),
+                    CyberwareRecycleHelper.createModuleResult(definition),
+                    false
+            );
+        }
+
+        for (CyberConsumableDefinition definition : CyberConsumableCatalog.definitions()) {
+            saveRecyclerRecipe(
+                    recipeOutput,
+                    definition.id(),
+                    ModItems.consumable(definition.id()).get(),
+                    CyberwareRecycleHelper.createConsumableResult(definition),
+                    false
+            );
+        }
+    }
+
+    private void saveRecyclerRecipe(RecipeOutput recipeOutput, String inputId, ItemLike input, ItemStack result, boolean damageSensitive) {
+        recipeOutput.accept(
+                ResourceLocation.fromNamespaceAndPath(CyberneticEnhancements.MOD_ID, "recycling/" + inputId),
+                new RecyclerRecipe("", Ingredient.of(input), result, damageSensitive),
+                null
+        );
     }
 }

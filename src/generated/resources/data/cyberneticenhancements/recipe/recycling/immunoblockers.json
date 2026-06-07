@@ -1,0 +1,10 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "ingredient": {
+    "item": "cyberneticenhancements:immunoblockers"
+  },
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:conductive_paste"
+  }
+}

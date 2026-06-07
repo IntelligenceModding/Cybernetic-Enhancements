@@ -112,8 +112,14 @@ public final class CyberwareModuleHandler implements IItemHandlerModifiable {
     }
 
     public int getUnlockedSlotCount() {
-        CyberwareDefinition definition = getHostDefinition();
-        return definition == null || definition.moduleCategory() != category ? 0 : definition.moduleSlotCount();
+        ItemStack parentStack = getParentStack();
+        if (!(parentStack.getItem() instanceof CyberwareItem cyberwareItem)) {
+            return 0;
+        }
+        CyberwareDefinition definition = cyberwareItem.getDefinition();
+        return definition.supportsModules() && definition.moduleCategory() == category
+                ? CyberwareUpgradeHelper.getModuleSlotCount(parentStack, definition)
+                : 0;
     }
 
     public String getHostDisplayName() {

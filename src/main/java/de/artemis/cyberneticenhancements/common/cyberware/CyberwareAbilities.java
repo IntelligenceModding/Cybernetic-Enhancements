@@ -14,6 +14,8 @@ public final class CyberwareAbilities {
     private static final Map<UUID, Long> ACTIVE_UNTIL_TICK = new HashMap<>();
     private static final Map<UUID, Long> ACTIVE_COOLDOWN_UNTIL_TICK = new HashMap<>();
     private static final Map<UUID, OperatingSystemFamily> ACTIVE_FAMILY = new HashMap<>();
+    private static final Map<UUID, Integer> ACTIVE_DURATION_SECONDS = new HashMap<>();
+    private static final Map<UUID, Integer> ACTIVE_COOLDOWN_SECONDS = new HashMap<>();
     private static final Map<UUID, Long> BIOMONITOR_COOLDOWN_UNTIL_TICK = new HashMap<>();
     private static final Map<UUID, Long> BLOOD_PUMP_COOLDOWN_UNTIL_TICK = new HashMap<>();
     private static final Map<UUID, Long> SECOND_HEART_COOLDOWN_UNTIL_TICK = new HashMap<>();
@@ -106,6 +108,7 @@ public final class CyberwareAbilities {
         long activeUntil = ACTIVE_UNTIL_TICK.getOrDefault(player.getUUID(), 0L);
         if (activeUntil <= gameTime) {
             ACTIVE_FAMILY.remove(player.getUUID());
+            ACTIVE_DURATION_SECONDS.remove(player.getUUID());
             return;
         }
 
@@ -113,6 +116,7 @@ public final class CyberwareAbilities {
         if (operatingSystem == null) {
             ACTIVE_UNTIL_TICK.remove(player.getUUID());
             ACTIVE_FAMILY.remove(player.getUUID());
+            ACTIVE_DURATION_SECONDS.remove(player.getUUID());
             return;
         }
 
@@ -146,6 +150,55 @@ public final class CyberwareAbilities {
         return OperatingSystemFamily.NONE;
     }
 
+    public static int getActiveSecondsRemaining(Player player) {
+        return getRemainingSeconds(ACTIVE_UNTIL_TICK, player);
+    }
+
+    public static int getAbilityCooldownSecondsRemaining(Player player) {
+        return getRemainingSeconds(ACTIVE_COOLDOWN_UNTIL_TICK, player);
+    }
+
+    public static int getActiveTotalSeconds(Player player) {
+        return ACTIVE_DURATION_SECONDS.getOrDefault(player.getUUID(), 0);
+    }
+
+    public static int getAbilityCooldownTotalSeconds(Player player) {
+        return ACTIVE_COOLDOWN_SECONDS.getOrDefault(player.getUUID(), 0);
+    }
+
+    public static OperatingSystemFamily getActiveFamily(Player player) {
+        return ACTIVE_FAMILY.getOrDefault(player.getUUID(), OperatingSystemFamily.NONE);
+    }
+
+    public static int getBiomonitorCooldownSecondsRemaining(Player player) {
+        return getRemainingSeconds(BIOMONITOR_COOLDOWN_UNTIL_TICK, player);
+    }
+
+    public static int getBloodPumpCooldownSecondsRemaining(Player player) {
+        return getRemainingSeconds(BLOOD_PUMP_COOLDOWN_UNTIL_TICK, player);
+    }
+
+    public static int getSecondHeartCooldownSecondsRemaining(Player player) {
+        return getRemainingSeconds(SECOND_HEART_COOLDOWN_UNTIL_TICK, player);
+    }
+
+    public static int getReflexTunerCooldownSecondsRemaining(Player player) {
+        return getRemainingSeconds(REFLEX_TUNER_COOLDOWN_UNTIL_TICK, player);
+    }
+
+    public static void clearCooldowns(Player player) {
+        UUID playerId = player.getUUID();
+        ACTIVE_UNTIL_TICK.remove(playerId);
+        ACTIVE_COOLDOWN_UNTIL_TICK.remove(playerId);
+        ACTIVE_FAMILY.remove(playerId);
+        ACTIVE_DURATION_SECONDS.remove(playerId);
+        ACTIVE_COOLDOWN_SECONDS.remove(playerId);
+        BIOMONITOR_COOLDOWN_UNTIL_TICK.remove(playerId);
+        BLOOD_PUMP_COOLDOWN_UNTIL_TICK.remove(playerId);
+        SECOND_HEART_COOLDOWN_UNTIL_TICK.remove(playerId);
+        REFLEX_TUNER_COOLDOWN_UNTIL_TICK.remove(playerId);
+    }
+
     private static void activateTimedOperatingSystem(
             Player player,
             CyberwareItem operatingSystem,
@@ -160,12 +213,19 @@ public final class CyberwareAbilities {
         ACTIVE_FAMILY.put(player.getUUID(), family);
         ACTIVE_UNTIL_TICK.put(player.getUUID(), gameTime + durationSeconds * 20L);
         ACTIVE_COOLDOWN_UNTIL_TICK.put(player.getUUID(), gameTime + adjustedCooldown);
+        ACTIVE_DURATION_SECONDS.put(player.getUUID(), durationSeconds);
+        ACTIVE_COOLDOWN_SECONDS.put(player.getUUID(), (int) Math.max(1L, (adjustedCooldown + 19L) / 20L));
         CyberwareEffects.refreshPlayerCyberware(player);
         notify(player, translationKey, durationSeconds);
     }
 
     private static boolean isReady(Map<UUID, Long> cooldowns, Player player, long gameTime) {
         return cooldowns.getOrDefault(player.getUUID(), 0L) <= gameTime;
+    }
+
+    private static int getRemainingSeconds(Map<UUID, Long> cooldowns, Player player) {
+        long remainingTicks = Math.max(0L, cooldowns.getOrDefault(player.getUUID(), 0L) - player.level().getGameTime());
+        return (int) ((remainingTicks + 19L) / 20L);
     }
 
     private static void merge(EnumMap<CyberwareEffectType, Double> totals, CyberwareEffectType type, double amount) {

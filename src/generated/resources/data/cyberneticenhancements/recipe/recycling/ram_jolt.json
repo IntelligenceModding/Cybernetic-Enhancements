@@ -1,0 +1,10 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "ingredient": {
+    "item": "cyberneticenhancements:ram_jolt"
+  },
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:basic_circuit_plate"
+  }
+}

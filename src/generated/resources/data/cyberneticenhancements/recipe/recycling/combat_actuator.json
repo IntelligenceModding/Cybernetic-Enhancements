@@ -1,0 +1,10 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "ingredient": {
+    "item": "cyberneticenhancements:combat_actuator"
+  },
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:replacement_joint"
+  }
+}

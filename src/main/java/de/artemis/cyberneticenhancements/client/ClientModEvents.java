@@ -2,7 +2,7 @@ package de.artemis.cyberneticenhancements.client;
 
 import de.artemis.cyberneticenhancements.client.screen.RecyclerStationScreen;
 import de.artemis.cyberneticenhancements.client.screen.RipperStationScreen;
-import de.artemis.cyberneticenhancements.client.screen.TechstationScreen;
+import de.artemis.cyberneticenhancements.client.screen.TechStationScreen;
 import de.artemis.cyberneticenhancements.client.tooltip.ModTooltipStyle;
 import de.artemis.cyberneticenhancements.client.tooltip.UpgradeProgressClientTooltip;
 import de.artemis.cyberneticenhancements.client.tooltip.UpgradeProgressTooltip;
@@ -10,6 +10,7 @@ import de.artemis.cyberneticenhancements.common.cyberware.CyberpsychosisClientSt
 import de.artemis.cyberneticenhancements.common.network.ActivateCyberwarePayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
+import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import de.artemis.cyberneticenhancements.common.registry.ModMenuTypes;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
@@ -17,7 +18,9 @@ import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
 import net.neoforged.neoforge.client.event.RegisterClientTooltipComponentFactoriesEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
+import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
 import net.neoforged.neoforge.client.event.RenderTooltipEvent;
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 
@@ -30,7 +33,7 @@ public final class ClientModEvents {
 
     public static void registerScreens(RegisterMenuScreensEvent event) {
         event.register(ModMenuTypes.RIPPER_STATION.get(), RipperStationScreen::new);
-        event.register(ModMenuTypes.TECHSTATION.get(), TechstationScreen::new);
+        event.register(ModMenuTypes.TECH_STATION.get(), TechStationScreen::new);
         event.register(ModMenuTypes.RECYCLER_STATION.get(), RecyclerStationScreen::new);
     }
 
@@ -61,6 +64,16 @@ public final class ClientModEvents {
 
         while (ModKeyMappings.ACTIVATE_CYBERWARE.consumeClick()) {
             PacketDistributor.sendToServer(new ActivateCyberwarePayload());
+        }
+
+        while (ModKeyMappings.TOGGLE_HUD.consumeClick()) {
+            boolean enabled = HudVisibilityController.toggleHud();
+            minecraft.player.displayClientMessage(
+                    Component.translatable(enabled
+                            ? "message.cyberneticenhancements.hud.enabled"
+                            : "message.cyberneticenhancements.hud.disabled"),
+                    true
+            );
         }
     }
 
@@ -100,8 +113,15 @@ public final class ClientModEvents {
         }
     }
 
+    public static void onRenderGuiLayer(RenderGuiLayerEvent.Post event) {
+        if (VanillaGuiLayers.HOTBAR.equals(event.getName()) && HudVisibilityController.isHudEnabled()) {
+            CyberwareHudOverlay.render(event.getGuiGraphics());
+        }
+    }
+
     public static void onClientLogout(ClientPlayerNetworkEvent.LoggingOut event) {
         CyberpsychosisClientState.setControlLocked(false);
+        CyberwareHudClientState.clear();
     }
 
     private static void releaseControlKeys(Options options) {

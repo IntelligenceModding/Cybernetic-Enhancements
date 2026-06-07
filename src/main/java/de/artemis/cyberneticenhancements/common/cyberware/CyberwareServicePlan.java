@@ -8,10 +8,12 @@ public record CyberwareServicePlan(
         ItemStack primaryMaterial,
         int primaryCount,
         ItemStack secondaryMaterial,
-        int secondaryCount
+        int secondaryCount,
+        ItemStack tertiaryMaterial,
+        int tertiaryCount
 ) {
     public static CyberwareServicePlan empty() {
-        return new CyberwareServicePlan(Type.NONE, ItemStack.EMPTY, ItemStack.EMPTY, 0, ItemStack.EMPTY, 0);
+        return new CyberwareServicePlan(Type.NONE, ItemStack.EMPTY, ItemStack.EMPTY, 0, ItemStack.EMPTY, 0, ItemStack.EMPTY, 0);
     }
 
     public boolean isAvailable() {
@@ -20,6 +22,10 @@ public record CyberwareServicePlan(
 
     public boolean requiresSecondaryMaterial() {
         return secondaryCount > 0 && !secondaryMaterial.isEmpty();
+    }
+
+    public boolean requiresTertiaryMaterial() {
+        return tertiaryCount > 0 && !tertiaryMaterial.isEmpty();
     }
 
     public enum Type {

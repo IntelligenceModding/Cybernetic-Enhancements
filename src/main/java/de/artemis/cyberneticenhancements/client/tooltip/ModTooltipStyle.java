@@ -3,7 +3,7 @@ package de.artemis.cyberneticenhancements.client.tooltip;
 import de.artemis.cyberneticenhancements.CyberneticEnhancements;
 import de.artemis.cyberneticenhancements.client.screen.RecyclerStationScreen;
 import de.artemis.cyberneticenhancements.client.screen.RipperStationScreen;
-import de.artemis.cyberneticenhancements.client.screen.TechstationScreen;
+import de.artemis.cyberneticenhancements.client.screen.TechStationScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -54,7 +54,7 @@ public final class ModTooltipStyle {
 
     private static boolean isModScreen(Screen screen) {
         return screen instanceof RipperStationScreen
-                || screen instanceof TechstationScreen
+                || screen instanceof TechStationScreen
                 || screen instanceof RecyclerStationScreen;
     }
 }

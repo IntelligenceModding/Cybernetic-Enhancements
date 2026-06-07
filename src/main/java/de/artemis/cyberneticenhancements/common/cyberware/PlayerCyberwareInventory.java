@@ -302,7 +302,7 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
         }
 
         ItemStack required = getRequiredUpgradeComponentStack(slot);
-        if (required.isEmpty() || !consumeRequiredUpgradeComponent(required)) {
+        if (required.isEmpty() || (!hasCreativeUpgradeBypass() && !consumeRequiredUpgradeComponent(required))) {
             return false;
         }
 
@@ -312,11 +312,11 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
     }
 
     public boolean hasRequiredUpgradeComponent(ItemStack required) {
-        return !required.isEmpty() && countMatchingInventoryItems(required) > 0;
+        return !required.isEmpty() && (hasCreativeUpgradeBypass() || countMatchingInventoryItems(required) > 0);
     }
 
     public boolean consumeRequiredUpgradeComponent(ItemStack required) {
-        return !required.isEmpty() && consumeMatchingInventoryItem(required);
+        return !required.isEmpty() && (hasCreativeUpgradeBypass() || consumeMatchingInventoryItem(required));
     }
 
     public static ItemStack getRequiredUpgradeComponentStack(CyberwareTier currentTier) {
@@ -350,6 +350,10 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
             return true;
         }
         return false;
+    }
+
+    private boolean hasCreativeUpgradeBypass() {
+        return player.getAbilities().instabuild;
     }
 
     private static net.neoforged.neoforge.registries.DeferredItem<?> getRequiredUpgradeComponent(CyberwareTier currentTier) {
@@ -461,7 +465,7 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
         for (int slot = 0; slot < getSlots(); slot++) {
             ItemStack stack = getStackInSlot(slot);
             if (stack.getItem() instanceof CyberwareItem cyberwareItem) {
-                capacity += cyberwareItem.getCapacityBonus();
+                capacity += cyberwareItem.getCapacityBonus(stack);
             }
         }
         return capacity + (int) Math.round(getChromeCapacityEffectBonus());
@@ -529,7 +533,7 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
             }
 
             double integrityScale = CyberwareConditionHelper.getIntegrityRatio(stack, cyberwareItem.getDefinition());
-            capacityBonus += getEffectAmount(cyberwareItem.getEffects(), CyberwareEffectType.CHROME_CAPACITY) * integrityScale;
+            capacityBonus += getEffectAmount(cyberwareItem.getEffects(stack), CyberwareEffectType.CHROME_CAPACITY) * integrityScale;
         }
         for (CyberwareModuleItem moduleItem : getInstalledModuleItems()) {
             capacityBonus += getEffectAmount(moduleItem.getDefinition().effects(), CyberwareEffectType.CHROME_CAPACITY);

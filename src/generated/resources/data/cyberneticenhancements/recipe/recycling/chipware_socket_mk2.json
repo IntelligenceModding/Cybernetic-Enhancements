@@ -1,0 +1,11 @@
+{
+  "type": "cyberneticenhancements:recycling",
+  "damage_sensitive": true,
+  "ingredient": {
+    "item": "cyberneticenhancements:chipware_socket_mk2"
+  },
+  "result": {
+    "count": 3,
+    "id": "cyberneticenhancements:rare_item_components"
+  }
+}

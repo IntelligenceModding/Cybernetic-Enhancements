@@ -7,6 +7,7 @@ import de.artemis.cyberneticenhancements.common.cyberware.CyberwareEffect;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareModuleHandler;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareSlotType;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareTier;
+import de.artemis.cyberneticenhancements.common.cyberware.CyberwareUpgradeHelper;
 import de.artemis.cyberneticenhancements.common.item.ChipwareItem;
 import de.artemis.cyberneticenhancements.common.item.CyberwareModuleItem;
 import net.minecraft.ChatFormatting;
@@ -47,8 +48,16 @@ public class CyberwareItem extends Item {
         return definition.capacityBonus();
     }
 
+    public int getCapacityBonus(ItemStack stack) {
+        return CyberwareUpgradeHelper.getCapacityBonus(stack, definition);
+    }
+
     public List<CyberwareEffect> getEffects() {
         return definition.effects();
+    }
+
+    public List<CyberwareEffect> getEffects(ItemStack stack) {
+        return CyberwareUpgradeHelper.getEffects(stack, definition);
     }
 
     @Override
@@ -70,18 +79,24 @@ public class CyberwareItem extends Item {
                         CyberwareConditionHelper.getIntegrity(stack, definition),
                         CyberwareConditionHelper.getMaxIntegrity(definition))
                 .withStyle(ChatFormatting.YELLOW));
+        tooltipComponents.add(CyberwareUpgradeHelper.getUpgradeStatusComponent(stack, definition)
+                .copy()
+                .withStyle(ChatFormatting.DARK_AQUA));
+        for (Component bonusLine : CyberwareUpgradeHelper.getUpgradeBonusTooltipLines(stack, definition)) {
+            tooltipComponents.add(bonusLine.copy().withStyle(ChatFormatting.GREEN));
+        }
         if (definition.supportsChipware()) {
-            tooltipComponents.add(Component.translatable("tooltip.cyberneticenhancements.chip_slots", definition.chipSlotCount())
+            tooltipComponents.add(Component.translatable("tooltip.cyberneticenhancements.chip_slots", CyberwareUpgradeHelper.getChipSlotCount(stack, definition))
                     .withStyle(ChatFormatting.DARK_AQUA));
             appendStoredChipwareTooltip(stack, context, tooltipComponents);
         }
         if (definition.supportsModules()) {
-            tooltipComponents.add(Component.translatable("tooltip.cyberneticenhancements.module_slots", definition.moduleSlotCount())
+            tooltipComponents.add(Component.translatable("tooltip.cyberneticenhancements.module_slots", CyberwareUpgradeHelper.getModuleSlotCount(stack, definition))
                     .withStyle(ChatFormatting.DARK_AQUA));
             appendStoredModulesTooltip(stack, context, tooltipComponents);
         }
-        if (definition.capacityBonus() != 0) {
-            tooltipComponents.add(Component.translatable("tooltip.cyberneticenhancements.capacity_bonus", definition.capacityBonus())
+        if (CyberwareUpgradeHelper.getCapacityBonus(stack, definition) != 0) {
+            tooltipComponents.add(Component.translatable("tooltip.cyberneticenhancements.capacity_bonus", CyberwareUpgradeHelper.getCapacityBonus(stack, definition))
                     .withStyle(ChatFormatting.GREEN));
         }
         for (CyberwareEffect effect : definition.effects()) {

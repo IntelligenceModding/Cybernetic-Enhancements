@@ -13,11 +13,18 @@ public final class ModKeyMappings {
             GLFW.GLFW_KEY_V,
             CATEGORY
     );
+    public static final KeyMapping TOGGLE_HUD = new KeyMapping(
+            "key.cyberneticenhancements.toggle_hud",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_H,
+            CATEGORY
+    );
 
     private ModKeyMappings() {
     }
 
     public static void register(RegisterKeyMappingsEvent event) {
         event.register(ACTIVATE_CYBERWARE);
+        event.register(TOGGLE_HUD);
     }
 }
