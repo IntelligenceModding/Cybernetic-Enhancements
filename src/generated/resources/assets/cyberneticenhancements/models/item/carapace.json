@@ -1,6 +1,3 @@
 {
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "minecraft:item/turtle_scute"
-  }
+  "parent": "minecraft:item/turtle_scute"
 }

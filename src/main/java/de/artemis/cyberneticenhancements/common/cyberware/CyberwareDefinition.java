@@ -40,7 +40,19 @@ public record CyberwareDefinition(
     }
 
     public boolean isPlaceholder() {
-        return capacityBonus == 0 && effects.isEmpty();
+        return capacityBonus == 0
+                && effects.isEmpty()
+                && chipSlotCount == 0
+                && !FrontalCortexManager.hasSpecialBehavior(id)
+                && !CyberwareAbilities.hasSpecialBehavior(id)
+                && !ArmCyberwareManager.hasSpecialBehavior(id)
+                && !FaceCyberwareManager.hasSpecialBehavior(id)
+                && !CirculatoryCyberwareManager.hasSpecialBehavior(id)
+                && !HandsCyberwareManager.hasSpecialBehavior(id)
+                && !IntegumentaryCyberwareManager.hasSpecialBehavior(id)
+                && !SkeletonCyberwareManager.hasSpecialBehavior(id)
+                && !NervousSystemCyberwareManager.hasSpecialBehavior(id)
+                && !LegCyberwareManager.hasSpecialBehavior(id);
     }
 
     public boolean supportsModules() {

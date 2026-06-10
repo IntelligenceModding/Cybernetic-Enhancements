@@ -59,6 +59,8 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
     private static final int WARNING = StationScreenStyle.WARNING;
     private static final int HOVER_HIGHLIGHT_TINT = 0x401EE2B5;
     private static final float HOVER_HIGHLIGHT_SCALE = 1.0035F;
+    private static final int SLOT_HOVER_FILL = 0xFF1C3835;
+    private static final int SLOT_HOVER_OUTLINE = 0xFF1EE2B5;
     private static final int LEFT_PANEL_X = 12;
     private static final int CENTER_PANEL_X = 200;
     private static final int RIGHT_PANEL_X = 610;
@@ -129,7 +131,7 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
 
         drawPlayerModel(guiGraphics, mouseX, mouseY);
         drawPlayerSlotBacks(guiGraphics);
-        drawSlotFrames(guiGraphics);
+        drawSlotFrames(guiGraphics, mouseX, mouseY);
         drawStatusTanks(guiGraphics);
     }
 
@@ -344,7 +346,7 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
             return;
         }
 
-        CyberwareSlotType hoveredType = getHoveredCyberwareType(mouseX, mouseY);
+        CyberwareSlot hoveredSlot = getHoveredCyberwareSlot(mouseX, mouseY);
 
         renderPlayerModelInMatrixFollowsMouse(
                 guiGraphics,
@@ -357,7 +359,7 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
                 mouseX,
                 mouseY,
                 (AbstractClientPlayer) minecraft.player,
-                hoveredType
+                hoveredSlot
         );
     }
 
@@ -372,7 +374,7 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
             float mouseX,
             float mouseY,
             AbstractClientPlayer player,
-            CyberwareSlotType hoveredType
+            CyberwareSlot hoveredSlot
     ) {
         float centerX = (float) (x1 + x2) / 2.0F;
         float centerY = (float) (y1 + y2) / 2.0F;
@@ -397,7 +399,7 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         float playerScale = player.getScale();
         Vector3f translation = new Vector3f(0.0F, player.getBbHeight() / 2.0F + yOffset * playerScale, 0.0F);
         float renderScale = (float) scale / playerScale;
-        renderPlayerModelInMatrix(guiGraphics, centerX, centerY, renderScale, translation, poseRotation, cameraRotation, player, hoveredType);
+        renderPlayerModelInMatrix(guiGraphics, centerX, centerY, renderScale, translation, poseRotation, cameraRotation, player, hoveredSlot);
 
         player.yBodyRot = bodyRot;
         player.setYRot(yRot);
@@ -416,7 +418,7 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
             Quaternionf poseRotation,
             Quaternionf cameraRotation,
             AbstractClientPlayer player,
-            CyberwareSlotType hoveredType
+            CyberwareSlot hoveredSlot
     ) {
         guiGraphics.pose().pushPose();
         guiGraphics.pose().translate(x, y, 50.0F);
@@ -432,8 +434,8 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
 
         RenderSystem.runAsFancy(() -> {
             renderDispatcher.render(player, 0.0, 0.0, 0.0, 0.0F, 1.0F, guiGraphics.pose(), guiGraphics.bufferSource(), 15728880);
-            if (hoveredType != null && playerRenderer != null) {
-                renderSelectionOverlay(guiGraphics, player, playerRenderer, hoveredType);
+            if (hoveredSlot != null && playerRenderer != null) {
+                renderSelectionOverlay(guiGraphics, player, playerRenderer, hoveredSlot);
             }
         });
 
@@ -447,7 +449,7 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
             GuiGraphics guiGraphics,
             AbstractClientPlayer player,
             PlayerRenderer playerRenderer,
-            CyberwareSlotType hoveredType
+            CyberwareSlot hoveredSlot
     ) {
         VertexConsumer vertexConsumer = guiGraphics.bufferSource().getBuffer(RenderType.entityTranslucent(HIGHLIGHT_TEXTURE));
         int overlay = LivingEntityRenderer.getOverlayCoords(player, 0.0F);
@@ -462,17 +464,23 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         guiGraphics.pose().scale(0.9375F, 0.9375F, 0.9375F);
         guiGraphics.pose().translate(0.0F, -1.501F, 0.0F);
 
-        switch (hoveredType) {
-            case FRONTAL_CORTEX -> renderHeadGroup(model, player, guiGraphics, vertexConsumer, overlay);
-            case OPERATING_SYSTEM -> renderTorsoGroup(model, player, guiGraphics, vertexConsumer, overlay);
-            case FACE -> renderHeadGroup(model, player, guiGraphics, vertexConsumer, overlay);
-            case SKELETON -> renderWholeBaseBody(model, guiGraphics, vertexConsumer, overlay);
-            case ARMS -> renderArmsGroup(model, player, guiGraphics, vertexConsumer, overlay);
-            case HANDS -> renderHandsGroup(model, player, guiGraphics, vertexConsumer, overlay);
-            case NERVOUS_SYSTEM -> renderWholeBaseBody(model, guiGraphics, vertexConsumer, overlay);
-            case CIRCULATORY_SYSTEM -> renderCirculatoryGroup(model, player, guiGraphics, vertexConsumer, overlay);
-            case INTEGUMENTARY_SYSTEM -> renderOuterBodyGroup(model, player, guiGraphics, vertexConsumer, overlay);
-            case LEGS -> renderLegsGroup(model, player, guiGraphics, vertexConsumer, overlay);
+        switch (hoveredSlot) {
+            case HANDS_1 -> renderScreenLeftHandGroup(model, player, guiGraphics, vertexConsumer, overlay);
+            case HANDS_2 -> renderScreenRightHandGroup(model, player, guiGraphics, vertexConsumer, overlay);
+            default -> {
+                switch (hoveredSlot.getType()) {
+                    case FRONTAL_CORTEX -> renderHeadGroup(model, player, guiGraphics, vertexConsumer, overlay);
+                    case OPERATING_SYSTEM -> renderTorsoGroup(model, player, guiGraphics, vertexConsumer, overlay);
+                    case FACE -> renderHeadGroup(model, player, guiGraphics, vertexConsumer, overlay);
+                    case SKELETON -> renderWholeBaseBody(model, guiGraphics, vertexConsumer, overlay);
+                    case ARMS -> renderArmsGroup(model, player, guiGraphics, vertexConsumer, overlay);
+                    case HANDS -> renderHandsGroup(model, player, guiGraphics, vertexConsumer, overlay);
+                    case NERVOUS_SYSTEM -> renderWholeBaseBody(model, guiGraphics, vertexConsumer, overlay);
+                    case CIRCULATORY_SYSTEM -> renderCirculatoryGroup(model, player, guiGraphics, vertexConsumer, overlay);
+                    case INTEGUMENTARY_SYSTEM -> renderOuterBodyGroup(model, player, guiGraphics, vertexConsumer, overlay);
+                    case LEGS -> renderLegsGroup(model, player, guiGraphics, vertexConsumer, overlay);
+                }
+            }
         }
         guiGraphics.pose().popPose();
     }
@@ -574,6 +582,43 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         }
     }
 
+    private void renderScreenLeftHandGroup(
+            net.minecraft.client.model.PlayerModel<AbstractClientPlayer> model,
+            AbstractClientPlayer player,
+            GuiGraphics guiGraphics,
+            VertexConsumer vertexConsumer,
+            int overlay
+    ) {
+        // The preview faces the viewer, so the screen-left hand is the model's right arm.
+        renderSingleHandGroup(model.rightArm, model.rightSleeve, PlayerModelPart.RIGHT_SLEEVE, player, guiGraphics, vertexConsumer, overlay);
+    }
+
+    private void renderScreenRightHandGroup(
+            net.minecraft.client.model.PlayerModel<AbstractClientPlayer> model,
+            AbstractClientPlayer player,
+            GuiGraphics guiGraphics,
+            VertexConsumer vertexConsumer,
+            int overlay
+    ) {
+        renderSingleHandGroup(model.leftArm, model.leftSleeve, PlayerModelPart.LEFT_SLEEVE, player, guiGraphics, vertexConsumer, overlay);
+    }
+
+    private void renderSingleHandGroup(
+            ModelPart arm,
+            ModelPart sleeve,
+            PlayerModelPart sleevePart,
+            AbstractClientPlayer player,
+            GuiGraphics guiGraphics,
+            VertexConsumer vertexConsumer,
+            int overlay
+    ) {
+        if (player.isModelPartShown(sleevePart)) {
+            renderHighlightedPart(sleeve, guiGraphics, vertexConsumer, overlay);
+            return;
+        }
+        renderHighlightedPart(arm, guiGraphics, vertexConsumer, overlay);
+    }
+
     private void renderOuterBodyGroup(
             net.minecraft.client.model.PlayerModel<AbstractClientPlayer> model,
             AbstractClientPlayer player,
@@ -636,17 +681,37 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         modelPart.zScale = zScale;
     }
 
-    private CyberwareSlotType getHoveredCyberwareType(int mouseX, int mouseY) {
+    private CyberwareSlot getHoveredCyberwareSlot(int mouseX, int mouseY) {
         for (CyberwareSlot slot : CyberwareSlot.values()) {
             Slot menuSlot = menu.slots.get(slot.ordinal());
             if (isHoveringSlot(menuSlot.x, menuSlot.y, mouseX, mouseY)) {
-                return slot.getType();
+                return slot;
             }
+        }
+        return getHoveredMatrixModelSlot(mouseX, mouseY);
+    }
+
+    private CyberwareSlot getHoveredMatrixModelSlot(int mouseX, int mouseY) {
+        int relativeX = mouseX - (leftPos + MATRIX_MODEL_X1);
+        int relativeY = mouseY - (topPos + MATRIX_MODEL_Y1);
+        if (relativeX < 0 || relativeY < 0 || relativeX >= MATRIX_MODEL_X2 - MATRIX_MODEL_X1 || relativeY >= MATRIX_MODEL_Y2 - MATRIX_MODEL_Y1) {
+            return null;
+        }
+        if (isWithinMatrixRegion(relativeX, relativeY, 18, 70, 60, 158)) {
+            return CyberwareSlot.HANDS_1;
+        }
+        if (isWithinMatrixRegion(relativeX, relativeY, 108, 70, 150, 158)) {
+            return CyberwareSlot.HANDS_2;
         }
         return null;
     }
 
-    private void drawSlotFrames(GuiGraphics guiGraphics) {
+    private boolean isWithinMatrixRegion(int x, int y, int x1, int y1, int x2, int y2) {
+        return x >= x1 && x < x2 && y >= y1 && y < y2;
+    }
+
+    private void drawSlotFrames(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        CyberwareSlot hoveredSlot = getHoveredCyberwareSlot(mouseX, mouseY);
         for (CyberwareSlot slot : CyberwareSlot.values()) {
             drawStationSlotBack(
                     guiGraphics,
@@ -654,7 +719,8 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
                     RipperStationLayout.CYBERWARE_SLOT_Y[slot.ordinal()],
                     true,
                     !menu.getCyberwareStack(slot).isEmpty(),
-                    menu.getSupportedTier(slot)
+                    menu.getSupportedTier(slot),
+                    slot == hoveredSlot
             );
         }
 
@@ -666,14 +732,15 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
                         RipperStationLayout.CHIP_SLOT_Y,
                         menu.isChipSlotUnlocked(cluster, slot),
                         !menu.getChipwareStack(cluster, slot).isEmpty(),
-                        menu.getChipSupportedTier(cluster, slot)
+                        menu.getChipSupportedTier(cluster, slot),
+                        false
                 );
             }
         }
 
         for (int slot = 0; slot < RipperStationLayout.ARM_MODULE_X.length; slot++) {
-            drawStationSlotBack(guiGraphics, RipperStationLayout.ARM_MODULE_X[slot], RipperStationLayout.ARM_MODULE_Y, menu.isArmModuleSlotUnlocked(slot), !menu.getArmModuleStack(slot).isEmpty(), menu.getArmModuleSupportedTier(slot));
-            drawStationSlotBack(guiGraphics, RipperStationLayout.LEG_MODULE_X[slot], RipperStationLayout.LEG_MODULE_Y, menu.isLegModuleSlotUnlocked(slot), !menu.getLegModuleStack(slot).isEmpty(), menu.getLegModuleSupportedTier(slot));
+            drawStationSlotBack(guiGraphics, RipperStationLayout.ARM_MODULE_X[slot], RipperStationLayout.ARM_MODULE_Y, menu.isArmModuleSlotUnlocked(slot), !menu.getArmModuleStack(slot).isEmpty(), menu.getArmModuleSupportedTier(slot), false);
+            drawStationSlotBack(guiGraphics, RipperStationLayout.LEG_MODULE_X[slot], RipperStationLayout.LEG_MODULE_Y, menu.isLegModuleSlotUnlocked(slot), !menu.getLegModuleStack(slot).isEmpty(), menu.getLegModuleSupportedTier(slot), false);
         }
     }
 
@@ -912,9 +979,9 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         }
     }
 
-    private void drawStationSlotBack(GuiGraphics guiGraphics, int x, int y, boolean unlocked, boolean installed, CyberwareTier tier) {
-        int fill = !unlocked ? 0xFF171D24 : installed ? SLOT_ACTIVE : SLOT_BACKGROUND;
-        int outline = !unlocked ? 0xFF28323C : StationSlotRenderer.getTierFrameColor(tier);
+    private void drawStationSlotBack(GuiGraphics guiGraphics, int x, int y, boolean unlocked, boolean installed, CyberwareTier tier, boolean hovered) {
+        int fill = !unlocked ? 0xFF171D24 : hovered ? SLOT_HOVER_FILL : installed ? SLOT_ACTIVE : SLOT_BACKGROUND;
+        int outline = !unlocked ? 0xFF28323C : hovered ? SLOT_HOVER_OUTLINE : StationSlotRenderer.getTierFrameColor(tier);
         StationSlotRenderer.drawUpgradeableSlot(guiGraphics, leftPos, topPos, x, y, fill, outline);
     }
 

@@ -50,6 +50,7 @@ public final class ChipwareCatalog {
             int chromeCost,
             CyberwareEffect... effects
     ) {
-        return new ChipwareDefinition(id, displayName, tier, description, motifItem, chromeCost, List.of(effects));
+        CyberwareBalance.ChipwareEntry balance = CyberwareBalance.resolveChipware(id);
+        return new ChipwareDefinition(id, displayName, tier, description, motifItem, balance.chromeCost(), balance.effects());
     }
 }

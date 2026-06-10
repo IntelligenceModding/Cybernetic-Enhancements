@@ -26,6 +26,7 @@ public final class TemporaryCyberwareEffectManager {
         if (durationTicks <= 0L || Math.abs(effect.amount()) < 0.0001D) {
             return;
         }
+        durationTicks = FrontalCortexManager.adjustTemporaryEffectDuration(player, durationTicks);
 
         CompoundTag entry = new CompoundTag();
         entry.putString(TYPE_KEY, effect.type().name());
@@ -125,6 +126,10 @@ public final class TemporaryCyberwareEffectManager {
 
     public static void clearEffects(Player player) {
         player.getPersistentData().remove(EFFECTS_KEY);
+    }
+
+    public static boolean hasStoredEffects(Player player) {
+        return !player.getPersistentData().getList(EFFECTS_KEY, Tag.TAG_COMPOUND).isEmpty();
     }
 
     public static List<ActiveEffectStatus> collectActiveStatuses(Player player, long gameTime) {

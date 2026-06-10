@@ -8,34 +8,34 @@ import java.util.Map;
 
 public final class CyberwareCatalog {
     private static final List<CyberwareDefinition> DEFINITIONS = List.of(
-            def("camillo_ram_manager", "Camillo RAM Manager", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_2, "Emergency RAM management hardware.", Items.REPEATER),
-            def("ram_reallocator", "RAM Reallocator", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_4, "Advanced RAM redistribution core.", Items.RECOVERY_COMPASS, false, "camillo_ram_manager"),
+            def("camillo_ram_manager", "Camillo RAM Manager", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_2, "Emergency RAM management hardware.", Items.REPEATER, CyberwareEffect.chromeCapacity(4.0D)),
+            def("ram_reallocator", "RAM Reallocator", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_4, "Advanced RAM redistribution core.", Items.RECOVERY_COMPASS, false, "camillo_ram_manager", CyberwareEffect.chromeCapacity(8.0D)),
             def("bioconductor", "Bioconductor", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_2, "Neural cooldown routing implant.", Items.CLOCK),
             def("cox_2_cybersomatic_optimizer", "COX-2 Cybersomatic Optimizer", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_4, "Aggressive neural overclock optimizer.", Items.BLAZE_POWDER, false, "bioconductor"),
-            def("ex_disk", "Ex-Disk", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_1, "Expanded memory buffer disk.", Items.COMPARATOR),
+            def("ex_disk", "Ex-Disk", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_1, "Expanded memory buffer disk.", Items.COMPARATOR, CyberwareEffect.chromeCapacity(6.0D)),
             def("kerenzikov_boost_system", "Kerenzikov Boost System", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_2, "Predictive pre-response neural shim.", Items.SUGAR),
             def("mechatronic_core", "Mechatronic Core", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_2, "Control routines for machine interaction.", Items.PISTON, CyberwareEffect.breakSpeed(0.15D)),
             def("memory_boost", "Memory Boost", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_1, "Baseline recall augmentation.", Items.REDSTONE),
             def("newton_module", "Newton Module", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_1, "Aggression-linked cooldown helper.", Items.FIREWORK_STAR),
             def("axolotl", "Axolotl", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_5, "Top-tier combat reset implant.", Items.NETHER_STAR, false, "newton_module"),
             def("quantum_tuner", "Quantum Tuner", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_5, "Quantumized cyberware reset controller.", Items.ECHO_SHARD),
-            def("ram_upgrade", "RAM Upgrade", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_1, "General neural memory expansion.", Items.AMETHYST_SHARD),
+            def("ram_upgrade", "RAM Upgrade", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_1, "General neural memory expansion.", Items.AMETHYST_SHARD, CyberwareEffect.chromeCapacity(4.0D)),
             def("self_ice", "Self-ICE", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_3, "Counterintrusion brainware.", Items.SHIELD),
             chipSocket("chipware_socket", "Chipware Socket", CyberwareTier.TIER_1, "Basic neural socket for swappable skill chips.", Items.COMPARATOR, null, 1),
             chipSocket("chipware_socket_mk2", "Chipware Socket Mk.2", CyberwareTier.TIER_3, "Expanded neural socket rack for multiple skillchips.", Items.REPEATER, "chipware_socket", 2),
-            chipSocket("chipware_socket_mk3", "Chipware Socket Mk.3", CyberwareTier.TIER_5, "High-density chipware bus with full quick-swap support.", Items.ENDER_CHEST, "chipware_socket_mk2", 3),
+            def("chipware_socket_mk3", "Chipware Socket Mk.3", CyberwareSlotType.FRONTAL_CORTEX, CyberwareTier.TIER_5, "High-density chipware bus with full quick-swap support.", Items.ENDER_CHEST, false, "chipware_socket_mk2", 0, 3, CyberwareEffect.chromeCapacity(2.0D)),
 
             def("biodyn_berserk", "BioDyne Berserk", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_2, "Adrenal combat operating system.", Items.NETHER_WART, 0, CyberwareEffect.damage(1.0D), CyberwareEffect.bonusAbsorption(4.0D), CyberwareEffect.damageReduction(0.10D)),
-            def("militech_berserk", "Militech Berserk", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_3, "Heavy combat operating system.", Items.IRON_AXE, false, "biodyn_berserk", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.bonusAbsorption(4.0D), CyberwareEffect.damageReduction(0.10D)),
-            def("moore_tech_berserk", "Moore Tech Berserk", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_3, "Offensive berserk suite.", Items.DIAMOND_AXE, false, "militech_berserk", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.moveSpeed(0.20D)),
-            def("zetatech_berserk", "Zetatech Berserk", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_3, "Refined berserk actuator suite.", Items.GOLDEN_AXE, false, "moore_tech_berserk", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.damageReduction(0.20D)),
-            def("arasaka_shadow", "Arasaka Shadow", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_1, "Low-profile operating system shell.", Items.ENDER_PEARL),
-            def("biotech_sigma", "Biotech Sigma", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_2, "Combat support operating system.", Items.BREWING_STAND, false, "arasaka_shadow"),
-            def("militech_paraline", "Militech Paraline", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_2, "Utility combat operating system.", Items.LIGHTNING_ROD, false, "biotech_sigma"),
-            def("netwatch_netdriver", "NetWatch Netdriver", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_3, "High-end neural control operating system.", Items.ENDER_EYE, false, "militech_paraline"),
-            def("raven_microcyber", "Raven Microcyber", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_4, "Wide-spectrum control operating system.", Items.CRYING_OBSIDIAN, false, "netwatch_netdriver"),
-            def("tetratronic_rippler", "Tetratronic Rippler", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_4, "Premium control operating system.", Items.ENCHANTED_BOOK, false, "raven_microcyber"),
-            def("militech_canto", "Militech Canto", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_5, "Experimental neural control operating system.", Items.NETHER_STAR, false, "tetratronic_rippler"),
+            def("militech_berserk", "Militech Berserk", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_3, "Heavy combat operating system.", Items.IRON_AXE, false, "biodyn_berserk", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.bonusAbsorption(4.0D), CyberwareEffect.damageReduction(0.10D), CyberwareEffect.attackSpeed(0.10D)),
+            def("moore_tech_berserk", "Moore Tech Berserk", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_3, "Offensive berserk suite.", Items.DIAMOND_AXE, false, "militech_berserk", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.moveSpeed(0.20D), CyberwareEffect.damageReduction(0.05D)),
+            def("zetatech_berserk", "Zetatech Berserk", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_3, "Refined berserk actuator suite.", Items.GOLDEN_AXE, false, "moore_tech_berserk", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.damageReduction(0.20D), CyberwareEffect.fallReduction(-0.15D)),
+            def("arasaka_shadow", "Arasaka Shadow", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_1, "Low-profile operating system shell.", Items.ENDER_PEARL, 2, CyberwareEffect.moveSpeed(0.05D)),
+            def("biotech_sigma", "Biotech Sigma", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_2, "Combat support operating system.", Items.BREWING_STAND, false, "arasaka_shadow", 4, CyberwareEffect.healthRegen(0.4D)),
+            def("militech_paraline", "Militech Paraline", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_2, "Utility combat operating system.", Items.LIGHTNING_ROD, false, "biotech_sigma", 5, CyberwareEffect.attackSpeed(0.10D)),
+            def("netwatch_netdriver", "NetWatch Netdriver", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_3, "High-end neural control operating system.", Items.ENDER_EYE, false, "militech_paraline", 6, CyberwareEffect.damageReduction(0.05D)),
+            def("raven_microcyber", "Raven Microcyber", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_4, "Wide-spectrum control operating system.", Items.CRYING_OBSIDIAN, false, "netwatch_netdriver", 8, CyberwareEffect.moveSpeed(0.06D), CyberwareEffect.attackSpeed(0.08D)),
+            def("tetratronic_rippler", "Tetratronic Rippler", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_4, "Premium control operating system.", Items.ENCHANTED_BOOK, false, "raven_microcyber", 10, CyberwareEffect.attackSpeed(0.10D), CyberwareEffect.damageReduction(0.06D)),
+            def("militech_canto", "Militech Canto", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_5, "Experimental neural control operating system.", Items.NETHER_STAR, false, "tetratronic_rippler", 12, CyberwareEffect.damage(1.0D), CyberwareEffect.damageReduction(0.08D)),
             def("dynalar_sandevistan", "Dynalar Sandevistan", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_2, "Entry-grade time dilation suite.", Items.CLOCK, 0, CyberwareEffect.moveSpeed(0.40D), CyberwareEffect.attackSpeed(0.20D)),
             def("militech_apogee", "Militech Apogee", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_5, "Elite military reflex suite.", Items.NETHER_STAR, false, "militech_falcon", 0, CyberwareEffect.moveSpeed(0.60D), CyberwareEffect.attackSpeed(0.50D)),
             def("militech_falcon", "Militech Falcon", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_4, "High-tier tactical reflex suite.", Items.FEATHER, false, "zetatech_sandevistan", 0, CyberwareEffect.moveSpeed(0.40D), CyberwareEffect.attackSpeed(0.35D)),
@@ -43,23 +43,23 @@ public final class CyberwareCatalog {
             def("zetatech_sandevistan", "Zetatech Sandevistan", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_2, "Mass-market reflex acceleration OS.", Items.SUGAR, false, "dynalar_sandevistan", 0, CyberwareEffect.moveSpeed(0.40D), CyberwareEffect.attackSpeed(0.20D)),
             def("chrome_compressor", "Chrome Compressor", CyberwareSlotType.OPERATING_SYSTEM, CyberwareTier.TIER_2, "Expands cyberware capacity.", Items.PISTON, 20),
 
-            def("gorilla_arms", "Gorilla Arms", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Heavy-duty industrial arm replacements.", Items.IRON_PICKAXE, true, null, 0, CyberwareEffect.damage(2.0D), CyberwareEffect.breakSpeed(0.30D)),
-            def("electrifying_gorilla_arms", "Electrifying Gorilla Arms", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Gorilla Arms with shock payloads.", Items.LIGHTNING_ROD, true, "gorilla_arms", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.breakSpeed(0.30D)),
-            def("thermal_gorilla_arms", "Thermal Gorilla Arms", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Gorilla Arms with burn payloads.", Items.BLAZE_ROD, true, "gorilla_arms", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.breakSpeed(0.30D)),
-            def("chemical_gorilla_arms", "Chemical Gorilla Arms", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Gorilla Arms with toxin payloads.", Items.SPIDER_EYE, true, "gorilla_arms", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.breakSpeed(0.30D)),
-            def("mantis_blades", "Mantis Blades", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Signature retractable forearm blades.", Items.IRON_SWORD, true),
-            def("electrifying_mantis_blades", "Electrifying Mantis Blades", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Shock-tuned mantis blades.", Items.LIGHTNING_ROD, true, "mantis_blades"),
-            def("thermal_mantis_blades", "Thermal Mantis Blades", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Thermal mantis blades.", Items.BLAZE_POWDER, true, "mantis_blades"),
-            def("toxic_mantis_blades", "Toxic Mantis Blades", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Chemical mantis blades.", Items.POISONOUS_POTATO, true, "mantis_blades"),
-            def("maxtac_mantis_blades", "MaxTac Mantis Blades", CyberwareSlotType.ARMS, CyberwareTier.TIER_4, "Top-end MaxTac mantis blades.", Items.NETHERITE_SWORD, true, "mantis_blades"),
-            def("monowire", "Monowire", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Whiplike mono-filament weapon implant.", Items.LEAD),
-            def("electrifying_monowire", "Electrifying Monowire", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Electrified monowire assembly.", Items.LIGHTNING_ROD, false, "monowire"),
-            def("thermal_monowire", "Thermal Monowire", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Thermal monowire assembly.", Items.BLAZE_ROD, false, "monowire"),
-            def("toxic_monowire", "Toxic Monowire", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Chemical monowire assembly.", Items.SPIDER_EYE, false, "monowire"),
-            def("projectile_launch_system", "Projectile Launch System", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Integrated micro-missile launcher.", Items.CROSSBOW),
-            def("electrifying_projectile_launch_system", "Electrifying Projectile Launch System", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Electrified projectile launcher.", Items.LIGHTNING_ROD, false, "projectile_launch_system"),
-            def("thermal_projectile_launch_system", "Thermal Projectile Launch System", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Thermal projectile launcher.", Items.FIRE_CHARGE, false, "projectile_launch_system"),
-            def("toxic_projectile_launch_system", "Toxic Projectile Launch System", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Chemical projectile launcher.", Items.DRAGON_BREATH, false, "projectile_launch_system"),
+            def("gorilla_arms", "Gorilla Arms", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Heavy-duty industrial arm replacements.", Items.IRON_PICKAXE, true, null, 0, CyberwareEffect.damage(2.0D), CyberwareEffect.breakSpeed(0.30D), CyberwareEffect.knockbackResistance(0.10D)),
+            def("electrifying_gorilla_arms", "Electrifying Gorilla Arms", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Gorilla Arms with shock payloads.", Items.LIGHTNING_ROD, true, "gorilla_arms", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.breakSpeed(0.30D), CyberwareEffect.attackSpeed(0.10D)),
+            def("thermal_gorilla_arms", "Thermal Gorilla Arms", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Gorilla Arms with burn payloads.", Items.BLAZE_ROD, true, "gorilla_arms", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.breakSpeed(0.30D), CyberwareEffect.damageReduction(0.05D)),
+            def("chemical_gorilla_arms", "Chemical Gorilla Arms", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Gorilla Arms with toxin payloads.", Items.SPIDER_EYE, true, "gorilla_arms", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.breakSpeed(0.30D), CyberwareEffect.entityReach(0.5D)),
+            def("mantis_blades", "Mantis Blades", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Signature retractable forearm blades.", Items.IRON_SWORD, true, null, 0, CyberwareEffect.damage(2.0D), CyberwareEffect.attackSpeed(0.15D)),
+            def("electrifying_mantis_blades", "Electrifying Mantis Blades", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Shock-tuned mantis blades.", Items.LIGHTNING_ROD, true, "mantis_blades", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.attackSpeed(0.15D), CyberwareEffect.moveSpeed(0.05D)),
+            def("thermal_mantis_blades", "Thermal Mantis Blades", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Thermal mantis blades.", Items.BLAZE_POWDER, true, "mantis_blades", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.attackSpeed(0.15D), CyberwareEffect.damageReduction(0.04D)),
+            def("toxic_mantis_blades", "Toxic Mantis Blades", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Chemical mantis blades.", Items.POISONOUS_POTATO, true, "mantis_blades", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.attackSpeed(0.15D), CyberwareEffect.entityReach(0.5D)),
+            def("maxtac_mantis_blades", "MaxTac Mantis Blades", CyberwareSlotType.ARMS, CyberwareTier.TIER_4, "Top-end MaxTac mantis blades.", Items.NETHERITE_SWORD, true, "mantis_blades", 0, CyberwareEffect.damage(4.0D), CyberwareEffect.attackSpeed(0.25D), CyberwareEffect.moveSpeed(0.08D)),
+            def("monowire", "Monowire", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Whiplike mono-filament weapon implant.", Items.LEAD, false, null, 0, CyberwareEffect.attackSpeed(0.10D), CyberwareEffect.entityReach(1.0D)),
+            def("electrifying_monowire", "Electrifying Monowire", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Electrified monowire assembly.", Items.LIGHTNING_ROD, false, "monowire", 0, CyberwareEffect.attackSpeed(0.10D), CyberwareEffect.entityReach(1.0D), CyberwareEffect.moveSpeed(0.04D)),
+            def("thermal_monowire", "Thermal Monowire", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Thermal monowire assembly.", Items.BLAZE_ROD, false, "monowire", 0, CyberwareEffect.attackSpeed(0.10D), CyberwareEffect.entityReach(1.0D), CyberwareEffect.damageReduction(0.03D)),
+            def("toxic_monowire", "Toxic Monowire", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Chemical monowire assembly.", Items.SPIDER_EYE, false, "monowire", 0, CyberwareEffect.attackSpeed(0.10D), CyberwareEffect.entityReach(1.0D), CyberwareEffect.damage(1.0D)),
+            def("projectile_launch_system", "Projectile Launch System", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Integrated micro-missile launcher.", Items.CROSSBOW, false, null, 0, CyberwareEffect.damage(2.0D)),
+            def("electrifying_projectile_launch_system", "Electrifying Projectile Launch System", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Electrified projectile launcher.", Items.LIGHTNING_ROD, false, "projectile_launch_system", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.attackSpeed(0.05D)),
+            def("thermal_projectile_launch_system", "Thermal Projectile Launch System", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Thermal projectile launcher.", Items.FIRE_CHARGE, false, "projectile_launch_system", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.damageReduction(0.04D)),
+            def("toxic_projectile_launch_system", "Toxic Projectile Launch System", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Chemical projectile launcher.", Items.DRAGON_BREATH, false, "projectile_launch_system", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.entityReach(0.5D)),
 
             def("basic_kiroshi_optics", "Basic Kiroshi Optics", CyberwareSlotType.FACE, CyberwareTier.TIER_1, "Foundational cyberoptic package.", Items.ENDER_EYE, CyberwareEffect.nightVision()),
             def("clairvoyant", "Clairvoyant", CyberwareSlotType.FACE, CyberwareTier.TIER_3, "Scan-heavy hunter optics.", Items.SPYGLASS, false, "basic_kiroshi_optics", 0, CyberwareEffect.nightVision(), CyberwareEffect.blockReach(0.5D)),
@@ -87,12 +87,9 @@ public final class CyberwareCatalog {
             def("ballistic_coprocessor", "Ballistic Coprocessor", CyberwareSlotType.HANDS, CyberwareTier.TIER_2, "Ballistic targeting assist.", Items.ARROW, CyberwareEffect.damage(1.0D)),
             def("handle_wrap", "Handle Wrap", CyberwareSlotType.HANDS, CyberwareTier.TIER_1, "Improved weapon handling overlays.", Items.LEATHER, CyberwareEffect.attackSpeed(0.20D)),
             def("microgenerator", "Microgenerator", CyberwareSlotType.HANDS, CyberwareTier.TIER_2, "Charge-on-hit palm hardware.", Items.REDSTONE),
-            def("shock_absorber", "Shock Absorber", CyberwareSlotType.HANDS, CyberwareTier.TIER_2, "Recoil and impact dampener.", Items.SLIME_BALL, CyberwareEffect.damage(1.0D)),
+            def("shock_absorber", "Shock Absorber", CyberwareSlotType.HANDS, CyberwareTier.TIER_2, "Recoil and impact dampener.", Items.SLIME_BALL, CyberwareEffect.knockbackResistance(0.10D)),
             def("immovable_force", "Immovable Force", CyberwareSlotType.HANDS, CyberwareTier.TIER_4, "Iconic recoil-nullifying bracer.", Items.OBSIDIAN, false, "shock_absorber", 0, CyberwareEffect.knockbackResistance(0.20D)),
             def("smart_link", "Smart Link", CyberwareSlotType.HANDS, CyberwareTier.TIER_2, "Smart weapon handshake interface.", Items.TRIPWIRE_HOOK, CyberwareEffect.damage(1.0D), CyberwareEffect.entityReach(0.5D)),
-            def("tattoo_tyger_claws_dermal_imprint", "Tattoo: Tyger Claws Dermal Imprint", CyberwareSlotType.HANDS, CyberwareTier.TIER_2, "Gang-tattoo smart link variant.", Items.INK_SAC, false, "smart_link", 0, CyberwareEffect.damage(1.0D), CyberwareEffect.entityReach(0.5D)),
-            def("tattoo_together_forever", "Tattoo: Together Forever", CyberwareSlotType.HANDS, CyberwareTier.TIER_2, "Smart link tattoo variant.", Items.PINK_DYE, false, "smart_link", 0, CyberwareEffect.damage(1.0D), CyberwareEffect.entityReach(0.5D)),
-            def("tattoo_johnnys_special", "Tattoo: Johnny's Special", CyberwareSlotType.HANDS, CyberwareTier.TIER_2, "Johnny-themed smart link tattoo.", Items.BLACK_DYE, false, "smart_link", 0, CyberwareEffect.damage(1.0D), CyberwareEffect.entityReach(0.5D)),
 
             def("adrenaline_converter", "Adrenaline Converter", CyberwareSlotType.NERVOUS_SYSTEM, CyberwareTier.TIER_2, "Stress-to-speed neural converter.", Items.BLAZE_POWDER, CyberwareEffect.moveSpeed(0.20D)),
             def("adreno_trigger", "Adreno-trigger", CyberwareSlotType.NERVOUS_SYSTEM, CyberwareTier.TIER_4, "Advanced speed-trigger implant.", Items.REDSTONE_BLOCK, false, "adrenaline_converter", 0, CyberwareEffect.moveSpeed(0.40D), CyberwareEffect.attackSpeed(0.20D)),
@@ -140,7 +137,7 @@ public final class CyberwareCatalog {
             def("jenkins_tendons", "Jenkins' Tendons", CyberwareSlotType.LEGS, CyberwareTier.TIER_2, "Sprint-biased tendon upgrade.", Items.LEATHER_BOOTS, CyberwareEffect.moveSpeed(0.10D)),
             def("leeroy_ligament_system", "Leeroy Ligament System", CyberwareSlotType.LEGS, CyberwareTier.TIER_4, "Iconic movement-speed leg upgrade.", Items.GOLDEN_BOOTS, false, "jenkins_tendons", 0, CyberwareEffect.moveSpeed(0.15D)),
             def("lynx_paws", "Lynx Paws", CyberwareSlotType.LEGS, CyberwareTier.TIER_2, "Silent movement paws.", Items.RABBIT_HIDE, CyberwareEffect.moveSpeed(0.05D), CyberwareEffect.safeFall(4.0D), CyberwareEffect.stepHeight(0.5D)),
-            def("reinforced_tendons", "Reinforced Tendons", CyberwareSlotType.LEGS, CyberwareTier.TIER_2, "Double-jump style tendon hardware.", Items.RABBIT_FOOT, CyberwareEffect.jumpPower(0.35D), CyberwareEffect.safeFall(6.0D))
+            def("reinforced_tendons", "Reinforced Tendons", CyberwareSlotType.LEGS, CyberwareTier.TIER_2, "Double-jump style tendon hardware.", Items.RABBIT_FOOT, CyberwareEffect.safeFall(6.0D))
     );
 
     private static final Map<String, CyberwareDefinition> DEFINITIONS_BY_ID = createDefinitionMap();
@@ -257,6 +254,7 @@ public final class CyberwareCatalog {
             int chipSlotCount,
             CyberwareEffect... effects
     ) {
+        CyberwareBalance.CyberwareEntry balance = CyberwareBalance.resolveCyberware(id);
         return new CyberwareDefinition(
                 id,
                 displayName,
@@ -266,9 +264,9 @@ public final class CyberwareCatalog {
                 motifItem,
                 handheld,
                 upgradeFromId,
-                capacityBonus,
-                chipSlotCount,
-                List.of(effects)
+                balance.capacityBonus(),
+                balance.chipSlotCount(),
+                balance.effects()
         );
     }
 

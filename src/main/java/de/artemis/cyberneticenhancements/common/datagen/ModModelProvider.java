@@ -64,7 +64,7 @@ public final class ModModelProvider implements DataProvider {
                 Map.entry("legendary_item_components", "minecraft:item/nether_star")
         );
         for (Map.Entry<String, String> material : materials.entrySet()) {
-            futures.add(saveAliasedFlatItemModel(output, material.getKey(), material.getValue(), "minecraft:item/generated"));
+            futures.add(saveAliasedItemModel(output, material.getKey(), material.getValue()));
         }
         futures.add(saveAliasedFlatItemModel(
                 output,
@@ -74,40 +74,35 @@ public final class ModModelProvider implements DataProvider {
         ));
 
         for (CyberConsumableDefinition definition : CyberConsumableCatalog.definitions()) {
-            futures.add(saveAliasedFlatItemModel(
+            futures.add(saveAliasedItemModel(
                     output,
                     definition.id(),
-                    texturePath(definition.motifItem()),
-                    "minecraft:item/generated"
+                    modelPath(definition.motifItem())
             ));
         }
 
         for (ChipwareDefinition definition : ChipwareCatalog.definitions()) {
-            futures.add(saveAliasedFlatItemModel(
+            futures.add(saveAliasedItemModel(
                     output,
                     definition.id(),
-                    texturePath(definition.motifItem().asItem()),
-                    "minecraft:item/generated"
+                    modelPath(definition.motifItem().asItem())
             ));
         }
 
         for (CyberwareModuleDefinition definition : CyberwareModuleCatalog.definitions()) {
-            futures.add(saveAliasedFlatItemModel(
+            futures.add(saveAliasedItemModel(
                     output,
                     definition.id(),
-                    texturePath(definition.motifItem().asItem()),
-                    "minecraft:item/generated"
+                    modelPath(definition.motifItem().asItem())
             ));
         }
 
         for (CyberwareDefinition definition : CyberwareCatalog.definitions()) {
             CyberwareDefinition rootDefinition = resolveTextureRoot(definition);
-            String texturePath = texturePath(rootDefinition.motifItem().asItem());
-            futures.add(saveAliasedFlatItemModel(
+            futures.add(saveAliasedItemModel(
                     output,
                     definition.id(),
-                    texturePath,
-                    rootDefinition.handheld() ? "minecraft:item/handheld" : "minecraft:item/generated"
+                    modelPath(rootDefinition.motifItem().asItem())
             ));
         }
 
@@ -146,6 +141,12 @@ public final class ModModelProvider implements DataProvider {
         return DataProvider.saveStable(output, json, itemModelPathProvider.json(id(itemName)));
     }
 
+    private CompletableFuture<?> saveAliasedItemModel(CachedOutput output, String itemName, String parent) {
+        JsonObject json = new JsonObject();
+        json.addProperty("parent", parent);
+        return DataProvider.saveStable(output, json, itemModelPathProvider.json(id(itemName)));
+    }
+
     private CompletableFuture<?> saveAliasedFlatItemModel(CachedOutput output, String itemName, String texturePath, String parent) {
         JsonObject json = new JsonObject();
         json.addProperty("parent", parent);
@@ -170,6 +171,11 @@ public final class ModModelProvider implements DataProvider {
     }
 
     private static String texturePath(net.minecraft.world.item.Item item) {
+        ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
+        return key.getNamespace() + ":item/" + key.getPath();
+    }
+
+    private static String modelPath(net.minecraft.world.item.Item item) {
         ResourceLocation key = BuiltInRegistries.ITEM.getKey(item);
         return key.getNamespace() + ":item/" + key.getPath();
     }

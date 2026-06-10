@@ -306,7 +306,7 @@ public final class CyberwareUpgradeHelper {
             case ARMOR, ATTACK_DAMAGE, SAFE_FALL_DISTANCE, CHROME_CAPACITY -> 1.0D;
             case ATTACK_SPEED, BLOCK_REACH, ENTITY_REACH, STEP_HEIGHT, HEALTH_REGEN -> 0.25D;
             case MOVEMENT_SPEED, BLOCK_BREAK_SPEED, FALL_DAMAGE_REDUCTION, KNOCKBACK_RESISTANCE, DAMAGE_REDUCTION, JUMP_POWER -> 0.05D;
-            case NIGHT_VISION, FIRE_RESISTANCE, WATER_BREATHING -> 0.0D;
+            case NIGHT_VISION, FIRE_RESISTANCE, WATER_BREATHING, DOLPHINS_GRACE -> 0.0D;
         };
 
         double signAwareBase = effect.type() == CyberwareEffectType.FALL_DAMAGE_REDUCTION ? -Math.max(minimum, magnitude * 0.5D) : Math.copySign(Math.max(minimum, magnitude * 0.5D), baseAmount);

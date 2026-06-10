@@ -1,10 +1,17 @@
 package de.artemis.cyberneticenhancements.common.network;
 
+import de.artemis.cyberneticenhancements.common.cyberware.ArmCyberwareManager;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareAbilities;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareSlot;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberpsychosisClientState;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareModuleHandler;
+import de.artemis.cyberneticenhancements.common.cyberware.FaceCyberwareManager;
+import de.artemis.cyberneticenhancements.common.cyberware.FrontalCortexManager;
+import de.artemis.cyberneticenhancements.common.cyberware.LegCyberwareManager;
 import de.artemis.cyberneticenhancements.client.CyberwareHudClientState;
+import de.artemis.cyberneticenhancements.client.FaceHazardHighlightClientState;
+import de.artemis.cyberneticenhancements.client.PsychosisOverlayClientState;
+import de.artemis.cyberneticenhancements.client.PlayerMotionSyncClient;
 import de.artemis.cyberneticenhancements.common.menu.RecyclerStationMenu;
 import de.artemis.cyberneticenhancements.common.menu.RipperStationMenu;
 import de.artemis.cyberneticenhancements.common.menu.TechStationMenu;
@@ -17,11 +24,32 @@ public final class ModPayloads {
     public static void register(RegisterPayloadHandlersEvent event) {
         event.registrar("1")
                 .playToClient(CyberpsychosisControlPayload.TYPE, CyberpsychosisControlPayload.STREAM_CODEC, (payload, context) ->
-                        context.enqueueWork(() -> CyberpsychosisClientState.setControlLocked(payload.locked())))
+                        context.enqueueWork(() -> CyberpsychosisClientState.apply(
+                                payload.locked(),
+                                payload.yaw(),
+                                payload.pitch(),
+                                payload.forward(),
+                                payload.strafe(),
+                                payload.jump(),
+                                payload.sprint())))
                 .playToClient(CyberwareHudPayload.TYPE, CyberwareHudPayload.STREAM_CODEC, (payload, context) ->
                         context.enqueueWork(() -> CyberwareHudClientState.update(payload)))
+                .playToClient(PsychosisOverlayPayload.TYPE, PsychosisOverlayPayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> PsychosisOverlayClientState.update(payload)))
+                .playToClient(FaceHazardHighlightPayload.TYPE, FaceHazardHighlightPayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> FaceHazardHighlightClientState.update(payload)))
+                .playToClient(PlayerMotionSyncPayload.TYPE, PlayerMotionSyncPayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> PlayerMotionSyncClient.apply(payload)))
                 .playToServer(ActivateCyberwarePayload.TYPE, ActivateCyberwarePayload.STREAM_CODEC, (payload, context) ->
                         context.enqueueWork(() -> CyberwareAbilities.activate(context.player())))
+                .playToServer(ActivateAuxiliaryCyberwarePayload.TYPE, ActivateAuxiliaryCyberwarePayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> FrontalCortexManager.activateAuxiliary(context.player())))
+                .playToServer(ActivateArmCyberwarePayload.TYPE, ActivateArmCyberwarePayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> ArmCyberwareManager.activate(context.player())))
+                .playToServer(ActivateFaceCyberwarePayload.TYPE, ActivateFaceCyberwarePayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> FaceCyberwareManager.activate(context.player())))
+                .playToServer(ActivateLegCyberwarePayload.TYPE, ActivateLegCyberwarePayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> LegCyberwareManager.activateMidairJump(context.player())))
                 .playToServer(UpgradeCyberwareSlotPayload.TYPE, UpgradeCyberwareSlotPayload.STREAM_CODEC, (payload, context) ->
                         context.enqueueWork(() -> {
                             if (payload.slotOrdinal() < 0 || payload.slotOrdinal() >= CyberwareSlot.values().length) {

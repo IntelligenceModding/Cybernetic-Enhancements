@@ -28,7 +28,8 @@ public enum CyberwareEffectType {
     JUMP_POWER("jump_power"),
     NIGHT_VISION("night_vision", MobEffects.NIGHT_VISION),
     FIRE_RESISTANCE("fire_resistance", MobEffects.FIRE_RESISTANCE),
-    WATER_BREATHING("water_breathing", MobEffects.WATER_BREATHING);
+    WATER_BREATHING("water_breathing", MobEffects.WATER_BREATHING),
+    DOLPHINS_GRACE("dolphins_grace", MobEffects.DOLPHINS_GRACE);
 
     private final String id;
     private final Holder<Attribute> attribute;
@@ -58,6 +59,10 @@ public enum CyberwareEffectType {
 
     public String translationKey() {
         return "tooltip.cyberneticenhancements.effect." + id;
+    }
+
+    public String id() {
+        return id;
     }
 
     public ResourceLocation modifierId() {

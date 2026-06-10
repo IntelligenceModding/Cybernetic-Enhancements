@@ -26,7 +26,8 @@ public record CyberwareEffect(CyberwareEffectType type, double amount) {
             case HEALTH_REGEN -> Component.translatable(type.translationKey(), format(amount / 2.0D));
             case NIGHT_VISION,
                  FIRE_RESISTANCE,
-                 WATER_BREATHING -> Component.translatable(type.translationKey());
+                 WATER_BREATHING,
+                 DOLPHINS_GRACE -> Component.translatable(type.translationKey());
         };
     }
 
@@ -108,6 +109,10 @@ public record CyberwareEffect(CyberwareEffectType type, double amount) {
 
     public static CyberwareEffect waterBreathing() {
         return new CyberwareEffect(CyberwareEffectType.WATER_BREATHING, 0);
+    }
+
+    public static CyberwareEffect dolphinsGrace() {
+        return new CyberwareEffect(CyberwareEffectType.DOLPHINS_GRACE, 0);
     }
 
     private static String format(double value) {

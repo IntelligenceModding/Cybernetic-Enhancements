@@ -20,6 +20,7 @@ public class CyberneticEnhancementsClient {
         NeoForge.EVENT_BUS.addListener(ClientModEvents::onMouseButton);
         NeoForge.EVENT_BUS.addListener(ClientModEvents::onTooltipColor);
         NeoForge.EVENT_BUS.addListener(ClientModEvents::onRenderGuiLayer);
+        NeoForge.EVENT_BUS.addListener(ClientModEvents::onRenderLevelStage);
         NeoForge.EVENT_BUS.addListener(ClientModEvents::onClientLogout);
     }
 }

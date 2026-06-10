@@ -3,9 +3,11 @@ package de.artemis.cyberneticenhancements.client;
 import com.mojang.blaze3d.systems.RenderSystem;
 import de.artemis.cyberneticenhancements.client.screen.StationScreenStyle;
 import de.artemis.cyberneticenhancements.client.tooltip.ModTooltipStyle;
+import de.artemis.cyberneticenhancements.common.cyberware.CombatStatusManager;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareEffect;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareEffectType;
 import de.artemis.cyberneticenhancements.common.network.CyberwareHudPayload;
+import de.artemis.cyberneticenhancements.common.network.PsychosisOverlayPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -15,9 +17,11 @@ import net.minecraft.world.phys.Vec2;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 final class CyberwareHudOverlay {
     private static final int SIDE_MARGIN = 6;
+    private static final int TOP_MARGIN = 6;
     private static final int BOTTOM_MARGIN = 6;
     private static final int CARD_GAP = 4;
     private static final int CARD_PADDING = 4;
@@ -31,6 +35,7 @@ final class CyberwareHudOverlay {
     private static final int RIGHT_CARD_MIN_WIDTH = 96;
     private static final int RIGHT_ABILITY_MIN_WIDTH = 120;
     private static final int RIGHT_BAND_GAP = 6;
+    private static final int TOP_CARD_MIN_WIDTH = 180;
 
     private static final int CARD_BACKGROUND = StationScreenStyle.PANEL_BG;
     private static final int CARD_HEADER_BACKGROUND = StationScreenStyle.PANEL_ALT;
@@ -63,6 +68,20 @@ final class CyberwareHudOverlay {
     private static final int BAR_STATUS_BLOOD_PUMP = 0xFFFF4F4F;
     private static final int BAR_STATUS_SECOND_HEART = 0xFFFF7CA8;
     private static final int BAR_STATUS_REFLEX = 0xFFF6D55F;
+    private static final int BAR_STATUS_SHOCK = 0xFF57D2FF;
+    private static final int BAR_STATUS_OVERHEAT = 0xFFFF8452;
+    private static final int BAR_STATUS_CORROSION = 0xFF89D45B;
+    private static final int BAR_STATUS_TRAUMA = 0xFFFF9B7A;
+    private static final int BAR_STATUS_BLEED = 0xFFE05A6F;
+    private static final int BAR_STATUS_MARK = 0xFFF0E36B;
+    private static final int BAR_PSYCHOSIS_MAJOR = 0xFFFF5A5A;
+    private static final int BAR_PSYCHOSIS_MINOR = 0xFFFFA347;
+    private static final int BAR_PSYCHOSIS_IDLE = 0xFF3A2020;
+    private static final long ROW_TRANSITION_MILLIS = 220L;
+    private static final RowTransition TOP_ROW_TRANSITION = new RowTransition();
+    private static final RowTransition LEFT_ROW_TRANSITION = new RowTransition();
+    private static final RowTransition RIGHT_ROW_TRANSITION = new RowTransition();
+
     private CyberwareHudOverlay() {
     }
 
@@ -72,14 +91,30 @@ final class CyberwareHudOverlay {
             return;
         }
 
+        Font font = minecraft.font;
+        int width = minecraft.getWindow().getGuiScaledWidth();
+        int height = minecraft.getWindow().getGuiScaledHeight();
+        List<HoverRegion> hoverRegions = new ArrayList<>();
+        PsychosisOverlayPayload psychosisSnapshot = PsychosisOverlayClientState.get();
+        if (!psychosisSnapshot.entries().isEmpty()) {
+            renderAnimatedTopRow(
+                    guiGraphics,
+                    font,
+                    hoverRegions,
+                    TOP_ROW_TRANSITION,
+                    buildPsychosisCards(psychosisSnapshot, width),
+                    width / 2,
+                    TOP_MARGIN
+            );
+        } else {
+            renderAnimatedTopRow(guiGraphics, font, hoverRegions, TOP_ROW_TRANSITION, List.of(), width / 2, TOP_MARGIN);
+        }
+
         CyberwareHudPayload snapshot = CyberwareHudClientState.get();
         if (snapshot == null) {
             return;
         }
 
-        Font font = minecraft.font;
-        int width = minecraft.getWindow().getGuiScaledWidth();
-        int height = minecraft.getWindow().getGuiScaledHeight();
         Vec2 mouse = scaledMousePosition(minecraft, width, height);
         int mouseX = (int) mouse.x;
         int mouseY = (int) mouse.y;
@@ -91,28 +126,27 @@ final class CyberwareHudOverlay {
         int rightBandX = hotbarRight + RIGHT_BAND_GAP;
         int rightBandWidth = Math.max(56, width - SIDE_MARGIN - rightBandX);
 
-        List<HoverRegion> hoverRegions = new ArrayList<>();
+        int leftBottomY = height - BOTTOM_MARGIN;
+        CardLayout abilityCard = buildAbilityCard(snapshot, leftCardWidth);
+        int leftCardCount = abilityCard == null ? 1 : 2;
+        int leftRowCardWidth = Math.max(1, (leftBandWidth - CARD_GAP * (leftCardCount - 1)) / leftCardCount);
+        List<CardLayout> leftCards = new ArrayList<>(2);
+        leftCards.add(buildSystemCard(snapshot, leftRowCardWidth));
+        if (abilityCard != null) {
+            CardLayout leftAbilityCard = buildAbilityCard(snapshot, leftRowCardWidth);
+            if (leftAbilityCard != null) {
+                leftCards.add(leftAbilityCard);
+            }
+        }
+        renderAnimatedRow(guiGraphics, font, hoverRegions, LEFT_ROW_TRANSITION, leftCards, SIDE_MARGIN, leftBottomY, false);
 
-        CardLayout systemCard = buildSystemCard(snapshot, leftCardWidth);
-        int leftCardX = SIDE_MARGIN;
-        int leftCardY = height - BOTTOM_MARGIN - systemCard.height();
-        renderCard(guiGraphics, font, leftCardX, leftCardY, systemCard, hoverRegions);
-
+        List<CardLayout> rightCards = List.of();
         int rightCardCount = countVisibleRightCards(snapshot);
         if (rightCardCount > 0) {
             int rowCardWidth = Math.max(1, (rightBandWidth - CARD_GAP * (rightCardCount - 1)) / rightCardCount);
-            List<CardLayout> rightCards = buildBottomAnchoredRightCards(snapshot, rowCardWidth);
-            int rowWidth = rowCardWidth * rightCards.size() + CARD_GAP * Math.max(0, rightCards.size() - 1);
-            int rowX = width - SIDE_MARGIN - rowWidth;
-            int rowBottomY = height - BOTTOM_MARGIN;
-
-            for (int index = 0; index < rightCards.size(); index++) {
-                CardLayout card = rightCards.get(index);
-                int cardX = rowX + index * (rowCardWidth + CARD_GAP);
-                int cardY = rowBottomY - card.height();
-                renderCard(guiGraphics, font, cardX, cardY, card, hoverRegions);
-            }
+            rightCards = buildBottomAnchoredRightCards(snapshot, rowCardWidth);
         }
+        renderAnimatedRow(guiGraphics, font, hoverRegions, RIGHT_ROW_TRANSITION, rightCards, width - SIDE_MARGIN, height - BOTTOM_MARGIN, true);
 
         for (HoverRegion hoverRegion : hoverRegions) {
             if (hoverRegion.contains(mouseX, mouseY)) {
@@ -120,6 +154,33 @@ final class CyberwareHudOverlay {
                 break;
             }
         }
+    }
+
+    private static List<CardLayout> buildPsychosisCards(PsychosisOverlayPayload snapshot, int screenWidth) {
+        List<CardLayout> cards = new ArrayList<>(snapshot.entries().size());
+        int maxRowWidth = Math.max(TOP_CARD_MIN_WIDTH, Math.min(220, screenWidth / Math.max(1, snapshot.entries().size()) - CARD_GAP));
+        for (PsychosisOverlayPayload.Entry entry : snapshot.entries()) {
+            Component playerLabel = Component.literal(entry.playerName());
+            Component timeValue = Component.literal(formatSeconds(entry.remainingSeconds()));
+            String tierLabel = "MAJOR".equals(entry.tier()) ? "Major" : "Minor";
+            List<Component> tooltip = List.of(
+                    Component.literal("Cyberpsychosis"),
+                    Component.literal("Subject: " + entry.playerName()),
+                    Component.literal("Tier: " + tierLabel),
+                    Component.literal("Duration: " + formatSeconds(entry.remainingSeconds()) + " / " + formatSeconds(entry.totalSeconds()))
+            );
+            RowData row = new RowData(
+                    playerLabel,
+                    timeValue,
+                    PsychosisOverlayClientState.getRatio(entry),
+                    "MAJOR".equals(entry.tier()) ? BAR_PSYCHOSIS_MAJOR : BAR_PSYCHOSIS_MINOR,
+                    BAR_PSYCHOSIS_IDLE,
+                    true,
+                    tooltip
+            );
+            cards.add(new CardLayout(Component.literal("Psychosis"), maxRowWidth, List.of(row)));
+        }
+        return cards;
     }
 
     private static CardLayout buildSystemCard(CyberwareHudPayload snapshot, int width) {
@@ -160,15 +221,28 @@ final class CyberwareHudOverlay {
                 strainTooltip
         ));
 
+        for (CyberwareHudPayload.StatusEntry entry : snapshot.statuses()) {
+            if (!entry.playerApplied()) {
+                continue;
+            }
+            Component label = statusLabel(entry.translationKey());
+            rows.add(new RowData(
+                    label,
+                    Component.literal(formatSeconds(entry.remainingSeconds())),
+                    CyberwareHudClientState.getStatusRatio(entry),
+                    statusColor(entry.translationKey()),
+                    BAR_BACKGROUND,
+                    true,
+                    buildStatusTooltip(entry, label)
+            ));
+        }
+
         return new CardLayout(Component.literal("System"), width, rows);
     }
 
     private static int countVisibleRightCards(CyberwareHudPayload snapshot) {
         int count = 0;
-        if (!snapshot.abilityKey().isEmpty()) {
-            count++;
-        }
-        if (!snapshot.statuses().isEmpty()) {
+        if (hasRightSideStatuses(snapshot)) {
             count++;
         }
         for (CyberwareHudPayload.CooldownEntry entry : snapshot.cooldowns()) {
@@ -181,12 +255,7 @@ final class CyberwareHudOverlay {
     }
 
     private static List<CardLayout> buildBottomAnchoredRightCards(CyberwareHudPayload snapshot, int width) {
-        List<CardLayout> cards = new ArrayList<>(3);
-        CardLayout abilityCard = buildAbilityCard(snapshot, width);
-        if (abilityCard != null) {
-            cards.add(abilityCard);
-        }
-
+        List<CardLayout> cards = new ArrayList<>(2);
         CardLayout statusCard = buildStatusCard(snapshot, width);
         if (statusCard != null) {
             cards.add(statusCard);
@@ -200,53 +269,69 @@ final class CyberwareHudOverlay {
     }
 
     private static CardLayout buildAbilityCard(CyberwareHudPayload snapshot, int width) {
-        if (snapshot.abilityKey().isEmpty()) {
+        if (snapshot.abilities().isEmpty()) {
             return null;
         }
 
-        List<Component> tooltip = new ArrayList<>();
-        Component abilityName = Component.translatable(snapshot.abilityKey());
-        tooltip.add(abilityName);
+        List<RowData> rows = new ArrayList<>(snapshot.abilities().size());
+        for (CyberwareHudPayload.AbilityEntry entry : snapshot.abilities()) {
+            List<Component> tooltip = new ArrayList<>();
+            Component abilityName = Component.translatable(entry.translationKey());
+            Component activationLabel = ModKeyMappings.getAbilityBindingLabel(entry.activationKey());
+            String activationText = activationLabel.getString();
+            Component labeledAbilityName = activationText.isBlank()
+                    ? abilityName
+                    : abilityName.copy().append(Component.literal(" [" + activationText + "]"));
+            tooltip.add(labeledAbilityName);
+            if (!activationText.isBlank()) {
+                tooltip.add(Component.literal("Activate: " + activationText));
+            }
 
-        Component detail;
-        float ratio;
-        int color;
-        if (snapshot.abilityActiveSeconds() > 0) {
-            detail = Component.literal("Active " + formatSeconds(snapshot.abilityActiveSeconds()));
-            ratio = safeRatio(snapshot.abilityActiveSeconds(), snapshot.abilityActiveTotalSeconds());
-            color = BAR_ABILITY_ACTIVE;
-            tooltip.add(Component.literal("Active: " + formatSeconds(snapshot.abilityActiveSeconds()) + " / " + formatSeconds(snapshot.abilityActiveTotalSeconds())));
-        } else if (snapshot.abilityCooldownSeconds() > 0) {
-            detail = Component.literal("Cooldown " + formatSeconds(snapshot.abilityCooldownSeconds()));
-            ratio = safeRatio(snapshot.abilityCooldownSeconds(), snapshot.abilityCooldownTotalSeconds());
-            color = BAR_ABILITY_COOLDOWN;
-            tooltip.add(Component.literal("Cooldown: " + formatSeconds(snapshot.abilityCooldownSeconds()) + " / " + formatSeconds(snapshot.abilityCooldownTotalSeconds())));
-        } else {
-            detail = Component.translatable("hud.cyberneticenhancements.ready");
-            ratio = 1.0F;
-            color = BAR_ABILITY_READY;
-            tooltip.add(Component.translatable("hud.cyberneticenhancements.ready"));
+            Component detail;
+            float ratio;
+            int color;
+            if (entry.activeSeconds() > 0) {
+                detail = Component.literal("Active " + formatSeconds(entry.activeSeconds()));
+                ratio = CyberwareHudClientState.getAbilityActiveRatio(entry);
+                color = BAR_ABILITY_ACTIVE;
+                tooltip.add(Component.literal("Active: " + formatSeconds(entry.activeSeconds()) + " / " + formatSeconds(entry.activeTotalSeconds())));
+            } else if (entry.cooldownSeconds() > 0) {
+                detail = Component.literal("Cooldown " + formatSeconds(entry.cooldownSeconds()));
+                ratio = CyberwareHudClientState.getAbilityCooldownRatio(entry);
+                color = BAR_ABILITY_COOLDOWN;
+                tooltip.add(Component.literal("Cooldown: " + formatSeconds(entry.cooldownSeconds()) + " / " + formatSeconds(entry.cooldownTotalSeconds())));
+            } else {
+                detail = Component.translatable("hud.cyberneticenhancements.ready");
+                ratio = 1.0F;
+                color = BAR_ABILITY_READY;
+                tooltip.add(Component.translatable("hud.cyberneticenhancements.ready"));
+            }
+
+            rows.add(new RowData(labeledAbilityName, detail, ratio, color, BAR_IDLE, false, tooltip));
         }
 
         return new CardLayout(
                 Component.literal("Ability"),
                 width,
-                List.of(new RowData(abilityName, detail, ratio, color, BAR_IDLE, false, tooltip))
+                rows
         );
     }
 
     private static CardLayout buildStatusCard(CyberwareHudPayload snapshot, int width) {
-        if (snapshot.statuses().isEmpty()) {
+        if (!hasRightSideStatuses(snapshot)) {
             return null;
         }
 
         List<RowData> rows = new ArrayList<>(snapshot.statuses().size());
         for (CyberwareHudPayload.StatusEntry entry : snapshot.statuses()) {
+            if (entry.playerApplied()) {
+                continue;
+            }
             Component label = statusLabel(entry.translationKey());
             rows.add(new RowData(
                     label,
                     Component.literal(formatSeconds(entry.remainingSeconds())),
-                    safeRatio(entry.remainingSeconds(), entry.totalSeconds()),
+                    CyberwareHudClientState.getStatusRatio(entry),
                     statusColor(entry.translationKey()),
                     BAR_BACKGROUND,
                     isWarningStatus(entry.translationKey()),
@@ -255,6 +340,15 @@ final class CyberwareHudOverlay {
         }
 
         return new CardLayout(Component.literal("Status"), width, rows);
+    }
+
+    private static boolean hasRightSideStatuses(CyberwareHudPayload snapshot) {
+        for (CyberwareHudPayload.StatusEntry entry : snapshot.statuses()) {
+            if (!entry.playerApplied()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static CardLayout buildCooldownCard(CyberwareHudPayload snapshot, int width) {
@@ -268,7 +362,7 @@ final class CyberwareHudOverlay {
             rows.add(new RowData(
                     label,
                     Component.literal(formatSeconds(entry.remainingSeconds())),
-                    safeRatio(entry.remainingSeconds(), entry.totalSeconds()),
+                    CyberwareHudClientState.getCooldownRatio(entry),
                     cooldownColor(entry.translationKey()),
                     BAR_IDLE,
                     false,
@@ -289,6 +383,9 @@ final class CyberwareHudOverlay {
         List<Component> tooltip = new ArrayList<>();
         tooltip.add(label.copy());
         tooltip.add(describeStatus(entry));
+        if (entry.playerApplied()) {
+            tooltip.add(Component.literal("Source: hostile player"));
+        }
         tooltip.add(Component.literal("Duration: " + formatSeconds(entry.remainingSeconds()) + " / " + formatSeconds(entry.totalSeconds())));
         return tooltip;
     }
@@ -299,6 +396,10 @@ final class CyberwareHudOverlay {
         }
         if ("hud.cyberneticenhancements.ram_jolt".equals(entry.translationKey())) {
             return Component.literal("Cooldown multiplier: x" + formatNumber(entry.amount()));
+        }
+        Component combatStatusDescription = CombatStatusManager.describeStatus(entry.translationKey(), entry.amount());
+        if (!combatStatusDescription.getString().isEmpty()) {
+            return combatStatusDescription;
         }
 
         CyberwareEffectType effectType = effectTypeFromTranslationKey(entry.translationKey());
@@ -324,7 +425,169 @@ final class CyberwareHudOverlay {
         if ("hud.cyberneticenhancements.ram_jolt".equals(translationKey)) {
             return Component.literal("RAM Jolt");
         }
+        if (translationKey.startsWith("hud.cyberneticenhancements.status.")) {
+            return Component.translatable(translationKey);
+        }
         return humanizedLabel(translationKey);
+    }
+
+    private static void renderAnimatedRow(
+            GuiGraphics guiGraphics,
+            Font font,
+            List<HoverRegion> hoverRegions,
+            RowTransition transition,
+            List<CardLayout> targetCards,
+            int anchorX,
+            int bottomY,
+            boolean alignRight
+    ) {
+        long now = System.currentTimeMillis();
+        transition.update(targetCards, now);
+
+        if (transition.isAnimating(now)) {
+            float progress = transition.progress(now);
+            int slideDistance = Math.max(
+                    rowHeight(transition.previousCards()),
+                    rowHeight(transition.currentCards())
+            ) + 12;
+
+            if (!transition.previousCards().isEmpty()) {
+                renderRow(
+                        guiGraphics,
+                        font,
+                        transition.previousCards(),
+                        rowX(anchorX, transition.previousCards(), alignRight),
+                        bottomY + Math.round(progress * slideDistance),
+                        null
+                );
+            }
+            if (!transition.currentCards().isEmpty()) {
+                renderRow(
+                        guiGraphics,
+                        font,
+                        transition.currentCards(),
+                        rowX(anchorX, transition.currentCards(), alignRight),
+                        bottomY + Math.round((1.0F - progress) * slideDistance),
+                        hoverRegions
+                );
+            }
+            return;
+        }
+
+        renderRow(guiGraphics, font, transition.currentCards(), rowX(anchorX, transition.currentCards(), alignRight), bottomY, hoverRegions);
+    }
+
+    private static void renderAnimatedTopRow(
+            GuiGraphics guiGraphics,
+            Font font,
+            List<HoverRegion> hoverRegions,
+            RowTransition transition,
+            List<CardLayout> targetCards,
+            int centerX,
+            int topY
+    ) {
+        long now = System.currentTimeMillis();
+        transition.update(targetCards, now);
+
+        if (transition.isAnimating(now)) {
+            float progress = transition.progress(now);
+            int slideDistance = Math.max(
+                    rowHeight(transition.previousCards()),
+                    rowHeight(transition.currentCards())
+            ) + 12;
+
+            if (!transition.previousCards().isEmpty()) {
+                renderTopRow(
+                        guiGraphics,
+                        font,
+                        transition.previousCards(),
+                        centerX - rowWidth(transition.previousCards()) / 2,
+                        topY - Math.round(progress * slideDistance),
+                        null
+                );
+            }
+            if (!transition.currentCards().isEmpty()) {
+                renderTopRow(
+                        guiGraphics,
+                        font,
+                        transition.currentCards(),
+                        centerX - rowWidth(transition.currentCards()) / 2,
+                        topY - Math.round((1.0F - progress) * slideDistance),
+                        hoverRegions
+                );
+            }
+            return;
+        }
+
+        renderTopRow(
+                guiGraphics,
+                font,
+                transition.currentCards(),
+                centerX - rowWidth(transition.currentCards()) / 2,
+                topY,
+                hoverRegions
+        );
+    }
+
+    private static void renderRow(
+            GuiGraphics guiGraphics,
+            Font font,
+            List<CardLayout> cards,
+            int rowX,
+            int bottomY,
+            List<HoverRegion> hoverRegions
+    ) {
+        for (int index = 0; index < cards.size(); index++) {
+            CardLayout card = cards.get(index);
+            int cardX = rowX + index * (card.width() + CARD_GAP);
+            int cardY = bottomY - card.height();
+            renderCard(guiGraphics, font, cardX, cardY, card, hoverRegions);
+        }
+    }
+
+    private static void renderTopRow(
+            GuiGraphics guiGraphics,
+            Font font,
+            List<CardLayout> cards,
+            int rowX,
+            int topY,
+            List<HoverRegion> hoverRegions
+    ) {
+        for (int index = 0; index < cards.size(); index++) {
+            CardLayout card = cards.get(index);
+            int cardX = rowX + index * (card.width() + CARD_GAP);
+            renderCard(guiGraphics, font, cardX, topY, card, hoverRegions);
+        }
+    }
+
+    private static int rowX(int anchorX, List<CardLayout> cards, boolean alignRight) {
+        int width = rowWidth(cards);
+        return alignRight ? anchorX - width : anchorX;
+    }
+
+    private static int rowWidth(List<CardLayout> cards) {
+        int width = 0;
+        for (int index = 0; index < cards.size(); index++) {
+            width += cards.get(index).width();
+            if (index + 1 < cards.size()) {
+                width += CARD_GAP;
+            }
+        }
+        return width;
+    }
+
+    private static int rowHeight(List<CardLayout> cards) {
+        int height = 0;
+        for (CardLayout card : cards) {
+            height = Math.max(height, card.height());
+        }
+        return height;
+    }
+
+    private static String signature(List<CardLayout> cards) {
+        return cards.stream()
+                .map(card -> card.title().getString() + ":" + card.rows().stream().map(row -> row.label().getString()).collect(Collectors.joining(",")))
+                .collect(Collectors.joining("|"));
     }
 
     private static Component cooldownLabel(String translationKey) {
@@ -372,7 +635,9 @@ final class CyberwareHudOverlay {
         int rowY = y + CARD_HEADER_HEIGHT + CARD_PADDING;
         for (RowData row : card.rows()) {
             renderRow(guiGraphics, font, x + CARD_PADDING, rowY, card.width() - CARD_PADDING * 2, row);
-            hoverRegions.add(new HoverRegion(x + CARD_PADDING, rowY, x + card.width() - CARD_PADDING, rowY + ROW_HEIGHT, row.tooltip()));
+            if (hoverRegions != null) {
+                hoverRegions.add(new HoverRegion(x + CARD_PADDING, rowY, x + card.width() - CARD_PADDING, rowY + ROW_HEIGHT, row.tooltip()));
+            }
             rowY += ROW_HEIGHT + ROW_GAP;
         }
     }
@@ -539,6 +804,12 @@ final class CyberwareHudOverlay {
             return BAR_STATUS_NEURAL;
         }
         return switch (translationKey) {
+            case "hud.cyberneticenhancements.status.shock" -> BAR_STATUS_SHOCK;
+            case "hud.cyberneticenhancements.status.overheat" -> BAR_STATUS_OVERHEAT;
+            case "hud.cyberneticenhancements.status.corrosion" -> BAR_STATUS_CORROSION;
+            case "hud.cyberneticenhancements.status.trauma" -> BAR_STATUS_TRAUMA;
+            case "hud.cyberneticenhancements.status.bleed" -> BAR_STATUS_BLEED;
+            case "hud.cyberneticenhancements.status.mark" -> BAR_STATUS_MARK;
             case "tooltip.cyberneticenhancements.effect.health_regen",
                  "tooltip.cyberneticenhancements.effect.max_health",
                  "tooltip.cyberneticenhancements.effect.bonus_absorption" -> BAR_STATUS_MEDICAL;
@@ -554,7 +825,11 @@ final class CyberwareHudOverlay {
     }
 
     private static boolean isWarningStatus(String translationKey) {
-        return "hud.cyberneticenhancements.suppression".equals(translationKey);
+        return "hud.cyberneticenhancements.suppression".equals(translationKey)
+                || "hud.cyberneticenhancements.status.overheat".equals(translationKey)
+                || "hud.cyberneticenhancements.status.corrosion".equals(translationKey)
+                || "hud.cyberneticenhancements.status.trauma".equals(translationKey)
+                || "hud.cyberneticenhancements.status.bleed".equals(translationKey);
     }
 
     private static int cooldownColor(String translationKey) {
@@ -592,6 +867,61 @@ final class CyberwareHudOverlay {
     private record HoverRegion(int x1, int y1, int x2, int y2, List<Component> tooltip) {
         boolean contains(int x, int y) {
             return x >= x1 && x < x2 && y >= y1 && y < y2;
+        }
+    }
+
+    private static final class RowTransition {
+        private String currentSignature = "";
+        private List<CardLayout> currentCards = List.of();
+        private List<CardLayout> previousCards = List.of();
+        private long startTimeMs;
+        private boolean animating;
+
+        void update(List<CardLayout> nextCards, long now) {
+            String nextSignature = signature(nextCards);
+            if (currentSignature.equals(nextSignature)) {
+                currentCards = nextCards;
+                if (animating && now - startTimeMs >= ROW_TRANSITION_MILLIS) {
+                    animating = false;
+                    previousCards = List.of();
+                }
+                return;
+            }
+
+            previousCards = currentCards;
+            currentCards = nextCards;
+            currentSignature = nextSignature;
+            startTimeMs = now;
+            animating = true;
+        }
+
+        boolean isAnimating(long now) {
+            if (animating && now - startTimeMs >= ROW_TRANSITION_MILLIS) {
+                animating = false;
+                previousCards = List.of();
+            }
+            return animating;
+        }
+
+        float progress(long now) {
+            float linear = Math.max(0.0F, Math.min(1.0F, (float) (now - startTimeMs) / (float) ROW_TRANSITION_MILLIS));
+            return easeInOutCubic(linear);
+        }
+
+        private static float easeInOutCubic(float value) {
+            if (value < 0.5F) {
+                return 4.0F * value * value * value;
+            }
+            float inverse = -2.0F * value + 2.0F;
+            return 1.0F - inverse * inverse * inverse / 2.0F;
+        }
+
+        List<CardLayout> currentCards() {
+            return currentCards;
+        }
+
+        List<CardLayout> previousCards() {
+            return previousCards;
         }
     }
 }

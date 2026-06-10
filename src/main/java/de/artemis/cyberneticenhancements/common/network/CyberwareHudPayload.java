@@ -3,11 +3,14 @@ package de.artemis.cyberneticenhancements.common.network;
 import de.artemis.cyberneticenhancements.CyberneticEnhancements;
 import de.artemis.cyberneticenhancements.common.consumable.CyberConsumableCategory;
 import de.artemis.cyberneticenhancements.common.consumable.CyberConsumableManager;
+import de.artemis.cyberneticenhancements.common.cyberware.ArmCyberwareManager;
+import de.artemis.cyberneticenhancements.common.cyberware.CombatStatusManager;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberstrainManager;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareAbilities;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareEffectType;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareSlotType;
-import de.artemis.cyberneticenhancements.common.cyberware.OperatingSystemFamily;
+import de.artemis.cyberneticenhancements.common.cyberware.FaceCyberwareManager;
+import de.artemis.cyberneticenhancements.common.cyberware.FrontalCortexManager;
 import de.artemis.cyberneticenhancements.common.cyberware.PlayerCyberwareInventory;
 import de.artemis.cyberneticenhancements.common.cyberware.TemporaryCyberwareEffectManager;
 import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
@@ -31,11 +34,7 @@ public record CyberwareHudPayload(
         int suppressionSeconds,
         int psychosisSeconds,
         String psychosisStateKey,
-        String abilityKey,
-        int abilityActiveSeconds,
-        int abilityActiveTotalSeconds,
-        int abilityCooldownSeconds,
-        int abilityCooldownTotalSeconds,
+        List<AbilityEntry> abilities,
         List<StatusEntry> statuses,
         List<CooldownEntry> cooldowns
 ) implements CustomPacketPayload {
@@ -63,18 +62,20 @@ public record CyberwareHudPayload(
             StrainState::psychosisStateKey,
             StrainState::new
     );
-    private static final StreamCodec<RegistryFriendlyByteBuf, AbilityState> ABILITY_STREAM_CODEC = StreamCodec.composite(
+    private static final StreamCodec<RegistryFriendlyByteBuf, AbilityEntry> ABILITY_STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.STRING_UTF8,
-            AbilityState::abilityKey,
+            AbilityEntry::translationKey,
+            ByteBufCodecs.STRING_UTF8,
+            AbilityEntry::activationKey,
             ByteBufCodecs.INT,
-            AbilityState::abilityActiveSeconds,
+            AbilityEntry::activeSeconds,
             ByteBufCodecs.INT,
-            AbilityState::abilityCooldownSeconds,
+            AbilityEntry::activeTotalSeconds,
             ByteBufCodecs.INT,
-            AbilityState::abilityActiveTotalSeconds,
+            AbilityEntry::cooldownSeconds,
             ByteBufCodecs.INT,
-            AbilityState::abilityCooldownTotalSeconds,
-            AbilityState::new
+            AbilityEntry::cooldownTotalSeconds,
+            AbilityEntry::new
     );
     private static final StreamCodec<RegistryFriendlyByteBuf, StatusEntry> STATUS_STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.STRING_UTF8,
@@ -85,6 +86,8 @@ public record CyberwareHudPayload(
             StatusEntry::remainingSeconds,
             ByteBufCodecs.INT,
             StatusEntry::totalSeconds,
+            ByteBufCodecs.BOOL,
+            StatusEntry::playerApplied,
             StatusEntry::new
     );
     private static final StreamCodec<RegistryFriendlyByteBuf, CooldownEntry> COOLDOWN_STREAM_CODEC = StreamCodec.composite(
@@ -108,14 +111,8 @@ public record CyberwareHudPayload(
                     payload.psychosisSeconds(),
                     payload.psychosisStateKey()
             ),
-            ABILITY_STREAM_CODEC,
-            payload -> new AbilityState(
-                    payload.abilityKey(),
-                    payload.abilityActiveSeconds(),
-                    payload.abilityCooldownSeconds(),
-                    payload.abilityActiveTotalSeconds(),
-                    payload.abilityCooldownTotalSeconds()
-            ),
+            ByteBufCodecs.collection(ArrayList::new, ABILITY_STREAM_CODEC),
+            CyberwareHudPayload::abilities,
             ByteBufCodecs.collection(ArrayList::new, STATUS_STREAM_CODEC),
             CyberwareHudPayload::statuses,
             ByteBufCodecs.collection(ArrayList::new, COOLDOWN_STREAM_CODEC),
@@ -135,16 +132,17 @@ public record CyberwareHudPayload(
     ) {
     }
 
-    private record AbilityState(
-            String abilityKey,
-            int abilityActiveSeconds,
-            int abilityCooldownSeconds,
-            int abilityActiveTotalSeconds,
-            int abilityCooldownTotalSeconds
+    public record AbilityEntry(
+            String translationKey,
+            String activationKey,
+            int activeSeconds,
+            int activeTotalSeconds,
+            int cooldownSeconds,
+            int cooldownTotalSeconds
     ) {
     }
 
-    public record StatusEntry(String translationKey, double amount, int remainingSeconds, int totalSeconds) {
+    public record StatusEntry(String translationKey, double amount, int remainingSeconds, int totalSeconds, boolean playerApplied) {
     }
 
     public record CooldownEntry(String translationKey, int remainingSeconds, int totalSeconds) {
@@ -158,7 +156,7 @@ public record CyberwareHudPayload(
     private static CyberwareHudPayload fromCodecParts(
             CapacityState capacity,
             StrainState strain,
-            AbilityState ability,
+            List<AbilityEntry> abilities,
             List<StatusEntry> statuses,
             List<CooldownEntry> cooldowns
     ) {
@@ -171,11 +169,7 @@ public record CyberwareHudPayload(
                 strain.suppressionSeconds(),
                 strain.psychosisSeconds(),
                 strain.psychosisStateKey(),
-                ability.abilityKey(),
-                ability.abilityActiveSeconds(),
-                ability.abilityActiveTotalSeconds(),
-                ability.abilityCooldownSeconds(),
-                ability.abilityCooldownTotalSeconds(),
+                abilities,
                 statuses,
                 cooldowns
         );
@@ -185,9 +179,6 @@ public record CyberwareHudPayload(
         PlayerCyberwareInventory inventory = new PlayerCyberwareInventory(player);
         long gameTime = player.level().getGameTime();
         int suppressionSeconds = CyberstrainManager.getSuppressionSecondsRemaining(player);
-        int abilityCooldownSeconds = CyberwareAbilities.getAbilityCooldownSecondsRemaining(player);
-        String abilityKey = resolveAbilityKey(player, inventory);
-        int abilityCooldownTotalSeconds = resolveAbilityCooldownTotalSeconds(player, inventory, abilityCooldownSeconds);
 
         return new CyberwareHudPayload(
                 inventory.getInstalledChromeCost(),
@@ -198,14 +189,75 @@ public record CyberwareHudPayload(
                 suppressionSeconds,
                 (int) CyberstrainManager.getPsychosisSecondsRemaining(player),
                 psychosisStateKey(player, inventory),
-                abilityKey,
-                CyberwareAbilities.getActiveSecondsRemaining(player),
-                CyberwareAbilities.getActiveTotalSeconds(player),
-                abilityCooldownSeconds,
-                abilityCooldownTotalSeconds,
+                collectAbilities(player, inventory),
                 collectStatuses(player, gameTime, suppressionSeconds),
                 collectCooldowns(player, inventory)
         );
+    }
+
+    private static List<AbilityEntry> collectAbilities(ServerPlayer player, PlayerCyberwareInventory inventory) {
+        List<AbilityEntry> entries = new ArrayList<>();
+
+        String operatingSystemAbilityKey = resolveOperatingSystemAbilityKey(player, inventory);
+        if (!operatingSystemAbilityKey.isEmpty()) {
+            int cooldownSeconds = CyberwareAbilities.getAbilityCooldownSecondsRemaining(player);
+            entries.add(new AbilityEntry(
+                    operatingSystemAbilityKey,
+                    "activate_cyberware",
+                    CyberwareAbilities.getActiveSecondsRemaining(player),
+                    CyberwareAbilities.getActiveTotalSeconds(player),
+                    cooldownSeconds,
+                    resolveOperatingSystemAbilityCooldownTotalSeconds(player, inventory, cooldownSeconds)
+            ));
+        }
+
+        String armsAbilityKey = ArmCyberwareManager.getInstalledArmsTranslationKey(inventory);
+        if (!armsAbilityKey.isEmpty()) {
+            entries.add(new AbilityEntry(
+                    armsAbilityKey,
+                    "activate_arm_cyberware",
+                    0,
+                    0,
+                    ArmCyberwareManager.getCooldownSecondsRemaining(player),
+                    ArmCyberwareManager.getCooldownTotalSeconds(player)
+            ));
+        }
+
+        String faceAbilityKey = FaceCyberwareManager.getInstalledFaceTranslationKey(inventory);
+        if (!faceAbilityKey.isEmpty()) {
+            entries.add(new AbilityEntry(
+                    faceAbilityKey,
+                    "activate_face_cyberware",
+                    FaceCyberwareManager.getActiveSecondsRemaining(player),
+                    FaceCyberwareManager.getActiveTotalSeconds(player),
+                    FaceCyberwareManager.getCooldownSecondsRemaining(player),
+                    FaceCyberwareManager.getCooldownTotalSeconds(player)
+            ));
+        }
+
+        if (inventory.hasInstalledCyberware("self_ice")) {
+            entries.add(new AbilityEntry(
+                    "item.cyberneticenhancements.self_ice",
+                    "activate_auxiliary_cyberware",
+                    0,
+                    0,
+                    FrontalCortexManager.getSelfIceCooldownSecondsRemaining(player),
+                    resolveAuxiliaryCooldownTotalSeconds(FrontalCortexManager.getSelfIceCooldownTotalSeconds(player), 70)
+            ));
+        }
+
+        if (inventory.hasInstalledCyberware("quantum_tuner")) {
+            entries.add(new AbilityEntry(
+                    "item.cyberneticenhancements.quantum_tuner",
+                    "activate_auxiliary_cyberware",
+                    0,
+                    0,
+                    FrontalCortexManager.getQuantumTunerCooldownSecondsRemaining(player),
+                    resolveAuxiliaryCooldownTotalSeconds(FrontalCortexManager.getQuantumTunerCooldownTotalSeconds(player), 90)
+            ));
+        }
+
+        return entries;
     }
 
     private static List<StatusEntry> collectStatuses(ServerPlayer player, long gameTime, int suppressionSeconds) {
@@ -215,7 +267,8 @@ public record CyberwareHudPayload(
                     "hud.cyberneticenhancements.suppression",
                     CyberstrainManager.getSuppressionAmount(player),
                     suppressionSeconds,
-                    CyberstrainManager.getSuppressionTotalSeconds(player)
+                    CyberstrainManager.getSuppressionTotalSeconds(player),
+                    false
             ));
         }
 
@@ -225,7 +278,8 @@ public record CyberwareHudPayload(
                     "hud.cyberneticenhancements.ram_jolt",
                     CyberstrainManager.getRamJoltCooldownMultiplier(player),
                     ramJoltSeconds,
-                    CyberstrainManager.getRamJoltTotalSeconds(player)
+                    CyberstrainManager.getRamJoltTotalSeconds(player),
+                    false
             ));
         }
 
@@ -236,7 +290,10 @@ public record CyberwareHudPayload(
                 .thenComparing(TemporaryCyberwareEffectManager.ActiveEffectStatus::remainingSeconds, Comparator.reverseOrder()));
 
         for (TemporaryCyberwareEffectManager.ActiveEffectStatus status : activeEffects) {
-            entries.add(new StatusEntry(status.type().translationKey(), status.amount(), status.remainingSeconds(), status.totalSeconds()));
+            entries.add(new StatusEntry(status.type().translationKey(), status.amount(), status.remainingSeconds(), status.totalSeconds(), false));
+        }
+        for (CombatStatusManager.ActiveStatus status : CombatStatusManager.collectActiveStatuses(player, gameTime)) {
+            entries.add(new StatusEntry(status.type().translationKey(), status.stacks(), status.remainingSeconds(), status.totalSeconds(), status.playerApplied()));
         }
         return entries;
     }
@@ -249,24 +306,23 @@ public record CyberwareHudPayload(
         }
 
         if (inventory.hasInstalledCyberware("biomonitor")) {
-            addTriggeredCooldown(entries, "item.cyberneticenhancements.biomonitor", CyberwareAbilities.getBiomonitorCooldownSecondsRemaining(player), 45);
+            addTriggeredCooldown(entries, "item.cyberneticenhancements.biomonitor", CyberwareAbilities.getBiomonitorCooldownSecondsRemaining(player), CyberwareAbilities.getBiomonitorCooldownTotalSeconds(player), 45);
         }
         if (inventory.hasInstalledCyberware("blood_pump")) {
-            addTriggeredCooldown(entries, "item.cyberneticenhancements.blood_pump", CyberwareAbilities.getBloodPumpCooldownSecondsRemaining(player), 60);
+            addTriggeredCooldown(entries, "item.cyberneticenhancements.blood_pump", CyberwareAbilities.getBloodPumpCooldownSecondsRemaining(player), CyberwareAbilities.getBloodPumpCooldownTotalSeconds(player), 60);
         }
         if (inventory.hasInstalledCyberware("second_heart")) {
-            addTriggeredCooldown(entries, "item.cyberneticenhancements.second_heart", CyberwareAbilities.getSecondHeartCooldownSecondsRemaining(player), 180);
+            addTriggeredCooldown(entries, "item.cyberneticenhancements.second_heart", CyberwareAbilities.getSecondHeartCooldownSecondsRemaining(player), CyberwareAbilities.getSecondHeartCooldownTotalSeconds(player), 180);
         }
         if (inventory.hasInstalledCyberware("reflex_tuner")) {
-            addTriggeredCooldown(entries, "item.cyberneticenhancements.reflex_tuner", CyberwareAbilities.getReflexTunerCooldownSecondsRemaining(player), 40);
+            addTriggeredCooldown(entries, "item.cyberneticenhancements.reflex_tuner", CyberwareAbilities.getReflexTunerCooldownSecondsRemaining(player), CyberwareAbilities.getReflexTunerCooldownTotalSeconds(player), 40);
         }
-
         return entries;
     }
 
-    private static void addTriggeredCooldown(List<CooldownEntry> entries, String translationKey, int seconds, int totalSeconds) {
+    private static void addTriggeredCooldown(List<CooldownEntry> entries, String translationKey, int seconds, int trackedTotalSeconds, int fallbackTotalSeconds) {
         if (seconds > 0) {
-            entries.add(new CooldownEntry(translationKey, seconds, totalSeconds));
+            entries.add(new CooldownEntry(translationKey, seconds, trackedTotalSeconds > 0 ? trackedTotalSeconds : fallbackTotalSeconds));
         }
     }
 
@@ -277,7 +333,6 @@ public record CyberwareHudPayload(
                  ATTACK_SPEED,
                  MOVEMENT_SPEED,
                  BLOCK_BREAK_SPEED,
-                 CHROME_CAPACITY,
                  HEALTH_REGEN,
                  DAMAGE_REDUCTION,
                  BONUS_ABSORPTION,
@@ -291,34 +346,21 @@ public record CyberwareHudPayload(
             case HEALTH_REGEN -> 0;
             case BONUS_ABSORPTION -> 1;
             case MAX_HEALTH -> 2;
-            case CHROME_CAPACITY -> 3;
-            case DAMAGE_REDUCTION -> 4;
-            case MOVEMENT_SPEED -> 5;
-            case ATTACK_DAMAGE -> 6;
-            case ATTACK_SPEED -> 7;
-            case BLOCK_BREAK_SPEED -> 8;
-            case WATER_BREATHING -> 9;
+            case DAMAGE_REDUCTION -> 3;
+            case MOVEMENT_SPEED -> 4;
+            case ATTACK_DAMAGE -> 5;
+            case ATTACK_SPEED -> 6;
+            case BLOCK_BREAK_SPEED -> 7;
+            case WATER_BREATHING -> 8;
             default -> 20;
         };
     }
 
-    private static String resolveAbilityKey(ServerPlayer player, PlayerCyberwareInventory inventory) {
-        OperatingSystemFamily family = CyberwareAbilities.getActiveFamily(player);
-        if (family == OperatingSystemFamily.NONE) {
-            CyberwareItem operatingSystem = inventory.getInstalledCyberwareBySlotType(CyberwareSlotType.OPERATING_SYSTEM);
-            if (operatingSystem != null) {
-                family = CyberwareAbilities.getOperatingSystemFamily(operatingSystem);
-            }
-        }
-
-        return switch (family) {
-            case SANDEVISTAN -> "hud.cyberneticenhancements.ability.sandevistan";
-            case BERSERK -> "hud.cyberneticenhancements.ability.berserk";
-            case NONE -> "";
-        };
+    private static String resolveOperatingSystemAbilityKey(ServerPlayer player, PlayerCyberwareInventory inventory) {
+        return CyberwareAbilities.getAbilityTranslationKey(player, inventory);
     }
 
-    private static int resolveAbilityCooldownTotalSeconds(ServerPlayer player, PlayerCyberwareInventory inventory, int abilityCooldownSeconds) {
+    private static int resolveOperatingSystemAbilityCooldownTotalSeconds(ServerPlayer player, PlayerCyberwareInventory inventory, int abilityCooldownSeconds) {
         int trackedCooldown = CyberwareAbilities.getAbilityCooldownTotalSeconds(player);
         if (trackedCooldown > 0) {
             return trackedCooldown;
@@ -329,16 +371,15 @@ public record CyberwareHudPayload(
             return 0;
         }
 
-        OperatingSystemFamily family = CyberwareAbilities.getOperatingSystemFamily(operatingSystem);
-        int baseSeconds = switch (family) {
-            case SANDEVISTAN -> 30;
-            case BERSERK -> 35;
-            case NONE -> 0;
-        };
+        int baseSeconds = CyberwareAbilities.getBaseAbilityCooldownSeconds(operatingSystem);
         if (baseSeconds == 0) {
             return Math.max(abilityCooldownSeconds, 0);
         }
         return (int) Math.max(1L, Math.round(baseSeconds * CyberstrainManager.getAbilityCooldownMultiplier(player, inventory)));
+    }
+
+    private static int resolveAuxiliaryCooldownTotalSeconds(int trackedCooldownSeconds, int fallbackCooldownSeconds) {
+        return trackedCooldownSeconds > 0 ? trackedCooldownSeconds : fallbackCooldownSeconds;
     }
 
     private static int resolveConsumableCooldownTotalSeconds(ServerPlayer player, CyberConsumableCategory category) {

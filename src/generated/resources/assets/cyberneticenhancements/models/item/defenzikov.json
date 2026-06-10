@@ -1,6 +1,3 @@
 {
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "minecraft:item/armadillo_scute"
-  }
+  "parent": "minecraft:item/armadillo_scute"
 }

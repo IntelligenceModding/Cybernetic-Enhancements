@@ -64,6 +64,11 @@ public final class TechStationMenu extends AbstractBaseMenu implements NamedBloc
         };
         this.resultInventory = new SimpleContainer(2);
 
+        if (!clientSide && stationBlockEntity != null) {
+            PlayerStationUpgradeData.migrateTechRepairTier(player, stationBlockEntity.getSupportedTierOrdinal(TechStationBlockEntity.REPAIR_INPUT_SLOT));
+            PlayerStationUpgradeData.migrateTechUpgradeTier(player, stationBlockEntity.getSupportedTierOrdinal(TechStationBlockEntity.UPGRADE_INPUT_SLOT));
+        }
+
         addStationSlots();
         addPlayerInventorySlots(playerInventory, TechStationLayout.PLAYER_INVENTORY_X, TechStationLayout.PLAYER_INVENTORY_Y);
         addPlayerHotbarSlots(playerInventory, TechStationLayout.PLAYER_INVENTORY_X, TechStationLayout.PLAYER_HOTBAR_Y);
@@ -127,7 +132,7 @@ public final class TechStationMenu extends AbstractBaseMenu implements NamedBloc
         addDataSlot(new DataSlot() {
             @Override
             public int get() {
-                return stationBlockEntity != null ? stationBlockEntity.getSupportedTierOrdinal(TechStationBlockEntity.REPAIR_INPUT_SLOT) : repairSupportedTierClient;
+                return !clientSide ? PlayerStationUpgradeData.getTechRepairTier(player).ordinal() : repairSupportedTierClient;
             }
 
             @Override
@@ -138,7 +143,7 @@ public final class TechStationMenu extends AbstractBaseMenu implements NamedBloc
         addDataSlot(new DataSlot() {
             @Override
             public int get() {
-                return stationBlockEntity != null ? stationBlockEntity.getSupportedTierOrdinal(TechStationBlockEntity.UPGRADE_INPUT_SLOT) : upgradeSupportedTierClient;
+                return !clientSide ? PlayerStationUpgradeData.getTechUpgradeTier(player).ordinal() : upgradeSupportedTierClient;
             }
 
             @Override
@@ -416,8 +421,8 @@ public final class TechStationMenu extends AbstractBaseMenu implements NamedBloc
     }
 
     public CyberwareTier getRepairSupportedTier() {
-        return !clientSide && stationBlockEntity != null
-                ? stationBlockEntity.getSupportedTier(TechStationBlockEntity.REPAIR_INPUT_SLOT)
+        return !clientSide
+                ? PlayerStationUpgradeData.getTechRepairTier(player)
                 : TechStationBlockEntity.getTierByOrdinal(repairSupportedTierClient);
     }
 
@@ -430,7 +435,7 @@ public final class TechStationMenu extends AbstractBaseMenu implements NamedBloc
         return getRepairInputStack().isEmpty()
                 && getRepairSupportedTier() != CyberwareTier.TIER_5
                 && !getRequiredRepairUpgradeComponentStack().isEmpty()
-                && (!clientSide ? stationBlockEntity != null && stationBlockEntity.canUpgradeSupportedTier(TechStationBlockEntity.REPAIR_INPUT_SLOT) : true);
+                && (!clientSide || PlayerStationUpgradeData.getTechRepairTier(player) != CyberwareTier.TIER_5);
     }
 
     public ItemStack getRequiredRepairUpgradeComponentStack() {
@@ -444,11 +449,10 @@ public final class TechStationMenu extends AbstractBaseMenu implements NamedBloc
 
     public boolean tryUpgradeRepairSupportedTier() {
         ItemStack required = getRequiredRepairUpgradeComponentStack();
-        if (stationBlockEntity == null
-                || !canUpgradeRepairSupportedTier()
+        if (!canUpgradeRepairSupportedTier()
                 || required.isEmpty()
                 || (!hasCreativeUpgradeBypass() && !consumeAccessiblePlayerItem(required))
-                || !stationBlockEntity.tryUpgradeSupportedTier(TechStationBlockEntity.REPAIR_INPUT_SLOT)) {
+                || !PlayerStationUpgradeData.tryUpgradeTechRepairTier(player)) {
             return false;
         }
         broadcastChanges();
@@ -456,8 +460,8 @@ public final class TechStationMenu extends AbstractBaseMenu implements NamedBloc
     }
 
     public CyberwareTier getUpgradeSupportedTier() {
-        return !clientSide && stationBlockEntity != null
-                ? stationBlockEntity.getSupportedTier(TechStationBlockEntity.UPGRADE_INPUT_SLOT)
+        return !clientSide
+                ? PlayerStationUpgradeData.getTechUpgradeTier(player)
                 : TechStationBlockEntity.getTierByOrdinal(upgradeSupportedTierClient);
     }
 
@@ -470,7 +474,7 @@ public final class TechStationMenu extends AbstractBaseMenu implements NamedBloc
         return getUpgradeInputStack().isEmpty()
                 && getUpgradeSupportedTier() != CyberwareTier.TIER_5
                 && !getRequiredUpgradeInputComponentStack().isEmpty()
-                && (!clientSide ? stationBlockEntity != null && stationBlockEntity.canUpgradeSupportedTier(TechStationBlockEntity.UPGRADE_INPUT_SLOT) : true);
+                && (!clientSide || PlayerStationUpgradeData.getTechUpgradeTier(player) != CyberwareTier.TIER_5);
     }
 
     public ItemStack getRequiredUpgradeInputComponentStack() {
@@ -484,11 +488,10 @@ public final class TechStationMenu extends AbstractBaseMenu implements NamedBloc
 
     public boolean tryUpgradeUpgradeSupportedTier() {
         ItemStack required = getRequiredUpgradeInputComponentStack();
-        if (stationBlockEntity == null
-                || !canUpgradeUpgradeSupportedTier()
+        if (!canUpgradeUpgradeSupportedTier()
                 || required.isEmpty()
                 || (!hasCreativeUpgradeBypass() && !consumeAccessiblePlayerItem(required))
-                || !stationBlockEntity.tryUpgradeSupportedTier(TechStationBlockEntity.UPGRADE_INPUT_SLOT)) {
+                || !PlayerStationUpgradeData.tryUpgradeTechUpgradeTier(player)) {
             return false;
         }
         broadcastChanges();

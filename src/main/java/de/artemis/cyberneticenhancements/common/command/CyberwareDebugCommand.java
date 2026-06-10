@@ -1,13 +1,26 @@
 package de.artemis.cyberneticenhancements.common.command;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import de.artemis.cyberneticenhancements.common.consumable.CyberConsumableManager;
+import de.artemis.cyberneticenhancements.common.cyberware.ArmCyberwareManager;
+import de.artemis.cyberneticenhancements.common.cyberware.CirculatoryCyberwareManager;
+import de.artemis.cyberneticenhancements.common.cyberware.CombatStatusType;
+import de.artemis.cyberneticenhancements.common.cyberware.CombatStatusManager;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareAbilities;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareEffects;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareSlot;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberstrainManager;
+import de.artemis.cyberneticenhancements.common.cyberware.FaceCyberwareManager;
+import de.artemis.cyberneticenhancements.common.cyberware.FrontalCortexManager;
+import de.artemis.cyberneticenhancements.common.cyberware.HandsCyberwareManager;
+import de.artemis.cyberneticenhancements.common.cyberware.IntegumentaryCyberwareManager;
+import de.artemis.cyberneticenhancements.common.cyberware.LegCyberwareManager;
+import de.artemis.cyberneticenhancements.common.cyberware.NervousSystemCyberwareManager;
 import de.artemis.cyberneticenhancements.common.cyberware.PlayerCyberwareInventory;
+import de.artemis.cyberneticenhancements.common.cyberware.SkeletonCyberwareManager;
 import de.artemis.cyberneticenhancements.common.cyberware.TemporaryCyberwareEffectManager;
 import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
 import net.minecraft.commands.CommandSourceStack;
@@ -25,6 +38,28 @@ public final class CyberwareDebugCommand {
         LiteralArgumentBuilder<CommandSourceStack> debugCommand = Commands.literal("debug")
                 .then(Commands.literal("cyberware")
                         .executes(context -> execute(context.getSource())))
+                .then(Commands.literal("applystatus")
+                        .then(Commands.argument("type", StringArgumentType.word())
+                                .executes(context -> applyCombatStatus(context.getSource(),
+                                        StringArgumentType.getString(context, "type"), 1, 8, true))
+                                .then(Commands.argument("stacks", IntegerArgumentType.integer(1, 3))
+                                        .executes(context -> applyCombatStatus(context.getSource(),
+                                                StringArgumentType.getString(context, "type"),
+                                                IntegerArgumentType.getInteger(context, "stacks"),
+                                                8,
+                                                true))
+                                        .then(Commands.argument("seconds", IntegerArgumentType.integer(1, 120))
+                                                .executes(context -> applyCombatStatus(context.getSource(),
+                                                        StringArgumentType.getString(context, "type"),
+                                                        IntegerArgumentType.getInteger(context, "stacks"),
+                                                        IntegerArgumentType.getInteger(context, "seconds"),
+                                                        true))
+                                                .then(Commands.argument("source", StringArgumentType.word())
+                                                        .executes(context -> applyCombatStatus(context.getSource(),
+                                                                StringArgumentType.getString(context, "type"),
+                                                                IntegerArgumentType.getInteger(context, "stacks"),
+                                                                IntegerArgumentType.getInteger(context, "seconds"),
+                                                                !"ambient".equalsIgnoreCase(StringArgumentType.getString(context, "source")))))))))
                 .then(Commands.literal("reset")
                         .then(Commands.literal("cooldowns")
                                 .executes(context -> resetCooldowns(context.getSource())))
@@ -90,6 +125,15 @@ public final class CyberwareDebugCommand {
         ServerPlayer player = source.getPlayerOrException();
         CyberConsumableManager.clearCooldowns(player);
         CyberwareAbilities.clearCooldowns(player);
+        ArmCyberwareManager.clearCooldowns(player);
+        CirculatoryCyberwareManager.clearCooldowns(player);
+        FaceCyberwareManager.clearCooldowns(player);
+        FrontalCortexManager.clearCooldowns(player);
+        HandsCyberwareManager.clearCooldowns(player);
+        IntegumentaryCyberwareManager.clearCooldowns(player);
+        SkeletonCyberwareManager.clearCooldowns(player);
+        NervousSystemCyberwareManager.clearCooldowns(player);
+        LegCyberwareManager.clearCooldowns(player);
         CyberwareEffects.refreshPlayerCyberware(player);
         source.sendSuccess(() -> Component.literal("Cleared all cyberware and consumable cooldowns."), false);
         return 1;
@@ -99,6 +143,7 @@ public final class CyberwareDebugCommand {
         ServerPlayer player = source.getPlayerOrException();
         TemporaryCyberwareEffectManager.clearEffects(player);
         CyberstrainManager.clearTemporaryStatuses(player);
+        CombatStatusManager.clearStatuses(player);
         CyberwareEffects.refreshPlayerCyberware(player);
         source.sendSuccess(() -> Component.literal("Cleared all temporary cyberware statuses and buffs."), false);
         return 1;
@@ -108,10 +153,48 @@ public final class CyberwareDebugCommand {
         ServerPlayer player = source.getPlayerOrException();
         CyberConsumableManager.clearCooldowns(player);
         CyberwareAbilities.clearCooldowns(player);
+        ArmCyberwareManager.clearCooldowns(player);
+        CirculatoryCyberwareManager.clearCooldowns(player);
+        FaceCyberwareManager.clearCooldowns(player);
+        FrontalCortexManager.clearCooldowns(player);
+        HandsCyberwareManager.clearCooldowns(player);
+        IntegumentaryCyberwareManager.clearCooldowns(player);
+        SkeletonCyberwareManager.clearCooldowns(player);
+        NervousSystemCyberwareManager.clearCooldowns(player);
+        LegCyberwareManager.clearCooldowns(player);
         TemporaryCyberwareEffectManager.clearEffects(player);
         CyberstrainManager.clearTemporaryStatuses(player);
+        CombatStatusManager.clearStatuses(player);
         CyberwareEffects.refreshPlayerCyberware(player);
         source.sendSuccess(() -> Component.literal("Cleared all cooldowns and temporary cyberware statuses."), false);
         return 1;
+    }
+
+    private static int applyCombatStatus(
+            CommandSourceStack source,
+            String rawType,
+            int stacks,
+            int seconds,
+            boolean playerApplied
+    ) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        CombatStatusType type = parseCombatStatusType(rawType);
+        if (type == null) {
+            source.sendFailure(Component.literal("Unknown combat status: " + rawType + " (use shock, overheat, corrosion, trauma, bleed, or mark)"));
+            return 0;
+        }
+
+        CombatStatusManager.applyStatus(player, type, seconds * 20L, stacks, playerApplied);
+        source.sendSuccess(() -> Component.literal("Applied " + type.id() + " x" + stacks + " for " + seconds + "s (" + (playerApplied ? "player" : "ambient") + ")."), false);
+        return 1;
+    }
+
+    private static CombatStatusType parseCombatStatusType(String rawType) {
+        String normalized = rawType.trim().replace('-', '_').toUpperCase(java.util.Locale.ROOT);
+        try {
+            return CombatStatusType.valueOf(normalized);
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
     }
 }

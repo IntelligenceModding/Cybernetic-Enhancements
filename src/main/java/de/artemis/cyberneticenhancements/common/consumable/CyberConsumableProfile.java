@@ -53,6 +53,7 @@ public enum CyberConsumableProfile {
             case CHROME_SUPPRESSANT -> CyberstrainManager.applySuppressionDose(player, 8, 12_000, false);
             case BLACK_LACE -> {
                 reduceHealthFraction(player, 0.35F);
+                CyberstrainManager.addInstability(player, 16.0D);
                 TemporaryCyberwareEffectManager.addEffects(player, 6_000,
                         CyberwareEffect.moveSpeed(0.40D),
                         CyberwareEffect.damage(4.0D),
@@ -60,11 +61,13 @@ public enum CyberConsumableProfile {
                         CyberwareEffect.breakSpeed(0.20D));
             }
             case ASSKICK -> {
+                CyberstrainManager.addInstability(player, 7.0D);
                 TemporaryCyberwareEffectManager.addEffect(player, CyberwareEffect.hearts(8.0D), 7_200);
                 player.addEffect(new MobEffectInstance(MobEffects.HUNGER, 7_200, 0, true, false, false));
             }
             case JELLYTRICITY -> {
                 reduceHealthFraction(player, 0.15F);
+                CyberstrainManager.addInstability(player, 10.0D);
                 TemporaryCyberwareEffectManager.addEffects(player, 7_200,
                         CyberwareEffect.moveSpeed(0.40D),
                         CyberwareEffect.breakSpeed(0.40D));

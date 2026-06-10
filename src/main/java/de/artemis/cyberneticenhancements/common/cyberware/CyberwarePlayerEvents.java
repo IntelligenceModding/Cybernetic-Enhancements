@@ -17,6 +17,8 @@ public final class CyberwarePlayerEvents {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
             CyberwareEffects.refreshPlayerCyberware(serverPlayer);
             CyberstrainManager.syncControlLock(serverPlayer);
+            PsychosisBossBarManager.onPlayerLogin(serverPlayer);
+            PsychosisBossBarManager.update(serverPlayer);
         }
     }
 
@@ -24,6 +26,8 @@ public final class CyberwarePlayerEvents {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
             CyberwareEffects.refreshPlayerCyberware(serverPlayer);
             CyberstrainManager.syncControlLock(serverPlayer);
+            PsychosisBossBarManager.onPlayerLogin(serverPlayer);
+            PsychosisBossBarManager.update(serverPlayer);
         }
     }
 
@@ -31,6 +35,14 @@ public final class CyberwarePlayerEvents {
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
             CyberwareEffects.refreshPlayerCyberware(serverPlayer);
             CyberstrainManager.syncControlLock(serverPlayer);
+            PsychosisBossBarManager.onPlayerLogin(serverPlayer);
+            PsychosisBossBarManager.update(serverPlayer);
+        }
+    }
+
+    public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer serverPlayer) {
+            PsychosisBossBarManager.onPlayerLogout(serverPlayer);
         }
     }
 }

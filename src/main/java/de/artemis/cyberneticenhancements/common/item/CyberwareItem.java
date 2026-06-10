@@ -1,10 +1,20 @@
 package de.artemis.cyberneticenhancements.common.item;
 
 import de.artemis.cyberneticenhancements.common.cyberware.ChipwareSocketHandler;
+import de.artemis.cyberneticenhancements.common.cyberware.ArmCyberwareManager;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareDefinition;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareConditionHelper;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareEffect;
+import de.artemis.cyberneticenhancements.common.cyberware.CyberwareAbilities;
+import de.artemis.cyberneticenhancements.common.cyberware.CirculatoryCyberwareManager;
+import de.artemis.cyberneticenhancements.common.cyberware.FrontalCortexManager;
+import de.artemis.cyberneticenhancements.common.cyberware.FaceCyberwareManager;
+import de.artemis.cyberneticenhancements.common.cyberware.HandsCyberwareManager;
+import de.artemis.cyberneticenhancements.common.cyberware.IntegumentaryCyberwareManager;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareModuleHandler;
+import de.artemis.cyberneticenhancements.common.cyberware.LegCyberwareManager;
+import de.artemis.cyberneticenhancements.common.cyberware.NervousSystemCyberwareManager;
+import de.artemis.cyberneticenhancements.common.cyberware.SkeletonCyberwareManager;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareSlotType;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareTier;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareUpgradeHelper;
@@ -102,6 +112,16 @@ public class CyberwareItem extends Item {
         for (CyberwareEffect effect : definition.effects()) {
             tooltipComponents.add(effect.describe().copy().withStyle(ChatFormatting.GREEN));
         }
+        FrontalCortexManager.appendBehaviorTooltip(definition, tooltipComponents);
+        CyberwareAbilities.appendBehaviorTooltip(definition, tooltipComponents);
+        ArmCyberwareManager.appendBehaviorTooltip(definition, tooltipComponents);
+        FaceCyberwareManager.appendBehaviorTooltip(definition, tooltipComponents);
+        CirculatoryCyberwareManager.appendBehaviorTooltip(definition, tooltipComponents);
+        HandsCyberwareManager.appendBehaviorTooltip(definition, tooltipComponents);
+        IntegumentaryCyberwareManager.appendBehaviorTooltip(definition, tooltipComponents);
+        SkeletonCyberwareManager.appendBehaviorTooltip(definition, tooltipComponents);
+        NervousSystemCyberwareManager.appendBehaviorTooltip(definition, tooltipComponents);
+        LegCyberwareManager.appendBehaviorTooltip(definition, tooltipComponents);
         if (definition.isPlaceholder()) {
             tooltipComponents.add(Component.translatable("tooltip.cyberneticenhancements.placeholder_effect").withStyle(ChatFormatting.DARK_GRAY));
         }

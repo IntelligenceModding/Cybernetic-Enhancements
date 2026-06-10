@@ -55,6 +55,14 @@ public final class CyberwareModuleCatalog {
             net.minecraft.world.level.ItemLike motifItem,
             CyberwareEffect... effects
     ) {
-        return new CyberwareModuleDefinition(id, displayName, category, tier, description, motifItem, List.of(effects));
+        return new CyberwareModuleDefinition(
+                id,
+                displayName,
+                category,
+                tier,
+                description,
+                motifItem,
+                CyberwareBalance.resolveModuleEffects(id)
+        );
     }
 }

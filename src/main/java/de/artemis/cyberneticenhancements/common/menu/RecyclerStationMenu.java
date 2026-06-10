@@ -62,6 +62,10 @@ public final class RecyclerStationMenu extends AbstractBaseMenu implements Named
         };
         this.resultInventory = new SimpleContainer(RESULT_SLOT_COUNT);
 
+        if (!clientSide && stationBlockEntity != null) {
+            PlayerStationUpgradeData.migrateRecyclerTier(player, stationBlockEntity.getSupportedTierOrdinal(RecyclerStationBlockEntity.INPUT_SLOT));
+        }
+
         addStationSlots();
         addPlayerInventorySlots(playerInventory, RecyclerStationLayout.PLAYER_INVENTORY_X, RecyclerStationLayout.PLAYER_INVENTORY_Y);
         addPlayerHotbarSlots(playerInventory, RecyclerStationLayout.PLAYER_INVENTORY_X, RecyclerStationLayout.PLAYER_HOTBAR_Y);
@@ -99,7 +103,7 @@ public final class RecyclerStationMenu extends AbstractBaseMenu implements Named
         addDataSlot(new DataSlot() {
             @Override
             public int get() {
-                return stationBlockEntity != null ? stationBlockEntity.getSupportedTierOrdinal(RecyclerStationBlockEntity.INPUT_SLOT) : supportedTierClient;
+                return !clientSide ? PlayerStationUpgradeData.getRecyclerTier(player).ordinal() : supportedTierClient;
             }
 
             @Override
@@ -309,8 +313,8 @@ public final class RecyclerStationMenu extends AbstractBaseMenu implements Named
     }
 
     public CyberwareTier getSupportedTier() {
-        return !clientSide && stationBlockEntity != null
-                ? stationBlockEntity.getSupportedTier(RecyclerStationBlockEntity.INPUT_SLOT)
+        return !clientSide
+                ? PlayerStationUpgradeData.getRecyclerTier(player)
                 : RecyclerStationBlockEntity.getTierByOrdinal(supportedTierClient);
     }
 
@@ -323,7 +327,7 @@ public final class RecyclerStationMenu extends AbstractBaseMenu implements Named
         return getInputStack().isEmpty()
                 && getSupportedTier() != CyberwareTier.TIER_5
                 && !getRequiredUpgradeComponentStack().isEmpty()
-                && (!clientSide ? stationBlockEntity != null && stationBlockEntity.canUpgradeSupportedTier(RecyclerStationBlockEntity.INPUT_SLOT) : true);
+                && (!clientSide || PlayerStationUpgradeData.getRecyclerTier(player) != CyberwareTier.TIER_5);
     }
 
     public ItemStack getRequiredUpgradeComponentStack() {
@@ -337,11 +341,10 @@ public final class RecyclerStationMenu extends AbstractBaseMenu implements Named
 
     public boolean tryUpgradeSupportedTier() {
         ItemStack required = getRequiredUpgradeComponentStack();
-        if (stationBlockEntity == null
-                || !canUpgradeSupportedTier()
+        if (!canUpgradeSupportedTier()
                 || required.isEmpty()
                 || (!hasCreativeUpgradeBypass() && !consumeAccessiblePlayerItem(required))
-                || !stationBlockEntity.tryUpgradeSupportedTier(RecyclerStationBlockEntity.INPUT_SLOT)) {
+                || !PlayerStationUpgradeData.tryUpgradeRecyclerTier(player)) {
             return false;
         }
         broadcastChanges();

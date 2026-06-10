@@ -2,7 +2,13 @@ package de.artemis.cyberneticenhancements;
 
 import de.artemis.cyberneticenhancements.common.command.CyberwareDebugCommand;
 import de.artemis.cyberneticenhancements.common.command.CyberpsychosisCommand;
+import de.artemis.cyberneticenhancements.common.cyberware.CombatStatusManager;
+import de.artemis.cyberneticenhancements.common.cyberware.CirculatoryCyberwareManager;
+import de.artemis.cyberneticenhancements.common.cyberware.CyberwareBalance;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareEffects;
+import de.artemis.cyberneticenhancements.common.cyberware.HandsCyberwareManager;
+import de.artemis.cyberneticenhancements.common.cyberware.IntegumentaryCyberwareManager;
+import de.artemis.cyberneticenhancements.common.cyberware.NervousSystemCyberwareManager;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwarePlayerEvents;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberstrainManager;
 import de.artemis.cyberneticenhancements.common.datagen.DataGenerators;
@@ -25,6 +31,7 @@ public class CyberneticEnhancements {
     public static final String MOD_ID = "cyberneticenhancements";
 
     public CyberneticEnhancements(IEventBus modEventBus) {
+        CyberwareBalance.initialize();
         ModItems.register(modEventBus);
         ModBlocks.register(modEventBus);
         ModBlockEntities.register(modEventBus);
@@ -39,8 +46,16 @@ public class CyberneticEnhancements {
         NeoForge.EVENT_BUS.addListener(CyberwarePlayerEvents::onPlayerClone);
         NeoForge.EVENT_BUS.addListener(CyberwarePlayerEvents::onPlayerRespawn);
         NeoForge.EVENT_BUS.addListener(CyberwarePlayerEvents::onPlayerLogin);
+        NeoForge.EVENT_BUS.addListener(CyberwarePlayerEvents::onPlayerLogout);
         NeoForge.EVENT_BUS.addListener(CyberstrainManager::onLivingHeal);
         NeoForge.EVENT_BUS.addListener(CyberwareEffects::onIncomingDamage);
+        NeoForge.EVENT_BUS.addListener(CombatStatusManager::onKnockback);
+        NeoForge.EVENT_BUS.addListener(CirculatoryCyberwareManager::onKnockback);
+        NeoForge.EVENT_BUS.addListener(HandsCyberwareManager::onKnockback);
+        NeoForge.EVENT_BUS.addListener(IntegumentaryCyberwareManager::onKnockback);
+        NeoForge.EVENT_BUS.addListener(NervousSystemCyberwareManager::onKnockback);
+        NeoForge.EVENT_BUS.addListener(CombatStatusManager::onLevelTick);
+        NeoForge.EVENT_BUS.addListener(CyberwareEffects::onLivingDeath);
         NeoForge.EVENT_BUS.addListener(CyberneticEnhancements::registerCommands);
     }
 

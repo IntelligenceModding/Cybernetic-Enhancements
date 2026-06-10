@@ -611,6 +611,9 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
     }
 
     public CyberwareTier getSupportedTier(CyberwareSlot slot) {
+        if (!player.level().isClientSide()) {
+            return cyberwareInventory.getSupportedTier(slot.ordinal());
+        }
         int ordinal = supportedTierClient[slot.ordinal()];
         return ordinal >= 0 && ordinal < CyberwareTier.values().length ? CyberwareTier.values()[ordinal] : CyberwareTier.TIER_1;
     }
@@ -639,7 +642,11 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
     }
 
     public boolean tryUpgradeSupportedTier(CyberwareSlot slot) {
-        return cyberwareInventory.tryUpgradeSupportedTier(slot.ordinal());
+        boolean upgraded = cyberwareInventory.tryUpgradeSupportedTier(slot.ordinal());
+        if (upgraded) {
+            broadcastChanges();
+        }
+        return upgraded;
     }
 
     private static void mergeEffects(EnumMap<CyberwareEffectType, Double> totals, Iterable<CyberwareEffect> effects, double scale) {
@@ -659,6 +666,9 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
     }
 
     public CyberwareTier getChipSupportedTier(int handlerIndex, int slot) {
+        if (!player.level().isClientSide()) {
+            return chipwareInventories[handlerIndex].getSupportedTier(slot);
+        }
         return getTierByOrdinal(chipSupportedTierClient[handlerIndex][slot]);
     }
 
@@ -684,10 +694,17 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
     }
 
     public boolean tryUpgradeChipSupportedTier(int handlerIndex, int slot) {
-        return chipwareInventories[handlerIndex].tryUpgradeSupportedTier(slot);
+        boolean upgraded = chipwareInventories[handlerIndex].tryUpgradeSupportedTier(slot);
+        if (upgraded) {
+            broadcastChanges();
+        }
+        return upgraded;
     }
 
     public CyberwareTier getArmModuleSupportedTier(int slot) {
+        if (!player.level().isClientSide()) {
+            return armModuleInventory.getSupportedTier(slot);
+        }
         return getTierByOrdinal(armModuleSupportedTierClient[slot]);
     }
 
@@ -713,10 +730,17 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
     }
 
     public boolean tryUpgradeArmModuleSupportedTier(int slot) {
-        return armModuleInventory.tryUpgradeSupportedTier(slot);
+        boolean upgraded = armModuleInventory.tryUpgradeSupportedTier(slot);
+        if (upgraded) {
+            broadcastChanges();
+        }
+        return upgraded;
     }
 
     public CyberwareTier getLegModuleSupportedTier(int slot) {
+        if (!player.level().isClientSide()) {
+            return legModuleInventory.getSupportedTier(slot);
+        }
         return getTierByOrdinal(legModuleSupportedTierClient[slot]);
     }
 
@@ -742,7 +766,11 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
     }
 
     public boolean tryUpgradeLegModuleSupportedTier(int slot) {
-        return legModuleInventory.tryUpgradeSupportedTier(slot);
+        boolean upgraded = legModuleInventory.tryUpgradeSupportedTier(slot);
+        if (upgraded) {
+            broadcastChanges();
+        }
+        return upgraded;
     }
 
     private ItemStack getRequiredUpgradeComponentStack(CyberwareTier currentTier) {

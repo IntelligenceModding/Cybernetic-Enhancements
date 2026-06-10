@@ -156,13 +156,11 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
 
             if (tag.contains(ENTRIES_KEY, Tag.TAG_LIST)) {
                 loadCurrentFormat(registries, tag.getList(ENTRIES_KEY, Tag.TAG_COMPOUND));
-                loadSupportedTiers(tag);
-                return;
-            }
-
-            if (tag.contains("Items", Tag.TAG_LIST)) {
+            } else if (tag.contains("Items", Tag.TAG_LIST)) {
                 loadLegacyFormat(registries, tag);
             }
+
+            loadSupportedTiers(tag);
         } finally {
             suppressSave = false;
         }
@@ -451,13 +449,18 @@ public final class PlayerCyberwareInventory extends ItemStackHandler {
     }
 
     public boolean hasInstalledCyberware(String definitionId) {
+        return countInstalledCyberware(definitionId) > 0;
+    }
+
+    public int countInstalledCyberware(String definitionId) {
+        int count = 0;
         for (int slot = 0; slot < getSlots(); slot++) {
             if (getStackInSlot(slot).getItem() instanceof CyberwareItem cyberwareItem
                     && cyberwareItem.getDefinition().id().equals(definitionId)) {
-                return true;
+                count++;
             }
         }
-        return false;
+        return count;
     }
 
     public int getChromeCapacity() {
