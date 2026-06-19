@@ -11,9 +11,11 @@ import de.artemis.cyberneticenhancements.common.menu.TechStationMenu;
 import de.artemis.cyberneticenhancements.common.network.UpgradeStationInputSlotPayload;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -201,7 +203,7 @@ public final class TechStationScreen extends AbstractContainerScreen<TechStation
     }
 
     private void drawPlanMaterial(GuiGraphics guiGraphics, int count, ItemStack stack, int x, int y, int maxWidth, boolean ready) {
-        Component amount = Component.literal(count + "x ");
+        Component amount = Component.translatable("screen.cyberneticenhancements.common.count_prefix", count);
         guiGraphics.drawString(font, amount, x, y, ready ? ACCENT : WARNING, false);
         int materialX = x + font.width(amount);
         drawTrimmedText(guiGraphics, stack.getHoverName(), materialX, y, Math.max(0, maxWidth - font.width(amount)), ready ? TEXT_PRIMARY : TEXT_SECONDARY);
@@ -212,12 +214,18 @@ public final class TechStationScreen extends AbstractContainerScreen<TechStation
     }
 
     private void drawTrimmedText(GuiGraphics guiGraphics, Component text, int x, int y, int maxWidth, int color) {
-        String raw = text.getString();
-        String trimmed = raw;
-        if (font.width(raw) > maxWidth) {
-            trimmed = font.plainSubstrByWidth(raw, Math.max(0, maxWidth - font.width("..."))) + "...";
+        guiGraphics.drawString(font, trimStyled(text, maxWidth), x, y, color, false);
+    }
+
+    private FormattedCharSequence trimStyled(Component text, int maxWidth) {
+        if (font.width(text) <= maxWidth) {
+            return Language.getInstance().getVisualOrder(text);
         }
-        guiGraphics.drawString(font, trimmed, x, y, color, false);
+
+        int ellipsisWidth = font.width("...");
+        FormattedText base = font.substrByWidth(text, Math.max(0, maxWidth - ellipsisWidth));
+        FormattedText combined = FormattedText.composite(base, Component.literal("..."));
+        return Language.getInstance().getVisualOrder(combined);
     }
 
     private void drawWrappedText(GuiGraphics guiGraphics, Component text, int x, int y, int maxWidth, int color, int maxLines) {

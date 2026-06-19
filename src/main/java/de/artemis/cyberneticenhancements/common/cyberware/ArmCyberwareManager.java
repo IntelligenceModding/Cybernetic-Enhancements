@@ -3,19 +3,25 @@ package de.artemis.cyberneticenhancements.common.cyberware;
 import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
 import de.artemis.cyberneticenhancements.common.item.CyberwareModuleItem;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.neoforged.neoforge.event.level.BlockEvent;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -44,14 +50,18 @@ public final class ArmCyberwareManager {
     private static final String ELECTRIFYING_PROJECTILE_LAUNCH_SYSTEM_ID = "electrifying_projectile_launch_system";
     private static final String THERMAL_PROJECTILE_LAUNCH_SYSTEM_ID = "thermal_projectile_launch_system";
     private static final String TOXIC_PROJECTILE_LAUNCH_SYSTEM_ID = "toxic_projectile_launch_system";
+    private static final String EXCAVATOR_ARMS_ID = "excavator_arms";
     private static final String SHOCK_PALM_MODULE_ID = "shock_palm";
 
     private static final Map<UUID, Long> ARM_COOLDOWN_UNTIL_TICK = new HashMap<>();
     private static final Map<UUID, Integer> ARM_COOLDOWN_TOTAL_SECONDS = new HashMap<>();
+    private static final Map<UUID, Long> ACTIVE_ARM_UNTIL_TICKS = new HashMap<>();
+    private static final Map<UUID, Integer> ACTIVE_ARM_TOTAL_SECONDS = new HashMap<>();
     private static final Map<UUID, MantisLungeState> MANTIS_LUNGE_STATES = new HashMap<>();
     private static final Map<UUID, GorillaRushState> GORILLA_RUSH_STATES = new HashMap<>();
     private static final Map<UUID, MonowireSweepState> MONOWIRE_SWEEP_STATES = new HashMap<>();
     private static final Map<UUID, ProjectileLaunchState> PROJECTILE_LAUNCH_STATES = new HashMap<>();
+    private static final Set<UUID> EXCAVATOR_CHAIN_BREAKERS = new HashSet<>();
 
     private ArmCyberwareManager() {
     }
@@ -98,6 +108,7 @@ public final class ArmCyberwareManager {
             case ELECTRIFYING_PROJECTILE_LAUNCH_SYSTEM_ID -> activateProjectileSystem(player, inventory, id, 19, 8.5F, 3.5D, 22.0D);
             case THERMAL_PROJECTILE_LAUNCH_SYSTEM_ID -> activateProjectileSystem(player, inventory, id, 19, 8.5F, 3.5D, 22.0D);
             case TOXIC_PROJECTILE_LAUNCH_SYSTEM_ID -> activateProjectileSystem(player, inventory, id, 19, 8.5F, 3.5D, 22.0D);
+            case EXCAVATOR_ARMS_ID -> activateExcavatorArms(player, inventory, id);
             default -> notify(player, "message.cyberneticenhancements.arms.no_active_ability");
         }
     }
@@ -120,7 +131,8 @@ public final class ArmCyberwareManager {
                  PROJECTILE_LAUNCH_SYSTEM_ID,
                  ELECTRIFYING_PROJECTILE_LAUNCH_SYSTEM_ID,
                  THERMAL_PROJECTILE_LAUNCH_SYSTEM_ID,
-                 TOXIC_PROJECTILE_LAUNCH_SYSTEM_ID -> true;
+                 TOXIC_PROJECTILE_LAUNCH_SYSTEM_ID,
+                 EXCAVATOR_ARMS_ID -> true;
             default -> false;
         };
     }
@@ -143,7 +155,17 @@ public final class ArmCyberwareManager {
         return ARM_COOLDOWN_TOTAL_SECONDS.getOrDefault(player.getUUID(), 0);
     }
 
+    public static int getActiveSecondsRemaining(Player player) {
+        long remainingTicks = Math.max(0L, ACTIVE_ARM_UNTIL_TICKS.getOrDefault(player.getUUID(), 0L) - player.level().getGameTime());
+        return (int) ((remainingTicks + 19L) / 20L);
+    }
+
+    public static int getActiveTotalSeconds(Player player) {
+        return ACTIVE_ARM_TOTAL_SECONDS.getOrDefault(player.getUUID(), 0);
+    }
+
     public static void onPlayerTick(Player player) {
+        tickExcavatorMode(player);
         tickProjectileLaunch(player);
         tickMonowireSweep(player);
         tickGorillaRush(player);
@@ -172,6 +194,55 @@ public final class ArmCyberwareManager {
 
         event.setAmount(event.getAmount() + 0.75F * shockPalmCount);
         CombatStatusManager.applyStatus(event.getEntity(), CombatStatusType.SHOCK, 50L + shockPalmCount * 20L, 1 + Math.max(0, shockPalmCount - 1), true);
+    }
+
+    public static void onBlockBreak(BlockEvent.BreakEvent event) {
+        if (event.isCanceled() || event.getLevel().isClientSide()) {
+            return;
+        }
+        if (!(event.getPlayer() instanceof ServerPlayer player)) {
+            return;
+        }
+        if (EXCAVATOR_CHAIN_BREAKERS.contains(player.getUUID()) || !isExcavatorModeActive(player)) {
+            return;
+        }
+
+        PlayerCyberwareInventory inventory = new PlayerCyberwareInventory(player);
+        CyberwareItem armware = inventory.getInstalledCyberwareBySlotType(CyberwareSlotType.ARMS);
+        if (armware == null || !EXCAVATOR_ARMS_ID.equals(armware.getDefinition().id())) {
+            clearExcavatorMode(player);
+            return;
+        }
+
+        BlockState centerState = event.getState();
+        BlockPos centerPos = event.getPos();
+        if (!canExcavate(player, centerState) || isOreBlock(centerState)) {
+            return;
+        }
+
+        EXCAVATOR_CHAIN_BREAKERS.add(player.getUUID());
+        try {
+            int destroyed = 0;
+            for (BlockPos targetPos : excavatorPattern(centerPos, resolveExcavatorFace(player))) {
+                if (targetPos.equals(centerPos)) {
+                    continue;
+                }
+
+                BlockState targetState = player.level().getBlockState(targetPos);
+                if (!canExcavateInPattern(player, targetPos, centerPos, targetState)) {
+                    continue;
+                }
+                if (player.gameMode.destroyBlock(targetPos)) {
+                    destroyed++;
+                }
+            }
+
+            if (destroyed > 0) {
+                spawnExcavatorFeedback(player, centerPos);
+            }
+        } finally {
+            EXCAVATOR_CHAIN_BREAKERS.remove(player.getUUID());
+        }
     }
 
     public static String getInstalledArmsTranslationKey(PlayerCyberwareInventory inventory) {
@@ -204,6 +275,7 @@ public final class ArmCyberwareManager {
 
     public static void clearCooldowns(Player player) {
         clearCooldown(player);
+        clearExcavatorMode(player);
         clearMantisLunge(player);
         clearGorillaRush(player);
         clearMonowireSweep(player);
@@ -282,12 +354,84 @@ public final class ArmCyberwareManager {
         tickProjectileLaunch(player);
     }
 
+    private static void activateExcavatorArms(Player player, PlayerCyberwareInventory inventory, String id) {
+        if (!(player instanceof ServerPlayer)) {
+            return;
+        }
+        if (isExcavatorModeActive(player)) {
+            notify(player, "message.cyberneticenhancements.arms.active", Component.translatable(itemTranslationKey(id)));
+            return;
+        }
+
+        int activeSeconds = CyberwareBalance.intValue("arms.excavator.active_seconds");
+        long activeTicks = activeSeconds * 20L;
+        ACTIVE_ARM_UNTIL_TICKS.put(player.getUUID(), player.level().getGameTime() + activeTicks);
+        ACTIVE_ARM_TOTAL_SECONDS.put(player.getUUID(), activeSeconds);
+        TemporaryCyberwareEffectManager.addEffect(player, CyberwareEffect.breakSpeed(CyberwareBalance.doubleValue("arms.excavator.break_speed_bonus")), activeTicks);
+        startCooldown(player, inventory, CyberwareBalance.intValue("arms.excavator.cooldown_seconds"));
+        spawnExcavatorActivationFeedback(player);
+        notify(player, "message.cyberneticenhancements.arms.excavator_mode", Component.translatable(itemTranslationKey(id)), activeSeconds);
+    }
+
     private static void startCooldown(Player player, PlayerCyberwareInventory inventory, int cooldownSeconds) {
         long adjustedCooldown = FrontalCortexManager.adjustCyberwareCooldownTicks(player, inventory, cooldownSeconds * 20L, true);
         ARM_COOLDOWN_UNTIL_TICK.put(player.getUUID(), player.level().getGameTime() + adjustedCooldown);
         ARM_COOLDOWN_TOTAL_SECONDS.put(player.getUUID(), (int) Math.max(1L, (adjustedCooldown + 19L) / 20L));
         CyberstrainManager.onCyberwareActivated(player, Math.max(7.0D, cooldownSeconds * 0.45D));
         CyberwareEffects.refreshPlayerCyberware(player);
+    }
+
+    private static List<BlockPos> excavatorPattern(BlockPos centerPos, Direction face) {
+        List<BlockPos> positions = new ArrayList<>(9);
+        for (int a = -1; a <= 1; a++) {
+            for (int b = -1; b <= 1; b++) {
+                BlockPos targetPos = switch (face.getAxis()) {
+                    case Y -> centerPos.offset(a, 0, b);
+                    case X -> centerPos.offset(0, a, b);
+                    case Z -> centerPos.offset(a, b, 0);
+                };
+                positions.add(targetPos);
+            }
+        }
+        return positions;
+    }
+
+    private static boolean canExcavateInPattern(Player player, BlockPos targetPos, BlockPos centerPos, BlockState state) {
+        if (!canExcavate(player, state)) {
+            return false;
+        }
+        if (!targetPos.equals(centerPos) && isOreBlock(state)) {
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean canExcavate(Player player, BlockState state) {
+        if (state.isAir() || state.getDestroySpeed(player.level(), player.blockPosition()) < 0.0F || state.hasBlockEntity()) {
+            return false;
+        }
+        if (player.getMainHandItem().isEmpty() || !player.getMainHandItem().isCorrectToolForDrops(state)) {
+            return false;
+        }
+        return state.is(BlockTags.MINEABLE_WITH_PICKAXE)
+                || state.is(BlockTags.MINEABLE_WITH_SHOVEL)
+                || state.is(BlockTags.MINEABLE_WITH_AXE)
+                || state.is(BlockTags.MINEABLE_WITH_HOE);
+    }
+
+    private static boolean isOreBlock(BlockState state) {
+        String path = BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath();
+        return path.endsWith("_ore") || path.equals("ancient_debris");
+    }
+
+    private static Direction resolveExcavatorFace(Player player) {
+        Vec3 look = player.getLookAngle();
+        if (Math.abs(look.y) >= 0.65D) {
+            return look.y > 0.0D ? Direction.UP : Direction.DOWN;
+        }
+        return Math.abs(look.x) >= Math.abs(look.z)
+                ? (look.x > 0.0D ? Direction.EAST : Direction.WEST)
+                : (look.z > 0.0D ? Direction.SOUTH : Direction.NORTH);
     }
 
     private static void hitTarget(Player player, LivingEntity target, float damage) {
@@ -802,6 +946,47 @@ public final class ArmCyberwareManager {
         PROJECTILE_LAUNCH_STATES.remove(player.getUUID());
     }
 
+    private static void tickExcavatorMode(Player player) {
+        long until = ACTIVE_ARM_UNTIL_TICKS.getOrDefault(player.getUUID(), 0L);
+        if (until <= 0L) {
+            return;
+        }
+        if (!player.isAlive()) {
+            clearExcavatorMode(player);
+            return;
+        }
+
+        PlayerCyberwareInventory inventory = new PlayerCyberwareInventory(player);
+        CyberwareItem armware = inventory.getInstalledCyberwareBySlotType(CyberwareSlotType.ARMS);
+        if (armware == null || !EXCAVATOR_ARMS_ID.equals(armware.getDefinition().id()) || until <= player.level().getGameTime()) {
+            clearExcavatorMode(player);
+            return;
+        }
+
+        if (player.tickCount % 10 == 0) {
+            spawnExcavatorModeTrail(player);
+        }
+    }
+
+    private static boolean isExcavatorModeActive(Player player) {
+        return ACTIVE_ARM_UNTIL_TICKS.getOrDefault(player.getUUID(), 0L) > player.level().getGameTime();
+    }
+
+    private static void clearExcavatorMode(Player player) {
+        ACTIVE_ARM_UNTIL_TICKS.remove(player.getUUID());
+        ACTIVE_ARM_TOTAL_SECONDS.remove(player.getUUID());
+    }
+
+    private static void spawnExcavatorModeTrail(Player player) {
+        if (!(player.level() instanceof ServerLevel level)) {
+            return;
+        }
+
+        Vec3 center = player.getBoundingBox().getCenter().add(flattenLook(player).scale(0.45D));
+        level.sendParticles(ParticleTypes.CRIT, center.x, center.y + 0.16D, center.z, 4, 0.10D, 0.08D, 0.10D, 0.03D);
+        level.sendParticles(ParticleTypes.POOF, center.x, center.y + 0.08D, center.z, 2, 0.08D, 0.06D, 0.08D, 0.01D);
+    }
+
     private static void spawnMantisLungeStartFeedback(Player player, String id) {
         if (!(player.level() instanceof ServerLevel level)) {
             return;
@@ -1028,6 +1213,28 @@ public final class ArmCyberwareManager {
             case TOXIC_PROJECTILE_LAUNCH_SYSTEM_ID -> level.sendParticles(ParticleTypes.SNEEZE, center.x, center.y + 0.18D, center.z, 5, 0.14D, 0.14D, 0.14D, 0.02D);
             default -> level.sendParticles(ParticleTypes.CRIT, center.x, center.y + 0.20D, center.z, 4, 0.14D, 0.14D, 0.14D, 0.02D);
         }
+    }
+
+    private static void spawnExcavatorFeedback(Player player, BlockPos centerPos) {
+        if (!(player.level() instanceof ServerLevel level)) {
+            return;
+        }
+
+        Vec3 center = Vec3.atCenterOf(centerPos);
+        level.sendParticles(ParticleTypes.POOF, center.x, center.y, center.z, 10, 0.75D, 0.35D, 0.75D, 0.03D);
+        level.sendParticles(ParticleTypes.CRIT, center.x, center.y + 0.1D, center.z, 10, 0.85D, 0.35D, 0.85D, 0.06D);
+        level.playSound(null, center.x, center.y, center.z, SoundEvents.STONE_BREAK, SoundSource.PLAYERS, 0.45F, 0.85F);
+    }
+
+    private static void spawnExcavatorActivationFeedback(Player player) {
+        if (!(player.level() instanceof ServerLevel level)) {
+            return;
+        }
+
+        Vec3 center = player.getBoundingBox().getCenter().add(flattenLook(player).scale(0.55D));
+        level.sendParticles(ParticleTypes.CRIT, center.x, center.y + 0.2D, center.z, 10, 0.20D, 0.16D, 0.20D, 0.04D);
+        level.sendParticles(ParticleTypes.POOF, center.x, center.y + 0.1D, center.z, 8, 0.18D, 0.12D, 0.18D, 0.02D);
+        level.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 0.45F, 1.55F);
     }
 
     private static void spawnMantisImpactFeedback(Player player, LivingEntity target, String id, Vec3 direction) {

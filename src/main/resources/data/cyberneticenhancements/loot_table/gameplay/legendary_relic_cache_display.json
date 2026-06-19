@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "minecraft:item", "name": "cyberneticenhancements:quantum_tuner", "weight": 6 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:axolotl", "weight": 5 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:militech_canto", "weight": 2 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:militech_apogee", "weight": 3 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:chipware_socket_mk3", "weight": 4 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:behavioral_imprint_synced_faceplate", "weight": 3 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:second_heart", "weight": 4 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:chitin", "weight": 3 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:maxtac_mantis_blades", "weight": 2 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:pain_editor", "weight": 3 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:painducer", "weight": 3 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:cogito_lattice", "weight": 3 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:revulsor", "weight": 3 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:rara_avis", "weight": 3 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:leeroy_ligament_system", "weight": 3 }
+      ]
+    }
+  ]
+}

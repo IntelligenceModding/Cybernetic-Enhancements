@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        { "type": "minecraft:item", "name": "cyberneticenhancements:harvester_hands", "weight": 9 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:hydrolung", "weight": 8 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:kiroshi_retrieval_suite", "weight": 8 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:vein_reader_optics", "weight": 7 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:brushstep_legs", "weight": 7 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:reach_extender", "weight": 7 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:combat_actuator", "weight": 7 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:dash_piston", "weight": 6 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:sprint_motor", "weight": 6 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:climbing_servo", "weight": 6 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:scout_skillchip", "weight": 5 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:combat_skillchip", "weight": 5 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:runner_skillchip", "weight": 5 },
+        { "type": "minecraft:item", "name": "cyberneticenhancements:relic_scanner", "weight": 3 }
+      ]
+    }
+  ]
+}

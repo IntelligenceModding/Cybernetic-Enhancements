@@ -12,6 +12,11 @@ import java.util.Set;
 
 public final class ModBlockLootTableProvider extends BlockLootSubProvider {
     private static final Set<Block> DIRECT_BLOCKS = Set.of(
+            ModBlocks.RELIC_CACHE.get(),
+            ModBlocks.UNCOMMON_RELIC_CACHE.get(),
+            ModBlocks.RARE_RELIC_CACHE.get(),
+            ModBlocks.EPIC_RELIC_CACHE.get(),
+            ModBlocks.LEGENDARY_RELIC_CACHE.get(),
             ModBlocks.RIPPER_STATION.get(),
             ModBlocks.TECH_STATION.get(),
             ModBlocks.RECYCLER_STATION.get()

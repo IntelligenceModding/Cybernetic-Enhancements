@@ -223,47 +223,32 @@ public final class CyberwareUpgradeHelper {
     }
 
     private static UpgradeTemplate buildTemplate(CyberwareDefinition definition) {
+        UpgradeTemplate explicit = explicitTemplate(definition);
+        if (explicit != null) {
+            return explicit;
+        }
+
+        return buildSameModelTemplate(definition);
+    }
+
+    private static UpgradeTemplate explicitTemplate(CyberwareDefinition definition) {
+        return switch (definition.id()) {
+            case "chipware_socket" -> singleEffectTemplate(CyberwareEffectType.CHROME_CAPACITY, 3.0D);
+            case "chipware_socket_mk2" -> singleEffectTemplate(CyberwareEffectType.CHROME_CAPACITY, 4.0D);
+            case "chipware_socket_mk3" -> singleEffectTemplate(CyberwareEffectType.CHROME_CAPACITY, 5.0D);
+            default -> null;
+        };
+    }
+
+    private static UpgradeTemplate singleEffectTemplate(CyberwareEffectType type, double cap) {
         EnumMap<CyberwareEffectType, Double> effectCaps = new EnumMap<>(CyberwareEffectType.class);
-        int capacityBonusCap = 0;
-        int chipSlotCap = 0;
-        int moduleSlotCap = 0;
-
-        CyberwareDefinition current = definition;
-        CyberwareDefinition next = CyberwareCatalog.findUpgradeStep(current);
-        while (next != null) {
-            capacityBonusCap += Math.max(0, next.capacityBonus() - current.capacityBonus());
-            chipSlotCap += Math.max(0, next.chipSlotCount() - current.chipSlotCount());
-            moduleSlotCap += Math.max(0, next.moduleSlotCount() - current.moduleSlotCount());
-            accumulatePositiveEffectDeltas(effectCaps, current.effects(), next.effects());
-            current = next;
-            next = CyberwareCatalog.findUpgradeStep(current);
+        if (Math.abs(cap) > 0.0001D) {
+            effectCaps.put(type, cap);
         }
-
-        if (effectCaps.isEmpty() && capacityBonusCap <= 0 && chipSlotCap <= 0 && moduleSlotCap <= 0) {
-            return buildGenericTemplate(definition);
-        }
-        return new UpgradeTemplate(effectCaps, capacityBonusCap, chipSlotCap, moduleSlotCap);
+        return new UpgradeTemplate(effectCaps, 0, 0, 0);
     }
 
-    private static void accumulatePositiveEffectDeltas(
-            EnumMap<CyberwareEffectType, Double> effectCaps,
-            Iterable<CyberwareEffect> currentEffects,
-            Iterable<CyberwareEffect> nextEffects
-    ) {
-        EnumMap<CyberwareEffectType, Double> currentTotals = effectTotals(currentEffects);
-        EnumMap<CyberwareEffectType, Double> nextTotals = effectTotals(nextEffects);
-        for (CyberwareEffectType type : CyberwareEffectType.values()) {
-            if (type.isMobEffect()) {
-                continue;
-            }
-            double delta = nextTotals.getOrDefault(type, 0.0D) - currentTotals.getOrDefault(type, 0.0D);
-            if (delta > 0.0001D || (type == CyberwareEffectType.FALL_DAMAGE_REDUCTION && delta < -0.0001D)) {
-                effectCaps.merge(type, delta, Double::sum);
-            }
-        }
-    }
-
-    private static UpgradeTemplate buildGenericTemplate(CyberwareDefinition definition) {
+    private static UpgradeTemplate buildSameModelTemplate(CyberwareDefinition definition) {
         EnumMap<CyberwareEffectType, Double> effectCaps = new EnumMap<>(CyberwareEffectType.class);
         for (CyberwareEffect effect : definition.effects()) {
             if (effect.type().isMobEffect()) {
@@ -276,8 +261,9 @@ public final class CyberwareUpgradeHelper {
         }
 
         int capacityBonusCap = definition.capacityBonus() > 0
-                ? Math.max(4, (int) Math.round(definition.capacityBonus() * 0.5D))
+                ? Math.max(2, (int) Math.round(definition.capacityBonus() * 0.35D))
                 : 0;
+
         if (effectCaps.isEmpty() && capacityBonusCap <= 0) {
             addFallbackEffect(effectCaps, definition.slotType());
         }
@@ -286,15 +272,15 @@ public final class CyberwareUpgradeHelper {
 
     private static void addFallbackEffect(EnumMap<CyberwareEffectType, Double> effectCaps, CyberwareSlotType slotType) {
         switch (slotType) {
-            case FRONTAL_CORTEX, OPERATING_SYSTEM -> effectCaps.put(CyberwareEffectType.CHROME_CAPACITY, 6.0D);
-            case ARMS -> effectCaps.put(CyberwareEffectType.ATTACK_DAMAGE, 1.0D);
-            case FACE -> effectCaps.put(CyberwareEffectType.ENTITY_REACH, 0.5D);
-            case SKELETON -> effectCaps.put(CyberwareEffectType.ARMOR, 2.0D);
-            case HANDS -> effectCaps.put(CyberwareEffectType.ATTACK_SPEED, 0.15D);
-            case NERVOUS_SYSTEM -> effectCaps.put(CyberwareEffectType.MOVEMENT_SPEED, 0.10D);
-            case CIRCULATORY_SYSTEM -> effectCaps.put(CyberwareEffectType.HEALTH_REGEN, 0.4D);
-            case INTEGUMENTARY_SYSTEM -> effectCaps.put(CyberwareEffectType.DAMAGE_REDUCTION, 0.05D);
-            case LEGS -> effectCaps.put(CyberwareEffectType.MOVEMENT_SPEED, 0.10D);
+            case FRONTAL_CORTEX, OPERATING_SYSTEM -> effectCaps.put(CyberwareEffectType.CHROME_CAPACITY, 4.0D);
+            case ARMS -> effectCaps.put(CyberwareEffectType.ATTACK_DAMAGE, 0.5D);
+            case FACE -> effectCaps.put(CyberwareEffectType.ENTITY_REACH, 0.25D);
+            case SKELETON -> effectCaps.put(CyberwareEffectType.ARMOR, 1.0D);
+            case HANDS -> effectCaps.put(CyberwareEffectType.ATTACK_SPEED, 0.08D);
+            case NERVOUS_SYSTEM -> effectCaps.put(CyberwareEffectType.MOVEMENT_SPEED, 0.06D);
+            case CIRCULATORY_SYSTEM -> effectCaps.put(CyberwareEffectType.HEALTH_REGEN, 0.2D);
+            case INTEGUMENTARY_SYSTEM -> effectCaps.put(CyberwareEffectType.DAMAGE_REDUCTION, 0.03D);
+            case LEGS -> effectCaps.put(CyberwareEffectType.MOVEMENT_SPEED, 0.06D);
         }
     }
 
@@ -302,23 +288,18 @@ public final class CyberwareUpgradeHelper {
         double baseAmount = effect.amount();
         double magnitude = Math.abs(baseAmount);
         double minimum = switch (effect.type()) {
-            case MAX_HEALTH, BONUS_ABSORPTION -> 2.0D;
-            case ARMOR, ATTACK_DAMAGE, SAFE_FALL_DISTANCE, CHROME_CAPACITY -> 1.0D;
-            case ATTACK_SPEED, BLOCK_REACH, ENTITY_REACH, STEP_HEIGHT, HEALTH_REGEN -> 0.25D;
-            case MOVEMENT_SPEED, BLOCK_BREAK_SPEED, FALL_DAMAGE_REDUCTION, KNOCKBACK_RESISTANCE, DAMAGE_REDUCTION, JUMP_POWER -> 0.05D;
+            case MAX_HEALTH, BONUS_ABSORPTION -> 1.0D;
+            case ARMOR, ATTACK_DAMAGE, SAFE_FALL_DISTANCE, CHROME_CAPACITY -> 0.5D;
+            case ATTACK_SPEED, BLOCK_REACH, ENTITY_REACH, STEP_HEIGHT, HEALTH_REGEN -> 0.10D;
+            case MOVEMENT_SPEED, BLOCK_BREAK_SPEED, FALL_DAMAGE_REDUCTION, KNOCKBACK_RESISTANCE, DAMAGE_REDUCTION, JUMP_POWER -> 0.03D;
             case NIGHT_VISION, FIRE_RESISTANCE, WATER_BREATHING, DOLPHINS_GRACE -> 0.0D;
         };
 
-        double signAwareBase = effect.type() == CyberwareEffectType.FALL_DAMAGE_REDUCTION ? -Math.max(minimum, magnitude * 0.5D) : Math.copySign(Math.max(minimum, magnitude * 0.5D), baseAmount);
+        double scaledMagnitude = Math.max(minimum, magnitude * 0.35D);
+        double signAwareBase = effect.type() == CyberwareEffectType.FALL_DAMAGE_REDUCTION
+                ? -scaledMagnitude
+                : Math.copySign(scaledMagnitude, baseAmount);
         return magnitude <= 0.0001D ? 0.0D : signAwareBase;
-    }
-
-    private static EnumMap<CyberwareEffectType, Double> effectTotals(Iterable<CyberwareEffect> effects) {
-        EnumMap<CyberwareEffectType, Double> totals = new EnumMap<>(CyberwareEffectType.class);
-        for (CyberwareEffect effect : effects) {
-            totals.merge(effect.type(), effect.amount(), Double::sum);
-        }
-        return totals;
     }
 
     private record UpgradeTemplate(

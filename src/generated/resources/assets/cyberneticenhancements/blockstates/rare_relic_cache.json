@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "cyberneticenhancements:block/rare_relic_cache",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "cyberneticenhancements:block/rare_relic_cache"
+    },
+    "facing=south": {
+      "model": "cyberneticenhancements:block/rare_relic_cache",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "cyberneticenhancements:block/rare_relic_cache",
+      "y": 270
+    }
+  }
+}

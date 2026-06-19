@@ -221,25 +221,27 @@ public final class CyberwareBalance {
 
     private static void writeIntSection(Writer writer) throws IOException {
         writeGroupedIntValues(writer, "Cyberstrain thresholds", "cyberstrain.");
+        writeGroupedIntValues(writer, "Consumables", "consumable.");
         writeGroupedIntValues(writer, "Face ability timings", "face.");
         writeGroupedIntValues(writer, "Hands timings", "hands.");
         writeGroupedIntValues(writer, "Legs timings", "legs.");
         writeGroupedIntValues(writer, "Frontal cortex timings", "frontal.");
         writeGroupedIntValues(writer, "Circulatory timings", "circulatory.");
         writeUngroupedIntValues(writer, "Other integer values",
-                "cyberstrain.", "face.", "hands.", "legs.", "frontal.", "circulatory.");
+                "cyberstrain.", "consumable.", "face.", "hands.", "legs.", "frontal.", "circulatory.");
     }
 
     private static void writeDoubleSection(Writer writer) throws IOException {
         writeGroupedDoubleValues(writer, "Combat statuses", "combat_status.");
         writeGroupedDoubleValues(writer, "Cyberstrain behavior", "cyberstrain.");
+        writeGroupedDoubleValues(writer, "Consumables", "consumable.");
         writeGroupedDoubleValues(writer, "Face behavior", "face.");
         writeGroupedDoubleValues(writer, "Hands behavior", "hands.");
         writeGroupedDoubleValues(writer, "Legs behavior", "legs.");
         writeGroupedDoubleValues(writer, "Frontal cortex behavior", "frontal.");
         writeGroupedDoubleValues(writer, "Circulatory behavior", "circulatory.");
         writeUngroupedDoubleValues(writer, "Other numeric values",
-                "combat_status.", "cyberstrain.", "face.", "hands.", "legs.", "frontal.", "circulatory.");
+                "combat_status.", "cyberstrain.", "consumable.", "face.", "hands.", "legs.", "frontal.", "circulatory.");
     }
 
     private static void writeGroupedIntValues(Writer writer, String title, String prefix) throws IOException {
@@ -527,23 +529,23 @@ public final class CyberwareBalance {
         defaults.put("chipware_socket_mk2", cyberware(0, 2));
         defaults.put("chipware_socket_mk3", cyberware(0, 3, CyberwareEffect.chromeCapacity(2.0D)));
 
-        defaults.put("biodyn_berserk", cyberware(0, 0, CyberwareEffect.damage(1.0D), CyberwareEffect.bonusAbsorption(4.0D), CyberwareEffect.damageReduction(0.10D)));
-        defaults.put("militech_berserk", cyberware(0, 0, CyberwareEffect.damage(2.0D), CyberwareEffect.bonusAbsorption(4.0D), CyberwareEffect.damageReduction(0.10D), CyberwareEffect.attackSpeed(0.10D)));
-        defaults.put("moore_tech_berserk", cyberware(0, 0, CyberwareEffect.damage(2.0D), CyberwareEffect.moveSpeed(0.20D), CyberwareEffect.damageReduction(0.05D)));
-        defaults.put("zetatech_berserk", cyberware(0, 0, CyberwareEffect.damage(2.0D), CyberwareEffect.damageReduction(0.20D), CyberwareEffect.fallReduction(-0.15D)));
+        defaults.put("biodyn_berserk", cyberware(0, 0, CyberwareEffect.damage(0.5D), CyberwareEffect.bonusAbsorption(2.0D), CyberwareEffect.damageReduction(0.05D)));
+        defaults.put("militech_berserk", cyberware(0, 0, CyberwareEffect.damage(1.0D), CyberwareEffect.bonusAbsorption(2.0D), CyberwareEffect.damageReduction(0.05D), CyberwareEffect.attackSpeed(0.05D)));
+        defaults.put("moore_tech_berserk", cyberware(0, 0, CyberwareEffect.damage(1.0D), CyberwareEffect.moveSpeed(0.10D), CyberwareEffect.damageReduction(0.03D)));
+        defaults.put("zetatech_berserk", cyberware(0, 0, CyberwareEffect.damage(1.0D), CyberwareEffect.damageReduction(0.08D), CyberwareEffect.fallReduction(-0.10D)));
         defaults.put("arasaka_shadow", cyberware(2, 0, CyberwareEffect.moveSpeed(0.05D)));
-        defaults.put("biotech_sigma", cyberware(4, 0, CyberwareEffect.healthRegen(0.4D)));
+        defaults.put("biotech_sigma", cyberware(4, 0, CyberwareEffect.healthRegen(0.25D)));
         defaults.put("militech_paraline", cyberware(5, 0, CyberwareEffect.attackSpeed(0.10D)));
         defaults.put("netwatch_netdriver", cyberware(6, 0, CyberwareEffect.damageReduction(0.05D)));
         defaults.put("raven_microcyber", cyberware(8, 0, CyberwareEffect.moveSpeed(0.06D), CyberwareEffect.attackSpeed(0.08D)));
         defaults.put("tetratronic_rippler", cyberware(10, 0, CyberwareEffect.attackSpeed(0.10D), CyberwareEffect.damageReduction(0.06D)));
         defaults.put("militech_canto", cyberware(12, 0, CyberwareEffect.damage(1.0D), CyberwareEffect.damageReduction(0.08D)));
-        defaults.put("dynalar_sandevistan", cyberware(0, 0, CyberwareEffect.moveSpeed(0.40D), CyberwareEffect.attackSpeed(0.20D)));
-        defaults.put("militech_apogee", cyberware(0, 0, CyberwareEffect.moveSpeed(0.60D), CyberwareEffect.attackSpeed(0.50D)));
-        defaults.put("militech_falcon", cyberware(0, 0, CyberwareEffect.moveSpeed(0.40D), CyberwareEffect.attackSpeed(0.35D)));
-        defaults.put("qiant_warp_dancer", cyberware(0, 0, CyberwareEffect.moveSpeed(0.60D), CyberwareEffect.attackSpeed(0.40D)));
-        defaults.put("zetatech_sandevistan", cyberware(0, 0, CyberwareEffect.moveSpeed(0.40D), CyberwareEffect.attackSpeed(0.20D)));
-        defaults.put("chrome_compressor", cyberware(20, 0));
+        defaults.put("dynalar_sandevistan", cyberware(0, 0, CyberwareEffect.moveSpeed(0.10D), CyberwareEffect.attackSpeed(0.08D)));
+        defaults.put("militech_apogee", cyberware(0, 0, CyberwareEffect.moveSpeed(0.18D), CyberwareEffect.attackSpeed(0.16D)));
+        defaults.put("militech_falcon", cyberware(0, 0, CyberwareEffect.moveSpeed(0.14D), CyberwareEffect.attackSpeed(0.12D)));
+        defaults.put("qiant_warp_dancer", cyberware(0, 0, CyberwareEffect.moveSpeed(0.16D), CyberwareEffect.attackSpeed(0.14D)));
+        defaults.put("zetatech_sandevistan", cyberware(0, 0, CyberwareEffect.moveSpeed(0.10D), CyberwareEffect.attackSpeed(0.08D)));
+        defaults.put("chrome_compressor", cyberware(10, 0));
 
         defaults.put("gorilla_arms", cyberware(0, 0, CyberwareEffect.damage(2.0D), CyberwareEffect.breakSpeed(0.30D), CyberwareEffect.knockbackResistance(0.10D)));
         defaults.put("electrifying_gorilla_arms", cyberware(0, 0, CyberwareEffect.damage(2.0D), CyberwareEffect.breakSpeed(0.30D), CyberwareEffect.attackSpeed(0.10D)));
@@ -562,6 +564,7 @@ public final class CyberwareBalance {
         defaults.put("electrifying_projectile_launch_system", cyberware(0, 0, CyberwareEffect.damage(2.0D), CyberwareEffect.attackSpeed(0.05D)));
         defaults.put("thermal_projectile_launch_system", cyberware(0, 0, CyberwareEffect.damage(2.0D), CyberwareEffect.damageReduction(0.04D)));
         defaults.put("toxic_projectile_launch_system", cyberware(0, 0, CyberwareEffect.damage(2.0D), CyberwareEffect.entityReach(0.5D)));
+        defaults.put("excavator_arms", cyberware());
 
         defaults.put("basic_kiroshi_optics", cyberware(0, 0, CyberwareEffect.nightVision()));
         defaults.put("clairvoyant", cyberware(0, 0, CyberwareEffect.nightVision(), CyberwareEffect.blockReach(0.5D)));
@@ -571,10 +574,13 @@ public final class CyberwareBalance {
         defaults.put("the_oracle", cyberware(0, 0, CyberwareEffect.nightVision(), CyberwareEffect.blockReach(1.0D), CyberwareEffect.entityReach(1.0D)));
         defaults.put("cockatrice", cyberware(0, 0, CyberwareEffect.nightVision(), CyberwareEffect.damage(1.0D)));
         defaults.put("behavioral_imprint_synced_faceplate", cyberware());
+        defaults.put("forager_lens", cyberware());
+        defaults.put("vein_reader_optics", cyberware());
+        defaults.put("relic_scanner", cyberware());
 
         defaults.put("bionic_joints", cyberware(0, 0, CyberwareEffect.armor(2.0D)));
         defaults.put("dense_marrow", cyberware(0, 0, CyberwareEffect.damage(1.0D)));
-        defaults.put("epimorphic_skeleton", cyberware(0, 0, CyberwareEffect.hearts(4.0D)));
+        defaults.put("epimorphic_skeleton", cyberware(0, 0, CyberwareEffect.hearts(2.0D)));
         defaults.put("feen_x", cyberware());
         defaults.put("kinetic_frame", cyberware(0, 0, CyberwareEffect.knockbackResistance(0.10D)));
         defaults.put("para_bellum", cyberware(0, 0, CyberwareEffect.armor(4.0D)));
@@ -584,62 +590,69 @@ public final class CyberwareBalance {
         defaults.put("scarab", cyberware(0, 0, CyberwareEffect.armor(2.0D), CyberwareEffect.safeFall(1.0D)));
         defaults.put("spring_joints", cyberware(0, 0, CyberwareEffect.fallReduction(-0.15D), CyberwareEffect.safeFall(3.0D)));
         defaults.put("titanium_bones", cyberware(0, 0, CyberwareEffect.knockbackResistance(0.15D), CyberwareEffect.hearts(2.0D)));
-        defaults.put("universal_booster", cyberware(0, 0, CyberwareEffect.healthRegen(0.6D)));
+        defaults.put("universal_booster", cyberware(0, 0, CyberwareEffect.healthRegen(0.4D)));
+        defaults.put("cargo_spine", cyberware());
 
         defaults.put("ballistic_coprocessor", cyberware(0, 0, CyberwareEffect.damage(1.0D)));
-        defaults.put("handle_wrap", cyberware(0, 0, CyberwareEffect.attackSpeed(0.20D)));
+        defaults.put("handle_wrap", cyberware(0, 0, CyberwareEffect.attackSpeed(0.12D)));
         defaults.put("microgenerator", cyberware());
         defaults.put("shock_absorber", cyberware(0, 0, CyberwareEffect.knockbackResistance(0.10D)));
-        defaults.put("immovable_force", cyberware(0, 0, CyberwareEffect.knockbackResistance(0.20D)));
-        defaults.put("smart_link", cyberware(0, 0, CyberwareEffect.damage(1.0D), CyberwareEffect.entityReach(0.5D)));
+        defaults.put("immovable_force", cyberware(0, 0, CyberwareEffect.knockbackResistance(0.15D)));
+        defaults.put("smart_link", cyberware(0, 0, CyberwareEffect.damage(0.5D), CyberwareEffect.entityReach(0.5D)));
+        defaults.put("precision_miner", cyberware());
+        defaults.put("masons_grip", cyberware(0, 0, CyberwareEffect.blockReach(0.5D)));
+        defaults.put("harvester_hands", cyberware());
 
-        defaults.put("adrenaline_converter", cyberware(0, 0, CyberwareEffect.moveSpeed(0.20D)));
-        defaults.put("adreno_trigger", cyberware(0, 0, CyberwareEffect.moveSpeed(0.40D), CyberwareEffect.attackSpeed(0.20D)));
+        defaults.put("adrenaline_converter", cyberware(0, 0, CyberwareEffect.moveSpeed(0.12D)));
+        defaults.put("adreno_trigger", cyberware(0, 0, CyberwareEffect.moveSpeed(0.15D), CyberwareEffect.attackSpeed(0.08D)));
         defaults.put("atomic_sensors", cyberware(0, 0, CyberwareEffect.nightVision()));
-        defaults.put("kerenzikov", cyberware(0, 0, CyberwareEffect.moveSpeed(0.40D), CyberwareEffect.attackSpeed(0.20D)));
+        defaults.put("kerenzikov", cyberware(0, 0, CyberwareEffect.moveSpeed(0.15D), CyberwareEffect.attackSpeed(0.08D)));
         defaults.put("neofiber", cyberware(0, 0, CyberwareEffect.knockbackResistance(0.15D)));
-        defaults.put("reflex_tuner", cyberware(0, 0, CyberwareEffect.moveSpeed(0.40D), CyberwareEffect.attackSpeed(0.30D)));
+        defaults.put("reflex_tuner", cyberware(0, 0, CyberwareEffect.moveSpeed(0.18D), CyberwareEffect.attackSpeed(0.10D)));
         defaults.put("revulsor", cyberware(0, 0, CyberwareEffect.damageReduction(0.10D)));
         defaults.put("stabber", cyberware(0, 0, CyberwareEffect.damage(1.0D), CyberwareEffect.attackSpeed(0.10D)));
-        defaults.put("synaptic_accelerator", cyberware(0, 0, CyberwareEffect.moveSpeed(0.40D), CyberwareEffect.attackSpeed(0.30D)));
+        defaults.put("synaptic_accelerator", cyberware(0, 0, CyberwareEffect.moveSpeed(0.15D), CyberwareEffect.attackSpeed(0.10D)));
         defaults.put("tyrosine_injector", cyberware(0, 0, CyberwareEffect.damage(2.0D)));
         defaults.put("visual_cortex_support", cyberware(0, 0, CyberwareEffect.entityReach(0.5D)));
         defaults.put("deep_field_visual_interface", cyberware(0, 0, CyberwareEffect.entityReach(1.0D), CyberwareEffect.blockReach(1.0D)));
+        defaults.put("kiroshi_retrieval_suite", cyberware());
 
-        defaults.put("adrenaline_booster", cyberware(0, 0, CyberwareEffect.healthRegen(0.6D)));
-        defaults.put("biomonitor", cyberware(0, 0, CyberwareEffect.healthRegen(1.0D)));
+        defaults.put("adrenaline_booster", cyberware(0, 0, CyberwareEffect.healthRegen(0.35D)));
+        defaults.put("biomonitor", cyberware(0, 0, CyberwareEffect.healthRegen(0.5D)));
         defaults.put("black_mamba", cyberware());
-        defaults.put("blood_pump", cyberware(0, 0, CyberwareEffect.hearts(2.0D), CyberwareEffect.bonusAbsorption(8.0D)));
+        defaults.put("blood_pump", cyberware(0, 0, CyberwareEffect.hearts(1.0D), CyberwareEffect.bonusAbsorption(4.0D)));
         defaults.put("clutch_padding", cyberware(0, 0, CyberwareEffect.knockbackResistance(0.10D)));
-        defaults.put("isometric_stabilizer", cyberware(0, 0, CyberwareEffect.knockbackResistance(0.20D), CyberwareEffect.hearts(2.0D)));
+        defaults.put("isometric_stabilizer", cyberware(0, 0, CyberwareEffect.knockbackResistance(0.12D), CyberwareEffect.hearts(1.0D)));
         defaults.put("feedback_circuit", cyberware());
         defaults.put("electromag_recycler", cyberware());
         defaults.put("heal_on_kill", cyberware());
-        defaults.put("microrotors", cyberware(0, 0, CyberwareEffect.attackSpeed(0.30D)));
-        defaults.put("second_heart", cyberware(0, 0, CyberwareEffect.hearts(6.0D), CyberwareEffect.bonusAbsorption(8.0D)));
-        defaults.put("threatevac", cyberware(0, 0, CyberwareEffect.moveSpeed(0.10D)));
+        defaults.put("microrotors", cyberware(0, 0, CyberwareEffect.attackSpeed(0.08D)));
+        defaults.put("second_heart", cyberware(0, 0, CyberwareEffect.hearts(2.0D), CyberwareEffect.bonusAbsorption(2.0D)));
+        defaults.put("threatevac", cyberware(0, 0, CyberwareEffect.moveSpeed(0.08D)));
+        defaults.put("hydrolung", cyberware(0, 0, CyberwareEffect.waterBreathing(), CyberwareEffect.dolphinsGrace()));
 
-        defaults.put("carapace", cyberware(0, 0, CyberwareEffect.armor(4.0D)));
-        defaults.put("cellular_adapter", cyberware(0, 0, CyberwareEffect.healthRegen(0.6D)));
-        defaults.put("cogito_lattice", cyberware(0, 0, CyberwareEffect.damageReduction(0.10D)));
-        defaults.put("countershell", cyberware(0, 0, CyberwareEffect.damageReduction(0.10D)));
-        defaults.put("defenzikov", cyberware(0, 0, CyberwareEffect.damageReduction(0.20D)));
-        defaults.put("nano_plating", cyberware(0, 0, CyberwareEffect.armor(5.0D)));
+        defaults.put("carapace", cyberware(0, 0, CyberwareEffect.armor(3.0D)));
+        defaults.put("cellular_adapter", cyberware(0, 0, CyberwareEffect.healthRegen(0.4D)));
+        defaults.put("cogito_lattice", cyberware(0, 0, CyberwareEffect.damageReduction(0.06D)));
+        defaults.put("countershell", cyberware(0, 0, CyberwareEffect.damageReduction(0.06D)));
+        defaults.put("defenzikov", cyberware(0, 0, CyberwareEffect.damageReduction(0.10D)));
+        defaults.put("nano_plating", cyberware(0, 0, CyberwareEffect.armor(4.0D)));
         defaults.put("optical_camo", cyberware());
-        defaults.put("pain_editor", cyberware(0, 0, CyberwareEffect.damageReduction(0.20D)));
-        defaults.put("painducer", cyberware(0, 0, CyberwareEffect.hearts(2.0D), CyberwareEffect.damageReduction(0.10D)));
+        defaults.put("pain_editor", cyberware(0, 0, CyberwareEffect.damageReduction(0.10D)));
+        defaults.put("painducer", cyberware(0, 0, CyberwareEffect.hearts(1.0D), CyberwareEffect.damageReduction(0.05D)));
         defaults.put("proxishield", cyberware(0, 0, CyberwareEffect.armor(2.0D)));
         defaults.put("peripheral_inverse", cyberware(0, 0, CyberwareEffect.armor(4.0D)));
         defaults.put("rangeguard", cyberware(0, 0, CyberwareEffect.armor(2.0D)));
         defaults.put("shock_n_awe", cyberware());
         defaults.put("subdermal_armor", cyberware(0, 0, CyberwareEffect.armor(3.0D)));
-        defaults.put("chitin", cyberware(0, 0, CyberwareEffect.armor(8.0D), CyberwareEffect.hearts(2.0D)));
+        defaults.put("chitin", cyberware(0, 0, CyberwareEffect.armor(6.0D), CyberwareEffect.hearts(1.0D)));
 
         defaults.put("fortified_ankles", cyberware(0, 0, CyberwareEffect.jumpPower(0.35D), CyberwareEffect.safeFall(4.0D)));
         defaults.put("jenkins_tendons", cyberware(0, 0, CyberwareEffect.moveSpeed(0.10D)));
         defaults.put("leeroy_ligament_system", cyberware(0, 0, CyberwareEffect.moveSpeed(0.15D)));
         defaults.put("lynx_paws", cyberware(0, 0, CyberwareEffect.moveSpeed(0.05D), CyberwareEffect.safeFall(4.0D), CyberwareEffect.stepHeight(0.5D)));
         defaults.put("reinforced_tendons", cyberware(0, 0, CyberwareEffect.safeFall(6.0D)));
+        defaults.put("brushstep_legs", cyberware());
 
         return Map.copyOf(defaults);
     }
@@ -708,6 +721,54 @@ public final class CyberwareBalance {
         defaults.put("cyberstrain.threshold.unstable", 20);
         defaults.put("cyberstrain.threshold.strained", 10);
 
+        defaults.put("consumable.maxdoc_mk1.cooldown_seconds", 50);
+        defaults.put("consumable.maxdoc_mk1.overdose_points", 0);
+        defaults.put("consumable.maxdoc_mk2.cooldown_seconds", 70);
+        defaults.put("consumable.maxdoc_mk2.overdose_points", 0);
+        defaults.put("consumable.maxdoc_mk3.cooldown_seconds", 90);
+        defaults.put("consumable.maxdoc_mk3.overdose_points", 0);
+        defaults.put("consumable.bounce_back_mk1.cooldown_seconds", 60);
+        defaults.put("consumable.bounce_back_mk1.overdose_points", 0);
+        defaults.put("consumable.bounce_back_mk1.duration_ticks", 180);
+        defaults.put("consumable.bounce_back_mk2.cooldown_seconds", 80);
+        defaults.put("consumable.bounce_back_mk2.overdose_points", 0);
+        defaults.put("consumable.bounce_back_mk2.duration_ticks", 220);
+        defaults.put("consumable.bounce_back_mk3.cooldown_seconds", 100);
+        defaults.put("consumable.bounce_back_mk3.overdose_points", 0);
+        defaults.put("consumable.bounce_back_mk3.duration_ticks", 260);
+        defaults.put("consumable.health_booster.cooldown_seconds", 160);
+        defaults.put("consumable.health_booster.overdose_points", 1);
+        defaults.put("consumable.health_booster.duration_ticks", 4_800);
+        defaults.put("consumable.stamina_booster.cooldown_seconds", 160);
+        defaults.put("consumable.stamina_booster.overdose_points", 1);
+        defaults.put("consumable.stamina_booster.duration_ticks", 4_800);
+        defaults.put("consumable.oxy_booster.cooldown_seconds", 120);
+        defaults.put("consumable.oxy_booster.overdose_points", 0);
+        defaults.put("consumable.oxy_booster.duration_ticks", 6_000);
+        defaults.put("consumable.capacity_booster.cooldown_seconds", 200);
+        defaults.put("consumable.capacity_booster.overdose_points", 1);
+        defaults.put("consumable.capacity_booster.duration_ticks", 12_000);
+        defaults.put("consumable.ram_jolt.cooldown_seconds", 120);
+        defaults.put("consumable.ram_jolt.overdose_points", 2);
+        defaults.put("consumable.ram_jolt.duration_ticks", 3_600);
+        defaults.put("consumable.immunoblockers.cooldown_seconds", 240);
+        defaults.put("consumable.immunoblockers.overdose_points", 3);
+        defaults.put("consumable.immunoblockers.duration_ticks", 12_000);
+        defaults.put("consumable.immunoblockers.suppression_amount", 12);
+        defaults.put("consumable.chrome_suppressant.cooldown_seconds", 140);
+        defaults.put("consumable.chrome_suppressant.overdose_points", 1);
+        defaults.put("consumable.chrome_suppressant.duration_ticks", 7_200);
+        defaults.put("consumable.chrome_suppressant.suppression_amount", 6);
+        defaults.put("consumable.black_lace.cooldown_seconds", 180);
+        defaults.put("consumable.black_lace.overdose_points", 4);
+        defaults.put("consumable.black_lace.duration_ticks", 2_400);
+        defaults.put("consumable.asskick.cooldown_seconds", 150);
+        defaults.put("consumable.asskick.overdose_points", 3);
+        defaults.put("consumable.asskick.duration_ticks", 3_600);
+        defaults.put("consumable.jellytricity.cooldown_seconds", 150);
+        defaults.put("consumable.jellytricity.overdose_points", 3);
+        defaults.put("consumable.jellytricity.duration_ticks", 3_600);
+
         defaults.put("face.active_seconds.basic_kiroshi_optics", 6);
         defaults.put("face.cooldown_seconds.basic_kiroshi_optics", 16);
         defaults.put("face.active_seconds.clairvoyant", 8);
@@ -724,12 +785,26 @@ public final class CyberwareBalance {
         defaults.put("face.cooldown_seconds.cockatrice", 24);
         defaults.put("face.active_seconds.behavioral_imprint_synced_faceplate", 10);
         defaults.put("face.cooldown_seconds.behavioral_imprint_synced_faceplate", 40);
+        defaults.put("face.active_seconds.vein_reader_optics", 8);
+        defaults.put("face.cooldown_seconds.vein_reader_optics", 20);
+        defaults.put("face.active_seconds.relic_scanner", 9);
+        defaults.put("face.cooldown_seconds.relic_scanner", 24);
         defaults.put("face.oracle.max_hostiles", 12);
         defaults.put("face.oracle.vertical_scan", 6);
         defaults.put("face.oracle.max_blocks", 18);
         defaults.put("face.cockatrice.lock_ticks", 160);
         defaults.put("face.cockatrice.track_refresh_ticks", 50);
         defaults.put("face.faceplate.duration_ticks", 200);
+        defaults.put("face.forager.range", 10);
+        defaults.put("face.forager.vertical_scan", 4);
+        defaults.put("face.forager.max_blocks", 20);
+        defaults.put("face.vein_reader.radius", 8);
+        defaults.put("face.vein_reader.vertical_scan", 5);
+        defaults.put("face.vein_reader.max_blocks", 18);
+        defaults.put("face.relic_scanner.radius", 12);
+        defaults.put("face.relic_scanner.vertical_scan", 5);
+        defaults.put("face.relic_scanner.max_blocks", 18);
+        defaults.put("face.passive_highlight_ttl_ticks", 26);
 
         defaults.put("hands.microgenerator.cooldown_ticks", 80);
         defaults.put("hands.microgenerator.surge_ticks", 70);
@@ -744,12 +819,16 @@ public final class CyberwareBalance {
         defaults.put("hands.ballistic.trauma_long_ticks", 90);
         defaults.put("hands.ballistic.highlight_ttl_ticks", 40);
         defaults.put("hands.ballistic.handling_buff_ticks", 24);
+        defaults.put("hands.harvester.replant_highlight_ttl_ticks", 18);
 
         defaults.put("legs.fortified_ankles.max_charge_ticks", 24);
         defaults.put("legs.fortified_ankles.release_window_ticks", 14);
         defaults.put("legs.dash.cooldown_with_module_ticks", 120);
         defaults.put("legs.dash.cooldown_without_module_ticks", 160);
         defaults.put("legs.leeroy.impact_cooldown_ticks", 8);
+
+        defaults.put("arms.excavator.active_seconds", 10);
+        defaults.put("arms.excavator.cooldown_seconds", 16);
 
         defaults.put("frontal.camillo_ram_manager.emergency_refund_cooldown_ticks", 700);
         defaults.put("frontal.ram_reallocator.emergency_refund_cooldown_ticks", 500);
@@ -789,6 +868,33 @@ public final class CyberwareBalance {
         defaults.put("cyberstrain.psychosis.hidden_target_max_direct_distance", 14.0D);
         defaults.put("cyberstrain.psychosis.hidden_target_max_path_distance", 26.0D);
 
+        defaults.put("consumable.maxdoc_mk1.heal", 6.0D);
+        defaults.put("consumable.maxdoc_mk2.heal", 9.0D);
+        defaults.put("consumable.maxdoc_mk3.heal", 12.0D);
+        defaults.put("consumable.bounce_back_mk1.heal", 3.0D);
+        defaults.put("consumable.bounce_back_mk1.regen", 0.5D);
+        defaults.put("consumable.bounce_back_mk2.heal", 5.0D);
+        defaults.put("consumable.bounce_back_mk2.regen", 0.8D);
+        defaults.put("consumable.bounce_back_mk3.heal", 7.0D);
+        defaults.put("consumable.bounce_back_mk3.regen", 1.1D);
+        defaults.put("consumable.health_booster.hearts", 4.0D);
+        defaults.put("consumable.stamina_booster.move_speed", 0.12D);
+        defaults.put("consumable.stamina_booster.break_speed", 0.15D);
+        defaults.put("consumable.capacity_booster.chrome_capacity", 6.0D);
+        defaults.put("consumable.ram_jolt.cooldown_factor", 0.55D);
+        defaults.put("consumable.black_lace.health_fraction_cost", 0.20D);
+        defaults.put("consumable.black_lace.instability", 10.0D);
+        defaults.put("consumable.black_lace.move_speed", 0.18D);
+        defaults.put("consumable.black_lace.damage", 2.0D);
+        defaults.put("consumable.black_lace.damage_reduction", 0.06D);
+        defaults.put("consumable.black_lace.break_speed", 0.12D);
+        defaults.put("consumable.asskick.instability", 5.0D);
+        defaults.put("consumable.asskick.hearts", 4.0D);
+        defaults.put("consumable.jellytricity.health_fraction_cost", 0.10D);
+        defaults.put("consumable.jellytricity.instability", 7.0D);
+        defaults.put("consumable.jellytricity.move_speed", 0.22D);
+        defaults.put("consumable.jellytricity.break_speed", 0.20D);
+
         defaults.put("face.oracle.range", 24.0D);
         defaults.put("face.cockatrice.target_range", 22.0D);
         defaults.put("face.cockatrice.fallback_target_range", 18.0D);
@@ -801,6 +907,7 @@ public final class CyberwareBalance {
         defaults.put("face.faceplate.move_speed_bonus", 0.14D);
         defaults.put("face.faceplate.step_height_bonus", 0.5D);
         defaults.put("face.faceplate.damage_reduction_bonus", 0.20D);
+        defaults.put("face.survey.safe_light_level", 0.0D);
 
         defaults.put("hands.microgenerator.arc_radius", 3.5D);
         defaults.put("hands.microgenerator.extra_damage", 0.75D);
@@ -829,6 +936,8 @@ public final class CyberwareBalance {
         defaults.put("hands.shock_absorber.knockback_per_stack", 0.30D);
         defaults.put("hands.immovable_force.knockback_factor", 0.25D);
         defaults.put("hands.immovable_force.crouch_knockback_factor", 0.05D);
+        defaults.put("hands.precision_miner.break_speed_bonus", 0.45D);
+        defaults.put("arms.excavator.break_speed_bonus", 0.35D);
 
         defaults.put("legs.movement.min_sqr", 0.0025D);
         defaults.put("legs.movement.charge_min_sqr", 0.01D);
@@ -863,6 +972,8 @@ public final class CyberwareBalance {
         defaults.put("legs.lynx_paws.max_silent_speed", 0.11D);
         defaults.put("legs.stealth_foot.max_silent_speed", 0.16D);
         defaults.put("legs.lynx_paws.soft_landing_fall_distance", 7.0D);
+        defaults.put("legs.brushstep_speed_bonus", 0.18D);
+        defaults.put("legs.brushstep_step_height_bonus", 0.3D);
 
         defaults.put("frontal.ram_upgrade.cooldown_reduction", 0.04D);
         defaults.put("frontal.ex_disk.cooldown_reduction", 0.02D);
@@ -920,6 +1031,9 @@ public final class CyberwareBalance {
         defaults.put("circulatory.electromag_recycler.ranged_flat_refund_ticks", 10.0D);
         defaults.put("circulatory.electromag_recycler.ranged_percent_refund", 0.02D);
         defaults.put("circulatory.black_mamba.bonus_damage", 0.75D);
+        defaults.put("circulatory.hydrolung.break_speed_bonus", 0.30D);
+        defaults.put("skeleton.cargo_spine.pickup_radius", 2.0D);
+        defaults.put("nervous.kiroshi_retrieval_suite.pickup_radius", 2.25D);
 
         return Map.copyOf(defaults);
     }

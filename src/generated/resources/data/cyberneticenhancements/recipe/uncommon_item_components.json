@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "cyberneticenhancements:micro_battery"
+    },
+    "C": {
+      "item": "cyberneticenhancements:common_item_components"
+    },
+    "G": {
+      "item": "minecraft:gold_ingot"
+    },
+    "M": {
+      "item": "cyberneticenhancements:basic_circuit_plate"
+    }
+  },
+  "pattern": [
+    " G ",
+    "CBC",
+    " M "
+  ],
+  "result": {
+    "count": 2,
+    "id": "cyberneticenhancements:uncommon_item_components"
+  }
+}

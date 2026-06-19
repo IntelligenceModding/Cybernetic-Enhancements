@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class CyberwareServiceHelper {
+    private static final int MAX_UPGRADE_MATERIAL_COUNT = 64;
+
     public record MaterialRequirement(ItemStack stack, int count) {
         public boolean isRequired() {
             return count > 0 && !stack.isEmpty();
@@ -56,17 +58,15 @@ public final class CyberwareServiceHelper {
         }
 
         int currentLevel = CyberwareUpgradeHelper.getUpgradeLevel(inputStack);
-        int tierFactor = sourceDefinition.tier().ordinal() + 1;
-        int primaryCount = Math.max(2, tierFactor + currentLevel);
-        int secondaryCount = Math.max(1, 1 + currentLevel / 2);
+        int materialCount = Math.min(MAX_UPGRADE_MATERIAL_COUNT, 4 << currentLevel);
         ItemStack output = CyberwareUpgradeHelper.createUpgradedCopy(inputStack, sourceDefinition);
         return new CyberwareServicePlan(
                 CyberwareServicePlan.Type.UPGRADE,
                 output,
                 componentStack(sourceDefinition.tier()),
-                primaryCount,
+                materialCount,
                 new ItemStack(slotSupportItem(sourceDefinition.slotType())),
-                secondaryCount,
+                materialCount,
                 ItemStack.EMPTY,
                 0
         );

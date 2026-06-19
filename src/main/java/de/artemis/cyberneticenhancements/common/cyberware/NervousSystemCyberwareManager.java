@@ -5,6 +5,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.boss.enderdragon.EndCrystal;
@@ -12,6 +13,7 @@ import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.item.PrimedTnt;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingKnockBackEvent;
@@ -36,6 +38,7 @@ public final class NervousSystemCyberwareManager {
     private static final String TYROSINE_INJECTOR_ID = "tyrosine_injector";
     private static final String VISUAL_CORTEX_SUPPORT_ID = "visual_cortex_support";
     private static final String DEEP_FIELD_VISUAL_INTERFACE_ID = "deep_field_visual_interface";
+    private static final String KIROSHI_RETRIEVAL_SUITE_ID = "kiroshi_retrieval_suite";
 
     private static final Map<UUID, Long> ADRENO_TRIGGER_READY_UNTIL_TICK = new HashMap<>();
     private static final Map<UUID, Long> KERENZIKOV_READY_UNTIL_TICK = new HashMap<>();
@@ -57,7 +60,8 @@ public final class NervousSystemCyberwareManager {
                  SYNAPTIC_ACCELERATOR_ID,
                  TYROSINE_INJECTOR_ID,
                  VISUAL_CORTEX_SUPPORT_ID,
-                 DEEP_FIELD_VISUAL_INTERFACE_ID -> true;
+                 DEEP_FIELD_VISUAL_INTERFACE_ID,
+                 KIROSHI_RETRIEVAL_SUITE_ID -> true;
             default -> false;
         };
     }
@@ -77,6 +81,11 @@ public final class NervousSystemCyberwareManager {
         }
 
         PlayerCyberwareInventory inventory = new PlayerCyberwareInventory(player);
+        int retrievalCount = inventory.countInstalledCyberware(KIROSHI_RETRIEVAL_SUITE_ID);
+        if (retrievalCount > 0 && player.tickCount % 4 == 0) {
+            vacuumNearbyDrops(player, CyberwareBalance.doubleValue("nervous.kiroshi_retrieval_suite.pickup_radius") * retrievalCount);
+        }
+
         int atomicSensorsCount = inventory.countInstalledCyberware(ATOMIC_SENSORS_ID);
         int visualCortexCount = inventory.countInstalledCyberware(VISUAL_CORTEX_SUPPORT_ID);
         int deepFieldCount = inventory.countInstalledCyberware(DEEP_FIELD_VISUAL_INTERFACE_ID);
@@ -410,6 +419,26 @@ public final class NervousSystemCyberwareManager {
 
     private static boolean isReady(Map<UUID, Long> cooldowns, Player player, long gameTime) {
         return cooldowns.getOrDefault(player.getUUID(), 0L) <= gameTime;
+    }
+
+    private static void vacuumNearbyDrops(Player player, double extraRadius) {
+        if (extraRadius <= 0.0D) {
+            return;
+        }
+
+        for (ItemEntity itemEntity : player.level().getEntitiesOfClass(
+                ItemEntity.class,
+                player.getBoundingBox().inflate(extraRadius),
+                candidate -> candidate.isAlive() && !candidate.hasPickUpDelay())) {
+            itemEntity.playerTouch(player);
+        }
+
+        for (ExperienceOrb experienceOrb : player.level().getEntitiesOfClass(
+                ExperienceOrb.class,
+                player.getBoundingBox().inflate(extraRadius),
+                ExperienceOrb::isAlive)) {
+            experienceOrb.playerTouch(player);
+        }
     }
 
     private static void sendHighlight(Player player, List<UUID> entityIds, int ttlTicks) {

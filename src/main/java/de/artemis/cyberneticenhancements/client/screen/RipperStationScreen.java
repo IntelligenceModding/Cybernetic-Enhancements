@@ -288,9 +288,9 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         List<String> parts = new ArrayList<>();
         appendEffect(parts, CyberwareEffectType.BLOCK_BREAK_SPEED, totals.getOrDefault(CyberwareEffectType.BLOCK_BREAK_SPEED, 0.0D));
         appendEffect(parts, CyberwareEffectType.CHROME_CAPACITY, menu.getChromeHeadroomBonus());
-        appendFlag(parts, "Night Vision", totals.containsKey(CyberwareEffectType.NIGHT_VISION));
-        appendFlag(parts, "Fire Resistance", totals.containsKey(CyberwareEffectType.FIRE_RESISTANCE));
-        appendFlag(parts, "Water Breathing", totals.containsKey(CyberwareEffectType.WATER_BREATHING));
+        appendFlag(parts, Component.translatable(CyberwareEffectType.NIGHT_VISION.translationKey()).getString(), totals.containsKey(CyberwareEffectType.NIGHT_VISION));
+        appendFlag(parts, Component.translatable(CyberwareEffectType.FIRE_RESISTANCE.translationKey()).getString(), totals.containsKey(CyberwareEffectType.FIRE_RESISTANCE));
+        appendFlag(parts, Component.translatable(CyberwareEffectType.WATER_BREATHING.translationKey()).getString(), totals.containsKey(CyberwareEffectType.WATER_BREATHING));
         return joinOverviewParts(parts);
     }
 
@@ -846,14 +846,15 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
     private void renderChipSummary(GuiGraphics guiGraphics) {
         guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.ripper_station.chipware"), CENTER_PANEL_X + PANEL_TEXT_PADDING_X, LOWER_PANEL_Y + PANEL_TEXT_PADDING_Y, TEXT_PRIMARY, false);
         for (int cluster = 0; cluster < RipperStationLayout.CHIP_CLUSTER_X.length; cluster++) {
-            String hostName = menu.getChipwareHostName(cluster);
-            Component host = hostName.isEmpty()
+            Component host = menu.getChipwareHostName(cluster);
+            boolean emptyHost = host.getString().isEmpty();
+            Component displayHost = emptyHost
                     ? Component.translatable("screen.cyberneticenhancements.ripper_station.no_chip_socket")
-                    : Component.literal(hostName);
+                    : host;
             int clusterCenterX = getSlotBankCenterX(RipperStationLayout.CHIP_CLUSTER_X[cluster], RipperStationLayout.CHIP_SLOT_OFFSET_X);
             int hostY = RipperStationLayout.CHIP_SLOT_Y - 12;
-            int hostX = clusterCenterX - font.width(host) / 2;
-            guiGraphics.drawString(font, host, hostX, hostY, hostName.isEmpty() ? TEXT_SECONDARY : PANEL_ACCENT, false);
+            int hostX = clusterCenterX - font.width(displayHost) / 2;
+            guiGraphics.drawString(font, displayHost, hostX, hostY, emptyHost ? TEXT_SECONDARY : PANEL_ACCENT, false);
         }
     }
 
@@ -861,19 +862,21 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.ripper_station.arm_modules"), LEFT_PANEL_X + PANEL_TEXT_PADDING_X, LOWER_PANEL_Y + PANEL_TEXT_PADDING_Y, TEXT_PRIMARY, false);
         guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.ripper_station.leg_modules"), RIGHT_PANEL_X + PANEL_TEXT_PADDING_X, LOWER_PANEL_Y + PANEL_TEXT_PADDING_Y, TEXT_PRIMARY, false);
 
-        String armHost = menu.getArmModuleHostName();
-        Component armHostComponent = armHost.isEmpty()
+        Component armHost = menu.getArmModuleHostName();
+        boolean emptyArmHost = armHost.getString().isEmpty();
+        Component armHostComponent = emptyArmHost
                 ? Component.translatable("screen.cyberneticenhancements.ripper_station.no_arm_cyberware")
-                : Component.literal(armHost);
+                : armHost;
         int armCenterX = getExplicitSlotBankCenterX(RipperStationLayout.ARM_MODULE_X);
-        guiGraphics.drawString(font, armHostComponent, armCenterX - font.width(armHostComponent) / 2, RipperStationLayout.ARM_MODULE_Y - 12, armHost.isEmpty() ? TEXT_SECONDARY : PANEL_ACCENT, false);
+        guiGraphics.drawString(font, armHostComponent, armCenterX - font.width(armHostComponent) / 2, RipperStationLayout.ARM_MODULE_Y - 12, emptyArmHost ? TEXT_SECONDARY : PANEL_ACCENT, false);
 
-        String legHost = menu.getLegModuleHostName();
-        Component legHostComponent = legHost.isEmpty()
+        Component legHost = menu.getLegModuleHostName();
+        boolean emptyLegHost = legHost.getString().isEmpty();
+        Component legHostComponent = emptyLegHost
                 ? Component.translatable("screen.cyberneticenhancements.ripper_station.no_leg_cyberware")
-                : Component.literal(legHost);
+                : legHost;
         int legCenterX = getExplicitSlotBankCenterX(RipperStationLayout.LEG_MODULE_X);
-        guiGraphics.drawString(font, legHostComponent, legCenterX - font.width(legHostComponent) / 2, RipperStationLayout.LEG_MODULE_Y - 12, legHost.isEmpty() ? TEXT_SECONDARY : PANEL_ACCENT, false);
+        guiGraphics.drawString(font, legHostComponent, legCenterX - font.width(legHostComponent) / 2, RipperStationLayout.LEG_MODULE_Y - 12, emptyLegHost ? TEXT_SECONDARY : PANEL_ACCENT, false);
     }
 
     private int getSlotBankCenterX(int firstSlotX, int[] slotOffsets) {
@@ -1081,7 +1084,7 @@ public final class RipperStationScreen extends AbstractContainerScreen<RipperSta
         if (!requiredComponent.isEmpty()) {
             tooltip.add(Component.translatable(
                     "screen.cyberneticenhancements.ripper_station.slot_upgrade_cost",
-                    Component.literal("1x ").append(requiredComponent.getHoverName())
+                    Component.translatable("screen.cyberneticenhancements.common.counted_item", 1, requiredComponent.getHoverName())
             ));
         }
 

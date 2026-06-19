@@ -2,6 +2,8 @@ package de.artemis.cyberneticenhancements.common.cyberware;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.ExperienceOrb;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 
@@ -17,6 +19,7 @@ public final class SkeletonCyberwareManager {
     private static final String RAM_RECOUP_ID = "ram_recoup";
     private static final String SCAR_COALESCER_ID = "scar_coalescer";
     private static final String SCARAB_ID = "scarab";
+    private static final String CARGO_SPINE_ID = "cargo_spine";
 
     private static final Map<UUID, Long> FEEN_X_READY_UNTIL_TICK = new HashMap<>();
     private static final Map<UUID, Long> RAM_RECOUP_READY_UNTIL_TICK = new HashMap<>();
@@ -31,7 +34,8 @@ public final class SkeletonCyberwareManager {
                  FEEN_X_ID,
                  RAM_RECOUP_ID,
                  SCAR_COALESCER_ID,
-                 SCARAB_ID -> true;
+                 SCARAB_ID,
+                 CARGO_SPINE_ID -> true;
             default -> false;
         };
     }
@@ -43,6 +47,20 @@ public final class SkeletonCyberwareManager {
 
         tooltipComponents.add(Component.translatable("tooltip.cyberneticenhancements.special." + definition.id())
                 .withStyle(ChatFormatting.DARK_GREEN));
+    }
+
+    public static void onPlayerTick(Player player) {
+        if (player.level().isClientSide() || player.tickCount % 2 != 0) {
+            return;
+        }
+
+        PlayerCyberwareInventory inventory = new PlayerCyberwareInventory(player);
+        int cargoSpineCount = inventory.countInstalledCyberware(CARGO_SPINE_ID);
+        if (cargoSpineCount <= 0) {
+            return;
+        }
+
+        vacuumNearbyDrops(player, CyberwareBalance.doubleValue("skeleton.cargo_spine.pickup_radius") * cargoSpineCount);
     }
 
     public static void mergePassiveEffects(Player player, PlayerCyberwareInventory inventory, EnumMap<CyberwareEffectType, Double> totals) {
@@ -137,6 +155,26 @@ public final class SkeletonCyberwareManager {
         ArmCyberwareManager.reduceTrackedCooldowns(player, flatTicks, percentRefund);
         FaceCyberwareManager.reduceTrackedCooldowns(player, flatTicks, percentRefund);
         FrontalCortexManager.reduceTrackedCooldowns(player, flatTicks, percentRefund);
+    }
+
+    private static void vacuumNearbyDrops(Player player, double extraRadius) {
+        if (extraRadius <= 0.0D) {
+            return;
+        }
+
+        for (ItemEntity itemEntity : player.level().getEntitiesOfClass(
+                ItemEntity.class,
+                player.getBoundingBox().inflate(extraRadius),
+                candidate -> candidate.isAlive() && !candidate.hasPickUpDelay())) {
+            itemEntity.playerTouch(player);
+        }
+
+        for (ExperienceOrb experienceOrb : player.level().getEntitiesOfClass(
+                ExperienceOrb.class,
+                player.getBoundingBox().inflate(extraRadius),
+                ExperienceOrb::isAlive)) {
+            experienceOrb.playerTouch(player);
+        }
     }
 
     private static void merge(EnumMap<CyberwareEffectType, Double> totals, CyberwareEffectType type, double amount) {

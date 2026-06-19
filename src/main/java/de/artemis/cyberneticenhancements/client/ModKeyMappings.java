@@ -42,6 +42,12 @@ public final class ModKeyMappings {
             GLFW.GLFW_KEY_H,
             CATEGORY
     );
+    public static final KeyMapping OPEN_ARCHIVE = new KeyMapping(
+            "key.cyberneticenhancements.open_archive",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_J,
+            CATEGORY
+    );
 
     private ModKeyMappings() {
     }
@@ -52,6 +58,7 @@ public final class ModKeyMappings {
         event.register(ACTIVATE_ARM_CYBERWARE);
         event.register(ACTIVATE_FACE_CYBERWARE);
         event.register(TOGGLE_HUD);
+        event.register(OPEN_ARCHIVE);
     }
 
     public static Component getAbilityBindingLabel(String bindingId) {

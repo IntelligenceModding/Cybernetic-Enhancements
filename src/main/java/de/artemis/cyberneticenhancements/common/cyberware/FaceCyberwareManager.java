@@ -1,5 +1,6 @@
 package de.artemis.cyberneticenhancements.common.cyberware;
 
+import de.artemis.cyberneticenhancements.common.registry.ModBlocks;
 import de.artemis.cyberneticenhancements.common.network.FaceHazardHighlightPayload;
 import de.artemis.cyberneticenhancements.common.item.CyberwareItem;
 import net.minecraft.ChatFormatting;
@@ -28,7 +29,11 @@ import net.minecraft.world.entity.monster.RangedAttackMob;
 import net.minecraft.world.entity.monster.Shulker;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.NetherWartBlock;
+import net.minecraft.world.level.block.SweetBerryBushBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -52,6 +57,9 @@ public final class FaceCyberwareManager {
     private static final String THE_ORACLE_ID = "the_oracle";
     private static final String COCKATRICE_ID = "cockatrice";
     private static final String FACEPLATE_ID = "behavioral_imprint_synced_faceplate";
+    private static final String FORAGER_LENS_ID = "forager_lens";
+    private static final String VEIN_READER_OPTICS_ID = "vein_reader_optics";
+    private static final String RELIC_SCANNER_ID = "relic_scanner";
     private static final double ORACLE_RANGE = CyberwareBalance.doubleValue("face.oracle.range");
     private static final int ORACLE_MAX_HOSTILES = CyberwareBalance.intValue("face.oracle.max_hostiles");
     private static final int ORACLE_VERTICAL_SCAN = CyberwareBalance.intValue("face.oracle.vertical_scan");
@@ -90,7 +98,7 @@ public final class FaceCyberwareManager {
         }
 
         String id = faceware.getDefinition().id();
-        if (!hasSpecialBehavior(id)) {
+        if (!hasActiveAbility(id)) {
             notify(player, "message.cyberneticenhancements.face.no_active_ability");
             return;
         }
@@ -146,6 +154,9 @@ public final class FaceCyberwareManager {
                 activateScan(player, inventory, id, faceActiveSeconds(id), faceCooldownSeconds(id), null,
                         "message.cyberneticenhancements.face.faceplate");
             }
+            case VEIN_READER_OPTICS_ID, RELIC_SCANNER_ID ->
+                    activateScan(player, inventory, id, faceActiveSeconds(id), faceCooldownSeconds(id), null,
+                            "message.cyberneticenhancements.face.scan");
             default -> notify(player, "message.cyberneticenhancements.face.no_active_ability");
         }
     }
@@ -153,6 +164,11 @@ public final class FaceCyberwareManager {
     public static void onPlayerTick(Player player) {
         if (player.level().isClientSide()) {
             return;
+        }
+
+        PlayerCyberwareInventory inventory = new PlayerCyberwareInventory(player);
+        if (inventory.countInstalledCyberware(FORAGER_LENS_ID) > 0 && player.tickCount % 20 == 0) {
+            pulseForagerLens(player);
         }
 
         String activeId = ACTIVE_FACE_IDS.get(player.getUUID());
@@ -208,6 +224,16 @@ public final class FaceCyberwareManager {
                     pulseFaceplate(player);
                 }
             }
+            case VEIN_READER_OPTICS_ID -> {
+                if (shouldPulse(gameTime, 8)) {
+                    pulseVeinReader(player);
+                }
+            }
+            case RELIC_SCANNER_ID -> {
+                if (shouldPulse(gameTime, 8)) {
+                    pulseRelicScanner(player);
+                }
+            }
             default -> clearActive(player);
         }
     }
@@ -221,7 +247,10 @@ public final class FaceCyberwareManager {
                  STALKER_ID,
                  THE_ORACLE_ID,
                  COCKATRICE_ID,
-                 FACEPLATE_ID -> true;
+                 FACEPLATE_ID,
+                 FORAGER_LENS_ID,
+                 VEIN_READER_OPTICS_ID,
+                 RELIC_SCANNER_ID -> true;
             default -> false;
         };
     }
@@ -237,7 +266,7 @@ public final class FaceCyberwareManager {
 
     public static String getInstalledFaceTranslationKey(PlayerCyberwareInventory inventory) {
         CyberwareItem faceware = inventory.getInstalledCyberwareBySlotType(CyberwareSlotType.FACE);
-        if (faceware == null || !hasSpecialBehavior(faceware.getDefinition().id())) {
+        if (faceware == null || !hasActiveAbility(faceware.getDefinition().id())) {
             return "";
         }
         return itemTranslationKey(faceware.getDefinition().id());
@@ -288,6 +317,22 @@ public final class FaceCyberwareManager {
             return;
         }
         FACE_COOLDOWN_UNTIL_TICKS.put(player.getUUID(), gameTime + remaining);
+    }
+
+    private static boolean hasActiveAbility(String id) {
+        return switch (id) {
+            case BASIC_KIROSHI_OPTICS_ID,
+                 CLAIRVOYANT_ID,
+                 DOOMSAYER_ID,
+                 SENTRY_ID,
+                 STALKER_ID,
+                 THE_ORACLE_ID,
+                 COCKATRICE_ID,
+                 FACEPLATE_ID,
+                 VEIN_READER_OPTICS_ID,
+                 RELIC_SCANNER_ID -> true;
+            default -> false;
+        };
     }
 
     private static void activateScan(
@@ -374,6 +419,64 @@ public final class FaceCyberwareManager {
         player.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, 30, 0, false, false, false));
         spawnDisguisePulse(player);
         spawnEyePulse(player, ParticleTypes.CLOUD, 8, 0.02D);
+    }
+
+    private static void pulseForagerLens(Player player) {
+        if (!(player.level() instanceof ServerLevel level)) {
+            return;
+        }
+
+        List<BlockPos> targets = collectMatchingBlocks(
+                level,
+                player,
+                CyberwareBalance.intValue("face.forager.range"),
+                CyberwareBalance.intValue("face.forager.vertical_scan"),
+                CyberwareBalance.intValue("face.forager.max_blocks"),
+                FaceCyberwareManager::isForagerTarget
+        );
+        if (!targets.isEmpty()) {
+            sendHighlightPayload(player, targets, List.of(), CyberwareBalance.intValue("face.passive_highlight_ttl_ticks"));
+        }
+    }
+
+    private static void pulseVeinReader(Player player) {
+        if (!(player.level() instanceof ServerLevel level)) {
+            return;
+        }
+
+        List<BlockPos> highlightedBlocks = scanBlocks(
+                level,
+                player,
+                CyberwareBalance.intValue("face.vein_reader.radius"),
+                CyberwareBalance.intValue("face.vein_reader.vertical_scan"),
+                CyberwareBalance.intValue("face.vein_reader.max_blocks"),
+                FaceCyberwareManager::isOreBlock,
+                ParticleTypes.GLOW,
+                false
+        );
+        if (!highlightedBlocks.isEmpty()) {
+            sendHighlightPayload(player, highlightedBlocks, List.of(), 30);
+        }
+    }
+
+    private static void pulseRelicScanner(Player player) {
+        if (!(player.level() instanceof ServerLevel level)) {
+            return;
+        }
+
+        List<BlockPos> highlightedBlocks = scanBlocks(
+                level,
+                player,
+                CyberwareBalance.intValue("face.relic_scanner.radius"),
+                CyberwareBalance.intValue("face.relic_scanner.vertical_scan"),
+                CyberwareBalance.intValue("face.relic_scanner.max_blocks"),
+                FaceCyberwareManager::isRelicTarget,
+                ParticleTypes.ENCHANT,
+                true
+        );
+        if (!highlightedBlocks.isEmpty()) {
+            sendHighlightPayload(player, highlightedBlocks, List.of(), 35);
+        }
     }
 
     private static void revealHostiles(
@@ -469,6 +572,78 @@ public final class FaceCyberwareManager {
         if (!highlightedBlocks.isEmpty() || !highlightedEntities.isEmpty()) {
             sendHighlightPayload(player, highlightedBlocks, highlightedEntities, 30);
         }
+    }
+
+    private static List<BlockPos> collectMatchingBlocks(
+            ServerLevel level,
+            Player player,
+            int radius,
+            int vertical,
+            int maxResults,
+            Predicate<BlockState> matcher
+    ) {
+        BlockPos origin = player.blockPosition();
+        List<BlockPos> results = new ArrayList<>();
+        for (BlockPos pos : BlockPos.betweenClosed(
+                origin.offset(-radius, -vertical, -radius),
+                origin.offset(radius, vertical, radius))) {
+            if (!matcher.test(level.getBlockState(pos))) {
+                continue;
+            }
+            results.add(pos.immutable());
+            if (results.size() >= maxResults) {
+                break;
+            }
+        }
+        return results;
+    }
+
+    private static boolean isForagerTarget(BlockState state) {
+        if (state.getBlock() instanceof CropBlock cropBlock) {
+            return cropBlock.isMaxAge(state);
+        }
+        if (state.getBlock() instanceof NetherWartBlock) {
+            return state.getValue(NetherWartBlock.AGE) >= NetherWartBlock.MAX_AGE;
+        }
+        if (state.getBlock() instanceof SweetBerryBushBlock) {
+            return state.getValue(SweetBerryBushBlock.AGE) >= 2;
+        }
+        if (state.is(Blocks.COCOA) && state.hasProperty(BlockStateProperties.AGE_2)) {
+            return state.getValue(BlockStateProperties.AGE_2) >= 2;
+        }
+        if ((state.is(Blocks.CAVE_VINES) || state.is(Blocks.CAVE_VINES_PLANT)) && state.hasProperty(BlockStateProperties.BERRIES)) {
+            return state.getValue(BlockStateProperties.BERRIES);
+        }
+        if (state.is(Blocks.PITCHER_CROP) && state.hasProperty(BlockStateProperties.AGE_4)) {
+            return state.getValue(BlockStateProperties.AGE_4) >= 4;
+        }
+        if (state.is(Blocks.TORCHFLOWER_CROP) && state.hasProperty(BlockStateProperties.AGE_1)) {
+            return state.getValue(BlockStateProperties.AGE_1) >= 1;
+        }
+        if (state.is(Blocks.PUMPKIN) || state.is(Blocks.MELON)) {
+            return true;
+        }
+        return (state.is(Blocks.BEE_NEST) || state.is(Blocks.BEEHIVE))
+                && state.hasProperty(BlockStateProperties.LEVEL_HONEY)
+                && state.getValue(BlockStateProperties.LEVEL_HONEY) >= 5;
+    }
+
+    private static boolean isOreBlock(BlockState state) {
+        String path = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath();
+        return path.endsWith("_ore") || path.equals("ancient_debris");
+    }
+
+    private static boolean isRelicTarget(BlockState state) {
+        return state.is(Blocks.CHEST)
+                || state.is(Blocks.TRAPPED_CHEST)
+                || state.is(Blocks.BARREL)
+                || state.is(Blocks.SPAWNER)
+                || state.is(Blocks.SUSPICIOUS_SAND)
+                || state.is(Blocks.SUSPICIOUS_GRAVEL)
+                || state.is(Blocks.DECORATED_POT)
+                || state.is(Blocks.TRIAL_SPAWNER)
+                || state.is(Blocks.VAULT)
+                || state.is(ModBlocks.RELIC_CACHE.get());
     }
 
     private static void scrambleNearbyAggro(Player player, double radius, boolean immediate) {

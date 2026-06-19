@@ -22,9 +22,14 @@ public final class ModCreativeModeTabs {
                     .displayItems((parameters, output) -> {
                         ModItems.MATERIALS.forEach(item -> output.accept(item.get()));
                         ModItems.consumableItems().forEach(item -> output.accept(item.get()));
+                        output.accept(ModBlocks.UNCOMMON_RELIC_CACHE.get());
+                        output.accept(ModBlocks.RARE_RELIC_CACHE.get());
+                        output.accept(ModBlocks.EPIC_RELIC_CACHE.get());
+                        output.accept(ModBlocks.LEGENDARY_RELIC_CACHE.get());
                         output.accept(ModBlocks.RIPPER_STATION.get());
                         output.accept(ModBlocks.TECH_STATION.get());
                         output.accept(ModBlocks.RECYCLER_STATION.get());
+                        output.accept(ModItems.FIXER_SPAWN_EGG.get());
                     })
                     .build()
     );
@@ -38,7 +43,19 @@ public final class ModCreativeModeTabs {
                     .displayItems((parameters, output) -> {
                         ModItems.chipwareItems().forEach(item -> output.accept(item.get()));
                         ModItems.moduleItems().forEach(item -> output.accept(item.get()));
-                        ModItems.cyberwareItems().forEach(item -> output.accept(item.get()));
+                        ModItems.standardCyberwareItems().forEach(item -> output.accept(item.get()));
+                    })
+                    .build()
+    );
+
+    @SuppressWarnings("unused")
+    public static final Supplier<CreativeModeTab> GAMEPLAY_CYBERWARE_CREATIVE_TAB = CREATIVE_MODE_TAB.register(
+            "gameplay_cyberware_creative_tab",
+            () -> CreativeModeTab.builder()
+                    .icon(() -> ModItems.cyberware("excavator_arms").get().getDefaultInstance())
+                    .title(Component.translatable("itemGroup.cyberneticenhancements.gameplay_cyberware"))
+                    .displayItems((parameters, output) -> {
+                        ModItems.gameplayCyberwareItems().forEach(item -> output.accept(item.get()));
                     })
                     .build()
     );

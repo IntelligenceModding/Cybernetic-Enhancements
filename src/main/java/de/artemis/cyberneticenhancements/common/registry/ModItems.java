@@ -17,6 +17,7 @@ import de.artemis.cyberneticenhancements.common.item.CyberwareModuleItem;
 import de.artemis.cyberneticenhancements.common.item.StyledNameItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;
+import net.minecraft.world.item.SpawnEggItem;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -24,6 +25,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
@@ -42,6 +44,11 @@ public final class ModItems {
     public static final DeferredItem<Item> RARE_ITEM_COMPONENTS = register("rare_item_components", properties -> new StyledNameItem(properties.rarity(Rarity.RARE), CyberwareTier.TIER_3.getColor()), UnaryOperator.identity());
     public static final DeferredItem<Item> EPIC_ITEM_COMPONENTS = register("epic_item_components", properties -> new StyledNameItem(properties.rarity(Rarity.EPIC), CyberwareTier.TIER_4.getColor()), UnaryOperator.identity());
     public static final DeferredItem<Item> LEGENDARY_ITEM_COMPONENTS = register("legendary_item_components", properties -> new StyledNameItem(properties.rarity(Rarity.EPIC), CyberwareTier.TIER_5.getColor()), UnaryOperator.identity());
+    public static final DeferredItem<Item> COURIER_PACKAGE = register(
+            "courier_package",
+            Item::new,
+            properties -> properties.stacksTo(1).rarity(Rarity.UNCOMMON)
+    );
     public static final DeferredItem<Item> WHOS_READY_FOR_TOMORROW_MUSIC_DISC = register(
             "whos_ready_for_tomorrow_music_disc",
             Item::new,
@@ -49,6 +56,31 @@ public final class ModItems {
                     .stacksTo(1)
                     .rarity(Rarity.RARE)
                     .jukeboxPlayable(ModJukeboxSongs.WHOS_READY_FOR_TOMORROW_INSTRUMENTAL)
+    );
+    public static final DeferredItem<Item> FIXER_SPAWN_EGG = register(
+            "fixer_spawn_egg",
+            properties -> new SpawnEggItem(ModEntityTypes.FIXER.get(), 0x24323E, 0x1EE2B5, properties),
+            UnaryOperator.identity()
+    );
+    public static final DeferredItem<Item> RIPPERDOC_SPAWN_EGG = register(
+            "ripperdoc_spawn_egg",
+            properties -> new SpawnEggItem(ModEntityTypes.RIPPERDOC.get(), 0x2E4052, 0x7FFFD4, properties),
+            UnaryOperator.identity()
+    );
+    public static final DeferredItem<Item> TECHIE_SPAWN_EGG = register(
+            "techie_spawn_egg",
+            properties -> new SpawnEggItem(ModEntityTypes.TECHIE.get(), 0x66452E, 0xF8C471, properties),
+            UnaryOperator.identity()
+    );
+    public static final DeferredItem<Item> NETRUNNER_SPAWN_EGG = register(
+            "netrunner_spawn_egg",
+            properties -> new SpawnEggItem(ModEntityTypes.NETRUNNER.get(), 0x24303C, 0x8E44AD, properties),
+            UnaryOperator.identity()
+    );
+    public static final DeferredItem<Item> MERC_SPAWN_EGG = register(
+            "merc_spawn_egg",
+            properties -> new SpawnEggItem(ModEntityTypes.MERC.get(), 0x3B3B3B, 0xC0392B, properties),
+            UnaryOperator.identity()
     );
 
     private static final Map<String, DeferredItem<CyberwareItem>> CYBERWARE_BY_ID = createCyberwareRegistry();
@@ -66,10 +98,35 @@ public final class ModItems {
             RARE_ITEM_COMPONENTS,
             EPIC_ITEM_COMPONENTS,
             LEGENDARY_ITEM_COMPONENTS,
-            WHOS_READY_FOR_TOMORROW_MUSIC_DISC
+            COURIER_PACKAGE,
+            WHOS_READY_FOR_TOMORROW_MUSIC_DISC,
+            FIXER_SPAWN_EGG,
+            RIPPERDOC_SPAWN_EGG,
+            TECHIE_SPAWN_EGG,
+            NETRUNNER_SPAWN_EGG,
+            MERC_SPAWN_EGG
     );
 
     private static final List<DeferredItem<CyberwareItem>> CYBERWARE_ITEMS = List.copyOf(CYBERWARE_BY_ID.values());
+    private static final Set<String> GAMEPLAY_CYBERWARE_IDS = Set.of(
+            "excavator_arms",
+            "forager_lens",
+            "vein_reader_optics",
+            "relic_scanner",
+            "cargo_spine",
+            "precision_miner",
+            "masons_grip",
+            "harvester_hands",
+            "kiroshi_retrieval_suite",
+            "hydrolung",
+            "brushstep_legs"
+    );
+    private static final List<DeferredItem<CyberwareItem>> GAMEPLAY_CYBERWARE_ITEMS = CYBERWARE_ITEMS.stream()
+            .filter(item -> GAMEPLAY_CYBERWARE_IDS.contains(item.getId().getPath()))
+            .toList();
+    private static final List<DeferredItem<CyberwareItem>> STANDARD_CYBERWARE_ITEMS = CYBERWARE_ITEMS.stream()
+            .filter(item -> !GAMEPLAY_CYBERWARE_IDS.contains(item.getId().getPath()))
+            .toList();
     private static final Map<String, DeferredItem<ChipwareItem>> CHIPWARE_BY_ID = createChipwareRegistry();
     private static final List<DeferredItem<ChipwareItem>> CHIPWARE_ITEMS = List.copyOf(CHIPWARE_BY_ID.values());
     private static final Map<String, DeferredItem<CyberwareModuleItem>> MODULES_BY_ID = createModuleRegistry();
@@ -162,6 +219,14 @@ public final class ModItems {
 
     public static List<DeferredItem<CyberwareItem>> cyberwareItems() {
         return CYBERWARE_ITEMS;
+    }
+
+    public static List<DeferredItem<CyberwareItem>> standardCyberwareItems() {
+        return STANDARD_CYBERWARE_ITEMS;
+    }
+
+    public static List<DeferredItem<CyberwareItem>> gameplayCyberwareItems() {
+        return GAMEPLAY_CYBERWARE_ITEMS;
     }
 
     public static DeferredItem<ChipwareItem> chipware(String id) {

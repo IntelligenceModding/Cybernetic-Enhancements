@@ -17,6 +17,7 @@ import de.artemis.cyberneticenhancements.common.registry.ModBlocks;
 import de.artemis.cyberneticenhancements.common.registry.ModItems;
 import de.artemis.cyberneticenhancements.common.registry.ModMenuTypes;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -468,7 +469,7 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
         return chipwareInventories[handlerIndex].isSlotUnlocked(slot);
     }
 
-    public String getChipwareHostName(int handlerIndex) {
+    public Component getChipwareHostName(int handlerIndex) {
         return chipwareInventories[handlerIndex].getHostDisplayName();
     }
 
@@ -488,11 +489,11 @@ public final class RipperStationMenu extends AbstractBaseMenu implements NamedBl
         return legModuleInventory.isSlotUnlocked(slot);
     }
 
-    public String getArmModuleHostName() {
+    public Component getArmModuleHostName() {
         return armModuleInventory.getHostDisplayName();
     }
 
-    public String getLegModuleHostName() {
+    public Component getLegModuleHostName() {
         return legModuleInventory.getHostDisplayName();
     }
 

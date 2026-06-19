@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "minecraft:copper_ingot"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    }
+  },
+  "pattern": [
+    " C ",
+    "CRC",
+    " C "
+  ],
+  "result": {
+    "count": 4,
+    "id": "cyberneticenhancements:copper_wiring"
+  }
+}

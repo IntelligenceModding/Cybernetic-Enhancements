@@ -8,7 +8,9 @@ import de.artemis.cyberneticenhancements.common.menu.RecyclerStationMenu;
 import de.artemis.cyberneticenhancements.common.network.UpgradeStationInputSlotPayload;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.player.Inventory;
@@ -163,7 +165,7 @@ public final class RecyclerStationScreen extends AbstractContainerScreen<Recycle
             ItemStack stack = outputs.get(index);
             drawTrimmedText(
                     guiGraphics,
-                    Component.literal(stack.getCount() + "x ").append(stack.getHoverName()),
+                    Component.translatable("screen.cyberneticenhancements.common.counted_item", stack.getCount(), stack.getHoverName()),
                     x,
                     SUMMARY_Y + SUMMARY_LINE_HEIGHT * index,
                     maxWidth,
@@ -177,12 +179,18 @@ public final class RecyclerStationScreen extends AbstractContainerScreen<Recycle
     }
 
     private void drawTrimmedText(GuiGraphics guiGraphics, Component text, int x, int y, int maxWidth, int color) {
-        String raw = text.getString();
-        String trimmed = raw;
-        if (font.width(raw) > maxWidth) {
-            trimmed = font.plainSubstrByWidth(raw, Math.max(0, maxWidth - font.width("..."))) + "...";
+        guiGraphics.drawString(font, trimStyled(text, maxWidth), x, y, color, false);
+    }
+
+    private FormattedCharSequence trimStyled(Component text, int maxWidth) {
+        if (font.width(text) <= maxWidth) {
+            return Language.getInstance().getVisualOrder(text);
         }
-        guiGraphics.drawString(font, trimmed, x, y, color, false);
+
+        int ellipsisWidth = font.width("...");
+        FormattedText base = font.substrByWidth(text, Math.max(0, maxWidth - ellipsisWidth));
+        FormattedText combined = FormattedText.composite(base, Component.literal("..."));
+        return Language.getInstance().getVisualOrder(combined);
     }
 
     private void drawWrappedText(GuiGraphics guiGraphics, Component text, int x, int y, int maxWidth, int color, int maxLines) {

@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "cyberneticenhancements:conductive_paste"
+    },
+    "J": {
+      "item": "cyberneticenhancements:replacement_joint"
+    },
+    "P": {
+      "item": "cyberneticenhancements:basic_circuit_plate"
+    },
+    "W": {
+      "item": "cyberneticenhancements:copper_wiring"
+    }
+  },
+  "pattern": [
+    " W ",
+    "CJC",
+    " P "
+  ],
+  "result": {
+    "count": 2,
+    "id": "cyberneticenhancements:common_item_components"
+  }
+}

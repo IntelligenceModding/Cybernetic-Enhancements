@@ -38,7 +38,7 @@ final class StationUpgradeTooltipBuilder {
         if (!requiredComponent.isEmpty()) {
             tooltip.add(Component.translatable(
                     "screen.cyberneticenhancements.ripper_station.slot_upgrade_cost",
-                    Component.literal("1x ").append(requiredComponent.getHoverName())
+                    Component.translatable("screen.cyberneticenhancements.common.counted_item", 1, requiredComponent.getHoverName())
             ));
         }
 

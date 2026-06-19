@@ -9,13 +9,20 @@ import de.artemis.cyberneticenhancements.common.cyberware.FaceCyberwareManager;
 import de.artemis.cyberneticenhancements.common.cyberware.FrontalCortexManager;
 import de.artemis.cyberneticenhancements.common.cyberware.LegCyberwareManager;
 import de.artemis.cyberneticenhancements.client.CyberwareHudClientState;
+import de.artemis.cyberneticenhancements.client.ArchiveContactsClientState;
+import de.artemis.cyberneticenhancements.client.ArchiveQuestsClientState;
 import de.artemis.cyberneticenhancements.client.FaceHazardHighlightClientState;
 import de.artemis.cyberneticenhancements.client.PsychosisOverlayClientState;
 import de.artemis.cyberneticenhancements.client.PlayerMotionSyncClient;
+import de.artemis.cyberneticenhancements.common.entity.AbstractCityNpcEntity;
+import de.artemis.cyberneticenhancements.common.menu.RelicCacheHackMenu;
+import de.artemis.cyberneticenhancements.common.quest.PlayerQuestManager;
 import de.artemis.cyberneticenhancements.common.menu.RecyclerStationMenu;
 import de.artemis.cyberneticenhancements.common.menu.RipperStationMenu;
 import de.artemis.cyberneticenhancements.common.menu.TechStationMenu;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 public final class ModPayloads {
     private ModPayloads() {
@@ -34,6 +41,10 @@ public final class ModPayloads {
                                 payload.sprint())))
                 .playToClient(CyberwareHudPayload.TYPE, CyberwareHudPayload.STREAM_CODEC, (payload, context) ->
                         context.enqueueWork(() -> CyberwareHudClientState.update(payload)))
+                .playToClient(ArchiveContactsPayload.TYPE, ArchiveContactsPayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> ArchiveContactsClientState.update(payload)))
+                .playToClient(ArchiveQuestsPayload.TYPE, ArchiveQuestsPayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> ArchiveQuestsClientState.update(payload)))
                 .playToClient(PsychosisOverlayPayload.TYPE, PsychosisOverlayPayload.STREAM_CODEC, (payload, context) ->
                         context.enqueueWork(() -> PsychosisOverlayClientState.update(payload)))
                 .playToClient(FaceHazardHighlightPayload.TYPE, FaceHazardHighlightPayload.STREAM_CODEC, (payload, context) ->
@@ -102,6 +113,104 @@ public final class ModPayloads {
                             if (context.player().containerMenu instanceof RecyclerStationMenu recyclerStationMenu && payload.slotIndex() == 0) {
                                 recyclerStationMenu.tryUpgradeSupportedTier();
                             }
+                        }))
+                .playToServer(RelicCacheHackSelectPayload.TYPE, RelicCacheHackSelectPayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> {
+                            if (payload.cellIndex() < 0) {
+                                return;
+                            }
+                            if (context.player().containerMenu instanceof RelicCacheHackMenu menu
+                                    && context.player() instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+                                if (serverPlayer.level().getBlockEntity(menu.getBlockPos()) instanceof de.artemis.cyberneticenhancements.common.blockentity.RelicCacheBlockEntity blockEntity) {
+                                    blockEntity.trySelectHackCell(serverPlayer, payload.cellIndex());
+                                }
+                            }
+                        }))
+                .playToServer(FixerDialogueChoicePayload.TYPE, FixerDialogueChoicePayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> {
+                            if (context.player().containerMenu instanceof de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu menu
+                                    && context.player() instanceof ServerPlayer serverPlayer) {
+                                menu.handleChoice(serverPlayer, payload.optionId());
+                            }
+                        }))
+                .playToServer(NpcIdentityNicknamePayload.TYPE, NpcIdentityNicknamePayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> {
+                            if (context.player().containerMenu instanceof de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu menu
+                                    && context.player() instanceof ServerPlayer serverPlayer) {
+                                menu.handleNicknameUpdate(serverPlayer, payload.nickname());
+                            }
+                        }))
+                .playToServer(NpcIdentityAppearancePayload.TYPE, NpcIdentityAppearancePayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> {
+                            if (context.player().containerMenu instanceof de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu menu
+                                    && context.player() instanceof ServerPlayer serverPlayer) {
+                                menu.handleAppearanceUpdate(serverPlayer, payload.appearanceId());
+                            }
+                        }))
+                .playToServer(NpcIdentityNameColorPayload.TYPE, NpcIdentityNameColorPayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> {
+                            if (context.player().containerMenu instanceof de.artemis.cyberneticenhancements.common.menu.FixerDialogMenu menu
+                                    && context.player() instanceof ServerPlayer serverPlayer) {
+                                menu.handleNameColorUpdate(serverPlayer, payload.colorId());
+                            }
+                        }))
+                .playToServer(ArchiveContactsRequestPayload.TYPE, ArchiveContactsRequestPayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> {
+                            if (context.player() instanceof ServerPlayer serverPlayer) {
+                                PacketDistributor.sendToPlayer(serverPlayer, ArchiveContactsPayload.capture(serverPlayer));
+                            }
+                        }))
+                .playToServer(ArchiveQuestsRequestPayload.TYPE, ArchiveQuestsRequestPayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> {
+                            if (context.player() instanceof ServerPlayer serverPlayer) {
+                                PacketDistributor.sendToPlayer(serverPlayer, ArchiveQuestsPayload.capture(serverPlayer));
+                            }
+                        }))
+                .playToServer(ArchiveQuestActionPayload.TYPE, ArchiveQuestActionPayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> {
+                            if (!(context.player() instanceof ServerPlayer serverPlayer)) {
+                                return;
+                            }
+                            boolean success = switch (payload.actionId()) {
+                                case ArchiveQuestActionPayload.ACTION_DISCARD -> PlayerQuestManager.abandonQuestById(serverPlayer, payload.questId()) == PlayerQuestManager.Result.OK;
+                                default -> false;
+                            };
+                            if (!success) {
+                                serverPlayer.displayClientMessage(net.minecraft.network.chat.Component.translatable("message.cyberneticenhancements.archive.quest_discard_unavailable"), true);
+                                return;
+                            }
+                            PacketDistributor.sendToPlayer(serverPlayer, ArchiveQuestsPayload.capture(serverPlayer));
+                            PacketDistributor.sendToPlayer(serverPlayer, ArchiveContactsPayload.capture(serverPlayer));
+                        }))
+                .playToServer(ArchiveContactActionPayload.TYPE, ArchiveContactActionPayload.STREAM_CODEC, (payload, context) ->
+                        context.enqueueWork(() -> {
+                            if (!(context.player() instanceof ServerPlayer serverPlayer)) {
+                                return;
+                            }
+                            java.util.UUID npcId;
+                            try {
+                                npcId = java.util.UUID.fromString(payload.npcId());
+                            } catch (IllegalArgumentException ignored) {
+                                return;
+                            }
+
+                            boolean success = switch (payload.actionId()) {
+                                case ArchiveContactActionPayload.ACTION_LOCATE -> AbstractCityNpcEntity.locateFromArchive(serverPlayer, npcId);
+                                case ArchiveContactActionPayload.ACTION_MEETUP -> AbstractCityNpcEntity.summonFromArchive(serverPlayer, npcId);
+                                case ArchiveContactActionPayload.ACTION_TOGGLE_PIN -> AbstractCityNpcEntity.togglePinnedFromArchive(serverPlayer, npcId);
+                                case ArchiveContactActionPayload.ACTION_TOGGLE_HIDE -> AbstractCityNpcEntity.toggleHiddenFromArchive(serverPlayer, npcId);
+                                default -> false;
+                            };
+                            if (!success) {
+                                String messageKey = switch (payload.actionId()) {
+                                    case ArchiveContactActionPayload.ACTION_MEETUP -> "message.cyberneticenhancements.archive.contact_meetup_unavailable";
+                                    case ArchiveContactActionPayload.ACTION_TOGGLE_PIN, ArchiveContactActionPayload.ACTION_TOGGLE_HIDE -> "message.cyberneticenhancements.archive.contact_update_unavailable";
+                                    default -> "message.cyberneticenhancements.archive.contact_locate_unavailable";
+                                };
+                                serverPlayer.displayClientMessage(net.minecraft.network.chat.Component.translatable(messageKey), true);
+                                return;
+                            }
+                            PacketDistributor.sendToPlayer(serverPlayer, ArchiveContactsPayload.capture(serverPlayer));
                         }));
     }
 }

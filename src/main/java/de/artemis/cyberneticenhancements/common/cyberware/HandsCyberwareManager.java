@@ -2,16 +2,31 @@ package de.artemis.cyberneticenhancements.common.cyberware;
 
 import de.artemis.cyberneticenhancements.common.network.FaceHazardHighlightPayload;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.CropBlock;
+import net.minecraft.world.level.block.NetherWartBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingKnockBackEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.HashMap;
@@ -25,6 +40,8 @@ public final class HandsCyberwareManager {
     private static final String SHOCK_ABSORBER_ID = "shock_absorber";
     private static final String IMMOVABLE_FORCE_ID = "immovable_force";
     private static final String SMART_LINK_ID = "smart_link";
+    private static final String PRECISION_MINER_ID = "precision_miner";
+    private static final String HARVESTER_HANDS_ID = "harvester_hands";
     private static final long MICROGENERATOR_COOLDOWN_TICKS = CyberwareBalance.intValue("hands.microgenerator.cooldown_ticks");
     private static final long MICROGENERATOR_SURGE_TICKS = CyberwareBalance.intValue("hands.microgenerator.surge_ticks");
     private static final double MICROGENERATOR_ARC_RADIUS = CyberwareBalance.doubleValue("hands.microgenerator.arc_radius");
@@ -43,7 +60,9 @@ public final class HandsCyberwareManager {
                  MICROGENERATOR_ID,
                  SHOCK_ABSORBER_ID,
                  IMMOVABLE_FORCE_ID,
-                 SMART_LINK_ID -> true;
+                 SMART_LINK_ID,
+                 PRECISION_MINER_ID,
+                 HARVESTER_HANDS_ID -> true;
             default -> false;
         };
     }
@@ -126,6 +145,56 @@ public final class HandsCyberwareManager {
                     : (float) CyberwareBalance.doubleValue("hands.immovable_force.knockback_factor");
         }
         event.setStrength(strength);
+    }
+
+    public static void mergePassiveEffects(Player player, PlayerCyberwareInventory inventory, java.util.EnumMap<CyberwareEffectType, Double> totals) {
+    }
+
+    public static boolean requiresRealtimeRefresh(Player player) {
+        return false;
+    }
+
+    public static void onBreakSpeed(PlayerEvent.BreakSpeed event) {
+        Player player = event.getEntity();
+        if (player.level().isClientSide()) {
+            return;
+        }
+
+        PlayerCyberwareInventory inventory = new PlayerCyberwareInventory(player);
+        int precisionMinerCount = inventory.countInstalledCyberware(PRECISION_MINER_ID);
+        if (precisionMinerCount <= 0 || !isPrecisionMiningTarget(player, event.getState())) {
+            return;
+        }
+
+        float multiplier = 1.0F + (float) (CyberwareBalance.doubleValue("hands.precision_miner.break_speed_bonus") * precisionMinerCount);
+        event.setNewSpeed(event.getNewSpeed() * multiplier);
+    }
+
+    public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        Player player = event.getEntity();
+        if (player.level().isClientSide() || event.getHand() != net.minecraft.world.InteractionHand.MAIN_HAND) {
+            return;
+        }
+
+        PlayerCyberwareInventory inventory = new PlayerCyberwareInventory(player);
+        if (!inventory.hasInstalledCyberware(HARVESTER_HANDS_ID)) {
+            return;
+        }
+
+        if (!(player.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
+        BlockPos pos = event.getPos();
+        BlockState state = serverLevel.getBlockState(pos);
+        if (!isSupportedHarvestTarget(state)) {
+            return;
+        }
+
+        if (harvestAndReplant(serverLevel, player, pos, state, event.getItemStack())) {
+            event.setCanceled(true);
+            event.setCancellationResult(InteractionResult.SUCCESS);
+        }
     }
 
     public static void clearCooldowns(Player player) {
@@ -257,6 +326,91 @@ public final class HandsCyberwareManager {
                 || source.is(DamageTypes.PLAYER_EXPLOSION)
                 || source.is(DamageTypes.FALL)
                 || source.is(DamageTypes.FALLING_BLOCK);
+    }
+
+    private static boolean isPrecisionMiningTarget(Player player, BlockState state) {
+        if (!isNaturalStoneOrOre(state)) {
+            return false;
+        }
+
+        ItemStack heldItem = player.getMainHandItem();
+        return !heldItem.isEmpty() && heldItem.isCorrectToolForDrops(state);
+    }
+
+    private static boolean isNaturalStoneOrOre(BlockState state) {
+        if (state.is(BlockTags.BASE_STONE_OVERWORLD) || state.is(BlockTags.BASE_STONE_NETHER)) {
+            return true;
+        }
+
+        String path = BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath();
+        return path.endsWith("_ore") || path.equals("ancient_debris");
+    }
+
+    private static boolean isSupportedHarvestTarget(BlockState state) {
+        if (state.getBlock() instanceof CropBlock cropBlock) {
+            return cropBlock.isMaxAge(state);
+        }
+        return state.getBlock() instanceof NetherWartBlock && state.getValue(NetherWartBlock.AGE) >= NetherWartBlock.MAX_AGE;
+    }
+
+    private static boolean harvestAndReplant(ServerLevel level, Player player, BlockPos pos, BlockState state, ItemStack tool) {
+        Block block = state.getBlock();
+        ItemStack replantStack = resolveReplantStack(block);
+        if (replantStack.isEmpty()) {
+            return false;
+        }
+
+        List<ItemStack> drops = Block.getDrops(state, level, pos, level.getBlockEntity(pos), player, tool);
+        ItemStack replantRemainder = replantStack.copy();
+        boolean consumedReplant = false;
+        for (ItemStack drop : drops) {
+            if (drop.isEmpty() || !ItemStack.isSameItemSameComponents(drop, replantRemainder)) {
+                continue;
+            }
+
+            int removed = Math.min(drop.getCount(), replantRemainder.getCount());
+            drop.shrink(removed);
+            replantRemainder.shrink(removed);
+            if (replantRemainder.isEmpty()) {
+                consumedReplant = true;
+                break;
+            }
+        }
+
+        if (!consumedReplant) {
+            return false;
+        }
+
+        BlockState replantedState = resolveReplantedState(state);
+        level.setBlock(pos, replantedState, Block.UPDATE_ALL_IMMEDIATE);
+        for (ItemStack drop : drops) {
+            if (!drop.isEmpty()) {
+                Block.popResource(level, pos, drop);
+            }
+        }
+        level.levelEvent(2001, pos, Block.getId(state));
+        return true;
+    }
+
+    private static ItemStack resolveReplantStack(Block block) {
+        return switch (BuiltInRegistries.BLOCK.getKey(block).getPath()) {
+            case "wheat" -> new ItemStack(net.minecraft.world.item.Items.WHEAT_SEEDS);
+            case "beetroots" -> new ItemStack(net.minecraft.world.item.Items.BEETROOT_SEEDS);
+            case "carrots" -> new ItemStack(net.minecraft.world.item.Items.CARROT);
+            case "potatoes" -> new ItemStack(net.minecraft.world.item.Items.POTATO);
+            case "nether_wart" -> new ItemStack(net.minecraft.world.item.Items.NETHER_WART);
+            default -> ItemStack.EMPTY;
+        };
+    }
+
+    private static BlockState resolveReplantedState(BlockState state) {
+        if (state.getBlock() instanceof CropBlock cropBlock) {
+            return cropBlock.getStateForAge(0);
+        }
+        if (state.getBlock() instanceof NetherWartBlock) {
+            return state.setValue(NetherWartBlock.AGE, 0);
+        }
+        return state;
     }
 
     private static void sendHighlight(Player player, LivingEntity target, int ttlTicks) {

@@ -35,7 +35,7 @@ public final class CyberConsumableItem extends Item {
         ItemStack itemStack = player.getItemInHand(usedHand);
         if (!CyberConsumableManager.canConsume(player, definition)) {
             if (!level.isClientSide()) {
-                player.displayClientMessage(Component.translatable("message.cyberneticenhancements.consumable.cooldown", definition.displayName()).withStyle(ChatFormatting.RED), true);
+                player.displayClientMessage(Component.translatable("message.cyberneticenhancements.consumable.cooldown", itemStack.getHoverName()).withStyle(ChatFormatting.RED), true);
             }
             return InteractionResultHolder.fail(itemStack);
         }

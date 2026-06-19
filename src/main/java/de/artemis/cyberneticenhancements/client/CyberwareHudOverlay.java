@@ -162,12 +162,12 @@ final class CyberwareHudOverlay {
         for (PsychosisOverlayPayload.Entry entry : snapshot.entries()) {
             Component playerLabel = Component.literal(entry.playerName());
             Component timeValue = Component.literal(formatSeconds(entry.remainingSeconds()));
-            String tierLabel = "MAJOR".equals(entry.tier()) ? "Major" : "Minor";
+            Component tierLabel = Component.translatable("hud.cyberneticenhancements.psychosis.tier." + entry.tier().toLowerCase(Locale.ROOT));
             List<Component> tooltip = List.of(
-                    Component.literal("Cyberpsychosis"),
-                    Component.literal("Subject: " + entry.playerName()),
-                    Component.literal("Tier: " + tierLabel),
-                    Component.literal("Duration: " + formatSeconds(entry.remainingSeconds()) + " / " + formatSeconds(entry.totalSeconds()))
+                    Component.translatable("hud.cyberneticenhancements.psychosis"),
+                    Component.translatable("hud.cyberneticenhancements.psychosis.subject", entry.playerName()),
+                    Component.translatable("hud.cyberneticenhancements.psychosis.tier", tierLabel),
+                    Component.translatable("hud.cyberneticenhancements.psychosis.duration", formatSeconds(entry.remainingSeconds()), formatSeconds(entry.totalSeconds()))
             );
             RowData row = new RowData(
                     playerLabel,
@@ -178,7 +178,7 @@ final class CyberwareHudOverlay {
                     true,
                     tooltip
             );
-            cards.add(new CardLayout(Component.literal("Psychosis"), maxRowWidth, List.of(row)));
+            cards.add(new CardLayout(Component.translatable("hud.cyberneticenhancements.psychosis"), maxRowWidth, List.of(row)));
         }
         return cards;
     }
@@ -195,21 +195,21 @@ final class CyberwareHudOverlay {
                 false,
                 List.of(
                         Component.translatable("hud.cyberneticenhancements.chrome"),
-                        Component.literal("Installed: " + snapshot.installedChrome() + " / " + snapshot.chromeCapacity()),
-                        Component.literal("Load: " + chromePercent + "%")
+                        Component.translatable("hud.cyberneticenhancements.installed", snapshot.installedChrome(), snapshot.chromeCapacity()),
+                        Component.translatable("hud.cyberneticenhancements.load", chromePercent)
                 )
         ));
 
         List<Component> strainTooltip = new ArrayList<>();
         strainTooltip.add(Component.translatable("hud.cyberneticenhancements.cyberstrain"));
-        strainTooltip.add(Component.literal("State: ").append(Component.translatable(snapshot.psychosisStateKey())));
-        strainTooltip.add(Component.literal("Effective: " + snapshot.effectiveCyberstrain() + " / 50"));
-        strainTooltip.add(Component.literal("Raw: " + snapshot.cyberstrain() + " / 50"));
+        strainTooltip.add(Component.translatable("hud.cyberneticenhancements.state_value", Component.translatable(snapshot.psychosisStateKey())));
+        strainTooltip.add(Component.translatable("hud.cyberneticenhancements.effective", snapshot.effectiveCyberstrain(), 50));
+        strainTooltip.add(Component.translatable("hud.cyberneticenhancements.raw", snapshot.cyberstrain(), 50));
         if (snapshot.suppressionSeconds() > 0) {
-            strainTooltip.add(Component.literal("Suppression: " + snapshot.suppressionAmount() + " for " + formatSeconds(snapshot.suppressionSeconds())));
+            strainTooltip.add(Component.translatable("hud.cyberneticenhancements.suppression_detail", snapshot.suppressionAmount(), formatSeconds(snapshot.suppressionSeconds())));
         }
         if (snapshot.psychosisSeconds() > 0) {
-            strainTooltip.add(Component.literal("Episode risk: " + formatSeconds(snapshot.psychosisSeconds())));
+            strainTooltip.add(Component.translatable("hud.cyberneticenhancements.episode_risk", formatSeconds(snapshot.psychosisSeconds())));
         }
         rows.add(new RowData(
                 Component.translatable("hud.cyberneticenhancements.cyberstrain"),
@@ -237,7 +237,7 @@ final class CyberwareHudOverlay {
             ));
         }
 
-        return new CardLayout(Component.literal("System"), width, rows);
+        return new CardLayout(Component.translatable("hud.cyberneticenhancements.system"), width, rows);
     }
 
     private static int countVisibleRightCards(CyberwareHudPayload snapshot) {
@@ -281,25 +281,25 @@ final class CyberwareHudOverlay {
             String activationText = activationLabel.getString();
             Component labeledAbilityName = activationText.isBlank()
                     ? abilityName
-                    : abilityName.copy().append(Component.literal(" [" + activationText + "]"));
+                    : Component.literal("[" + activationText + "] ").append(abilityName.copy());
             tooltip.add(labeledAbilityName);
             if (!activationText.isBlank()) {
-                tooltip.add(Component.literal("Activate: " + activationText));
+                tooltip.add(Component.translatable("hud.cyberneticenhancements.activate", activationText));
             }
 
             Component detail;
             float ratio;
             int color;
             if (entry.activeSeconds() > 0) {
-                detail = Component.literal("Active " + formatSeconds(entry.activeSeconds()));
+                detail = Component.translatable("hud.cyberneticenhancements.active_short", formatSeconds(entry.activeSeconds()));
                 ratio = CyberwareHudClientState.getAbilityActiveRatio(entry);
                 color = BAR_ABILITY_ACTIVE;
-                tooltip.add(Component.literal("Active: " + formatSeconds(entry.activeSeconds()) + " / " + formatSeconds(entry.activeTotalSeconds())));
+                tooltip.add(Component.translatable("hud.cyberneticenhancements.active_duration", formatSeconds(entry.activeSeconds()), formatSeconds(entry.activeTotalSeconds())));
             } else if (entry.cooldownSeconds() > 0) {
-                detail = Component.literal("Cooldown " + formatSeconds(entry.cooldownSeconds()));
+                detail = Component.translatable("hud.cyberneticenhancements.cooldown_short_full", formatSeconds(entry.cooldownSeconds()));
                 ratio = CyberwareHudClientState.getAbilityCooldownRatio(entry);
                 color = BAR_ABILITY_COOLDOWN;
-                tooltip.add(Component.literal("Cooldown: " + formatSeconds(entry.cooldownSeconds()) + " / " + formatSeconds(entry.cooldownTotalSeconds())));
+                tooltip.add(Component.translatable("hud.cyberneticenhancements.cooldown_duration", formatSeconds(entry.cooldownSeconds()), formatSeconds(entry.cooldownTotalSeconds())));
             } else {
                 detail = Component.translatable("hud.cyberneticenhancements.ready");
                 ratio = 1.0F;
@@ -311,7 +311,7 @@ final class CyberwareHudOverlay {
         }
 
         return new CardLayout(
-                Component.literal("Ability"),
+                Component.translatable("hud.cyberneticenhancements.ability"),
                 width,
                 rows
         );
@@ -339,7 +339,7 @@ final class CyberwareHudOverlay {
             ));
         }
 
-        return new CardLayout(Component.literal("Status"), width, rows);
+        return new CardLayout(Component.translatable("hud.cyberneticenhancements.status"), width, rows);
     }
 
     private static boolean hasRightSideStatuses(CyberwareHudPayload snapshot) {
@@ -368,7 +368,7 @@ final class CyberwareHudOverlay {
                     false,
                     List.of(
                             label.copy(),
-                            Component.literal("Cooldown: " + formatSeconds(entry.remainingSeconds()) + " / " + formatSeconds(entry.totalSeconds()))
+                            Component.translatable("hud.cyberneticenhancements.cooldown_duration", formatSeconds(entry.remainingSeconds()), formatSeconds(entry.totalSeconds()))
                     )
             ));
         }
@@ -376,7 +376,7 @@ final class CyberwareHudOverlay {
         if (rows.isEmpty()) {
             return null;
         }
-        return new CardLayout(Component.literal("Cooldowns"), width, rows);
+        return new CardLayout(Component.translatable("hud.cyberneticenhancements.cooldowns"), width, rows);
     }
 
     private static List<Component> buildStatusTooltip(CyberwareHudPayload.StatusEntry entry, Component label) {
@@ -384,18 +384,18 @@ final class CyberwareHudOverlay {
         tooltip.add(label.copy());
         tooltip.add(describeStatus(entry));
         if (entry.playerApplied()) {
-            tooltip.add(Component.literal("Source: hostile player"));
+            tooltip.add(Component.translatable("hud.cyberneticenhancements.source_hostile_player"));
         }
-        tooltip.add(Component.literal("Duration: " + formatSeconds(entry.remainingSeconds()) + " / " + formatSeconds(entry.totalSeconds())));
+        tooltip.add(Component.translatable("hud.cyberneticenhancements.duration", formatSeconds(entry.remainingSeconds()), formatSeconds(entry.totalSeconds())));
         return tooltip;
     }
 
     private static Component describeStatus(CyberwareHudPayload.StatusEntry entry) {
         if ("hud.cyberneticenhancements.suppression".equals(entry.translationKey())) {
-            return Component.literal("Amount: " + formatNumber(entry.amount()));
+            return Component.translatable("hud.cyberneticenhancements.amount", formatNumber(entry.amount()));
         }
         if ("hud.cyberneticenhancements.ram_jolt".equals(entry.translationKey())) {
-            return Component.literal("Cooldown multiplier: x" + formatNumber(entry.amount()));
+            return Component.translatable("hud.cyberneticenhancements.cooldown_multiplier", formatNumber(entry.amount()));
         }
         Component combatStatusDescription = CombatStatusManager.describeStatus(entry.translationKey(), entry.amount());
         if (!combatStatusDescription.getString().isEmpty()) {
@@ -420,10 +420,10 @@ final class CyberwareHudOverlay {
 
     private static Component statusLabel(String translationKey) {
         if ("hud.cyberneticenhancements.suppression".equals(translationKey)) {
-            return Component.literal("Suppression");
+            return Component.translatable("hud.cyberneticenhancements.suppression_label");
         }
         if ("hud.cyberneticenhancements.ram_jolt".equals(translationKey)) {
-            return Component.literal("RAM Jolt");
+            return Component.translatable("hud.cyberneticenhancements.ram_jolt_label");
         }
         if (translationKey.startsWith("hud.cyberneticenhancements.status.")) {
             return Component.translatable(translationKey);

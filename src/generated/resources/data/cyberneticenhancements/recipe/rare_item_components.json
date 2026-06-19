@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "cyberneticenhancements:micro_battery"
+    },
+    "C": {
+      "item": "cyberneticenhancements:basic_circuit_plate"
+    },
+    "D": {
+      "item": "minecraft:diamond"
+    },
+    "U": {
+      "item": "cyberneticenhancements:uncommon_item_components"
+    }
+  },
+  "pattern": [
+    " D ",
+    "UBU",
+    " C "
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:rare_item_components"
+  }
+}

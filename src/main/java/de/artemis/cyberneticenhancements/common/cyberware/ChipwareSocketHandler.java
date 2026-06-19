@@ -8,6 +8,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
@@ -115,14 +116,14 @@ public final class ChipwareSocketHandler implements IItemHandlerModifiable {
         return definition.supportsChipware() ? CyberwareUpgradeHelper.getChipSlotCount(parentStack, definition) : 0;
     }
 
-    public String getHostDisplayName() {
+    public Component getHostDisplayName() {
         CyberwareDefinition hostDefinition = getHostDefinition();
         if (hostDefinition == null) {
-            return "";
+            return Component.empty();
         }
 
         ItemStack parentStack = getParentStack();
-        return parentStack.isEmpty() ? "" : parentStack.getHoverName().getString();
+        return parentStack.isEmpty() ? Component.empty() : parentStack.getHoverName();
     }
 
     public CyberwareTier getSupportedTier(int slot) {

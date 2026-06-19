@@ -1,0 +1,14 @@
+{
+  "placement": {
+    "type": "minecraft:random_spread",
+    "salt": 187420731,
+    "separation": 12,
+    "spacing": 42
+  },
+  "structures": [
+    {
+      "structure": "cyberneticenhancements:night_city",
+      "weight": 1
+    }
+  ]
+}

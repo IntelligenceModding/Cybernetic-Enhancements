@@ -548,7 +548,7 @@ public final class CyberstrainManager {
     }
 
     private static void runPsychosisEpisode(Player player, long gameTime) {
-        if (player.isSpectator() || player.isCreative()) {
+        if (player.isSpectator()) {
             if (player instanceof ServerPlayer serverPlayer) {
                 PsychosisPursuitController.clear(player);
                 syncControlLock(serverPlayer);
@@ -609,6 +609,10 @@ public final class CyberstrainManager {
                 : PsychosisPursuitController.buildWanderIntent(player, gameTime);
         PsychosisPursuitController.applyIntent(player, intent);
         syncControlLock(serverPlayer, intent);
+
+        if (target != null || Math.abs(intent.forward()) > 0.01F || Math.abs(intent.strafe()) > 0.01F) {
+            drivePsychosisMovementByIntent(player, intent, target != null ? 0.58D : 0.42D);
+        }
 
         if (target != null) {
             tryAttackTarget(player, target, gameTime, 10L);
@@ -681,6 +685,17 @@ public final class CyberstrainManager {
         player.fallDistance = 0.0F;
         player.hasImpulse = true;
         player.hurtMarked = true;
+    }
+
+    private static void drivePsychosisMovementByIntent(Player player, PsychosisPursuitController.PursuitIntent intent, double speedMultiplier) {
+        Vec3 forward = Vec3.directionFromRotation(0.0F, intent.yaw());
+        Vec3 right = new Vec3(-forward.z, 0.0D, forward.x);
+        Vec3 desired = forward.scale(intent.forward()).add(right.scale(intent.strafe()));
+        if (desired.lengthSqr() < 0.0001D) {
+            return;
+        }
+
+        drivePsychosisMovement(player, desired, speedMultiplier, intent.jump());
     }
 
     private static Vec3 flatten(Vec3 vector) {

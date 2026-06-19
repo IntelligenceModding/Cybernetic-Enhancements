@@ -193,6 +193,12 @@ public final class CyberConsumableManager {
     }
 
     private static void notifyUse(Player player, CyberConsumableDefinition definition) {
-        player.displayClientMessage(Component.translatable("message.cyberneticenhancements.consumable.used", definition.displayName()).withStyle(ChatFormatting.AQUA), true);
+        player.displayClientMessage(
+                Component.translatable(
+                        "message.cyberneticenhancements.consumable.used",
+                        ModItems.consumable(definition.id()).get().getDefaultInstance().getHoverName()
+                ).withStyle(ChatFormatting.AQUA),
+                true
+        );
     }
 }

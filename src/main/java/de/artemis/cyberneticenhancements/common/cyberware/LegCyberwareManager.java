@@ -4,6 +4,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
@@ -11,6 +12,8 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 
@@ -25,6 +28,7 @@ public final class LegCyberwareManager {
     private static final String LEEROY_LIGAMENT_SYSTEM_ID = "leeroy_ligament_system";
     private static final String LYNX_PAWS_ID = "lynx_paws";
     private static final String REINFORCED_TENDONS_ID = "reinforced_tendons";
+    private static final String BRUSHSTEP_LEGS_ID = "brushstep_legs";
 
     private static final String DASH_PISTON_ID = "dash_piston";
     private static final String FALL_DAMPER_ID = "fall_damper";
@@ -57,7 +61,8 @@ public final class LegCyberwareManager {
                  JENKINS_TENDONS_ID,
                  LEEROY_LIGAMENT_SYSTEM_ID,
                  LYNX_PAWS_ID,
-                 REINFORCED_TENDONS_ID -> true;
+                 REINFORCED_TENDONS_ID,
+                 BRUSHSTEP_LEGS_ID -> true;
             default -> false;
         };
     }
@@ -87,6 +92,7 @@ public final class LegCyberwareManager {
         int sprintMotorCount = countInstalledLegModules(inventory, SPRINT_MOTOR_ID);
         int climbingServoCount = countInstalledLegModules(inventory, CLIMBING_SERVO_ID);
         int stealthFootCount = countInstalledLegModules(inventory, STEALTH_FOOT_ID);
+        int brushstepCount = inventory.countInstalledCyberware(BRUSHSTEP_LEGS_ID);
 
         UUID playerId = player.getUUID();
         boolean onGround = player.onGround();
@@ -118,6 +124,9 @@ public final class LegCyberwareManager {
         if (climbingServoCount > 0) {
             applyClimbingServo(player, climbingServoCount);
         }
+        if (brushstepCount > 0) {
+            applyBrushstepAssistance(player, brushstepCount);
+        }
 
         manageLynxSilence(player, lynxCount, stealthFootCount);
         if (lynxCount > 0 || stealthFootCount > 0) {
@@ -139,6 +148,7 @@ public final class LegCyberwareManager {
         int sprintMotorCount = countInstalledLegModules(inventory, SPRINT_MOTOR_ID);
         int climbingServoCount = countInstalledLegModules(inventory, CLIMBING_SERVO_ID);
         int stealthFootCount = countInstalledLegModules(inventory, STEALTH_FOOT_ID);
+        int brushstepCount = inventory.countInstalledCyberware(BRUSHSTEP_LEGS_ID);
 
         if (jenkinsCount > 0) {
             double jenkinsRamp = Mth.clamp(sprintTicks / 10.0D, 0.0D, 1.0D);
@@ -177,6 +187,12 @@ public final class LegCyberwareManager {
             merge(totals, CyberwareEffectType.STEP_HEIGHT, 0.15D * stealthFootCount);
         }
 
+        if (brushstepCount > 0 && isBrushstepTerrain(player)) {
+            merge(totals, CyberwareEffectType.MOVEMENT_SPEED, CyberwareBalance.doubleValue("legs.brushstep_speed_bonus") * brushstepCount);
+            merge(totals, CyberwareEffectType.STEP_HEIGHT, CyberwareBalance.doubleValue("legs.brushstep_step_height_bonus") * brushstepCount);
+            merge(totals, CyberwareEffectType.SAFE_FALL_DISTANCE, 1.0D * brushstepCount);
+        }
+
         if (climbingServoCount > 0 && shouldClimb(player)) {
             merge(totals, CyberwareEffectType.KNOCKBACK_RESISTANCE, 0.08D * climbingServoCount);
             merge(totals, CyberwareEffectType.SAFE_FALL_DISTANCE, 1.0D * climbingServoCount);
@@ -189,6 +205,11 @@ public final class LegCyberwareManager {
         }
 
         if (!event.getSource().is(DamageTypes.FALL)) {
+            PlayerCyberwareInventory inventory = new PlayerCyberwareInventory(player);
+            int brushstepCount = inventory.countInstalledCyberware(BRUSHSTEP_LEGS_ID);
+            if (brushstepCount > 0 && event.getSource().is(DamageTypes.SWEET_BERRY_BUSH)) {
+                event.setAmount(0.0F);
+            }
             return;
         }
 
@@ -571,6 +592,52 @@ public final class LegCyberwareManager {
         PlayerMotionSyncHelper.sync(player);
     }
 
+    private static void applyBrushstepAssistance(Player player, int brushstepCount) {
+        BrushstepSurface surface = resolveBrushstepSurface(player);
+        if (surface == BrushstepSurface.NONE) {
+            return;
+        }
+
+        double multiplier = switch (surface) {
+            case SWEET_BERRY_BUSH -> 4.50D;
+            case SOUL_SAND -> 2.40D;
+            case MUD -> 2.10D;
+            case LEAVES -> 1.45D;
+            case FARMLAND -> 1.20D;
+            case NONE -> 1.0D;
+        };
+        multiplier += 0.03D * Math.max(0, brushstepCount - 1);
+        double minHorizontalSpeed = switch (surface) {
+            case SWEET_BERRY_BUSH -> 0.115D;
+            case SOUL_SAND -> 0.095D;
+            case MUD -> 0.088D;
+            case LEAVES -> 0.060D;
+            case FARMLAND -> 0.050D;
+            case NONE -> 0.0D;
+        };
+
+        Vec3 motion = player.getDeltaMovement();
+        Vec3 horizontal = new Vec3(motion.x, 0.0D, motion.z);
+        Vec3 direction;
+        if (horizontal.lengthSqr() > 0.0001D) {
+            direction = horizontal.normalize();
+        } else {
+            direction = movementIntent(player);
+        }
+
+        double horizontalSpeed = horizontal.length();
+        double targetSpeed = horizontalSpeed > 0.0001D ? Math.max(minHorizontalSpeed, horizontalSpeed * multiplier) : minHorizontalSpeed;
+        if (direction.lengthSqr() <= 0.0001D || targetSpeed <= 0.0D) {
+            return;
+        }
+
+        Vec3 adjustedHorizontal = direction.scale(targetSpeed);
+        player.setDeltaMovement(adjustedHorizontal.x, motion.y, adjustedHorizontal.z);
+        player.fallDistance = 0.0F;
+        player.hasImpulse = true;
+        PlayerMotionSyncHelper.sync(player);
+    }
+
     private static boolean hasLeeroyCharge(Player player, int leeroyCount) {
         if (leeroyCount <= 0) {
             return false;
@@ -665,6 +732,31 @@ public final class LegCyberwareManager {
                 && (player.isCrouching() || !hasHorizontalMovement(player, 0.04D));
     }
 
+    private static boolean isBrushstepTerrain(Player player) {
+        return resolveBrushstepSurface(player) != BrushstepSurface.NONE;
+    }
+
+    private static BrushstepSurface resolveBrushstepSurface(Player player) {
+        BlockState feetState = player.level().getBlockState(player.blockPosition());
+        BlockState belowState = player.level().getBlockState(player.blockPosition().below());
+        if (feetState.is(Blocks.SWEET_BERRY_BUSH)) {
+            return BrushstepSurface.SWEET_BERRY_BUSH;
+        }
+        if (feetState.is(Blocks.MUD) || belowState.is(Blocks.MUD)) {
+            return BrushstepSurface.MUD;
+        }
+        if (feetState.is(Blocks.SOUL_SAND) || belowState.is(Blocks.SOUL_SAND)) {
+            return BrushstepSurface.SOUL_SAND;
+        }
+        if (feetState.is(BlockTags.LEAVES) || belowState.is(BlockTags.LEAVES)) {
+            return BrushstepSurface.LEAVES;
+        }
+        if (feetState.is(Blocks.FARMLAND) || belowState.is(Blocks.FARMLAND)) {
+            return BrushstepSurface.FARMLAND;
+        }
+        return BrushstepSurface.NONE;
+    }
+
     private static boolean isEffectiveSprinting(Player player) {
         return player.isSprinting() && hasHorizontalMovement(player, MIN_MOVEMENT_SQR);
     }
@@ -690,7 +782,23 @@ public final class LegCyberwareManager {
         return flat.lengthSqr() > 0.0001D ? flat.normalize() : new Vec3(0.0D, 0.0D, 1.0D);
     }
 
+    private static Vec3 movementIntent(Player player) {
+        Vec3 forward = horizontalLook(player);
+        Vec3 strafe = new Vec3(-forward.z, 0.0D, forward.x);
+        Vec3 intent = forward.scale(player.zza).add(strafe.scale(player.xxa));
+        return intent.lengthSqr() > 0.0001D ? intent.normalize() : Vec3.ZERO;
+    }
+
     private static void merge(java.util.EnumMap<CyberwareEffectType, Double> totals, CyberwareEffectType type, double amount) {
         totals.merge(type, amount, type.isMobEffect() ? Math::max : Double::sum);
+    }
+
+    private enum BrushstepSurface {
+        NONE,
+        SWEET_BERRY_BUSH,
+        SOUL_SAND,
+        MUD,
+        LEAVES,
+        FARMLAND
     }
 }

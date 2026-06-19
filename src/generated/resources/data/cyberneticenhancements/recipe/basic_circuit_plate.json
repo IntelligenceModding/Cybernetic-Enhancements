@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "item": "minecraft:gold_ingot"
+    },
+    "P": {
+      "item": "cyberneticenhancements:conductive_paste"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "W": {
+      "item": "cyberneticenhancements:copper_wiring"
+    }
+  },
+  "pattern": [
+    "WRW",
+    "GPG",
+    " W "
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:basic_circuit_plate"
+  }
+}

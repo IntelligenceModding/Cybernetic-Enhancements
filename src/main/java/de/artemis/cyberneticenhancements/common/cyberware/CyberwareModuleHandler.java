@@ -8,6 +8,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
@@ -122,9 +123,9 @@ public final class CyberwareModuleHandler implements IItemHandlerModifiable {
                 : 0;
     }
 
-    public String getHostDisplayName() {
+    public Component getHostDisplayName() {
         ItemStack parentStack = getParentStack();
-        return parentStack.isEmpty() ? "" : parentStack.getHoverName().getString();
+        return parentStack.isEmpty() ? Component.empty() : parentStack.getHoverName();
     }
 
     public CyberwareTier getSupportedTier(int slot) {

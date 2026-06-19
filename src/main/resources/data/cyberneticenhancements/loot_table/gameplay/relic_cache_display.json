@@ -1,0 +1,65 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:precision_miner",
+          "weight": 9
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:masons_grip",
+          "weight": 9
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:forager_lens",
+          "weight": 8
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:harvester_hands",
+          "weight": 8
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:cargo_spine",
+          "weight": 7
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:brushstep_legs",
+          "weight": 7
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:hydrolung",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:kiroshi_retrieval_suite",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:vein_reader_optics",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:relic_scanner",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "cyberneticenhancements:excavator_arms",
+          "weight": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 package de.artemis.cyberneticenhancements.common.cyberware;
 
 import de.artemis.cyberneticenhancements.common.consumable.CyberConsumableManager;
+import de.artemis.cyberneticenhancements.common.economy.PlayerEurodollarManager;
+import de.artemis.cyberneticenhancements.common.quest.PlayerQuestManager;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -14,6 +16,8 @@ public final class CyberwarePlayerEvents {
         CyberstrainManager.copyState(event.getOriginal(), event.getEntity());
         CyberConsumableManager.copyState(event.getOriginal(), event.getEntity());
         TemporaryCyberwareEffectManager.copyState(event.getOriginal(), event.getEntity());
+        PlayerEurodollarManager.copyState(event.getOriginal(), event.getEntity());
+        PlayerQuestManager.copyState(event.getOriginal(), event.getEntity());
         if (event.getEntity() instanceof ServerPlayer serverPlayer) {
             CyberwareEffects.refreshPlayerCyberware(serverPlayer);
             CyberstrainManager.syncControlLock(serverPlayer);

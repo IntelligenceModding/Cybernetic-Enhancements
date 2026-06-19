@@ -216,8 +216,8 @@ public record CyberwareHudPayload(
             entries.add(new AbilityEntry(
                     armsAbilityKey,
                     "activate_arm_cyberware",
-                    0,
-                    0,
+                    ArmCyberwareManager.getActiveSecondsRemaining(player),
+                    ArmCyberwareManager.getActiveTotalSeconds(player),
                     ArmCyberwareManager.getCooldownSecondsRemaining(player),
                     ArmCyberwareManager.getCooldownTotalSeconds(player)
             ));

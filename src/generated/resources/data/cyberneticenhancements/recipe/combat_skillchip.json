@@ -12,7 +12,7 @@
       "item": "minecraft:redstone"
     },
     "T": {
-      "item": "minecraft:gold_ingot"
+      "item": "cyberneticenhancements:uncommon_item_components"
     }
   },
   "pattern": [

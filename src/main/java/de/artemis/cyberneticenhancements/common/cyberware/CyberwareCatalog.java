@@ -60,6 +60,7 @@ public final class CyberwareCatalog {
             def("electrifying_projectile_launch_system", "Electrifying Projectile Launch System", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Electrified projectile launcher.", Items.LIGHTNING_ROD, false, "projectile_launch_system", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.attackSpeed(0.05D)),
             def("thermal_projectile_launch_system", "Thermal Projectile Launch System", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Thermal projectile launcher.", Items.FIRE_CHARGE, false, "projectile_launch_system", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.damageReduction(0.04D)),
             def("toxic_projectile_launch_system", "Toxic Projectile Launch System", CyberwareSlotType.ARMS, CyberwareTier.TIER_2, "Chemical projectile launcher.", Items.DRAGON_BREATH, false, "projectile_launch_system", 0, CyberwareEffect.damage(2.0D), CyberwareEffect.entityReach(0.5D)),
+            def("excavator_arms", "Excavator Arms", CyberwareSlotType.ARMS, CyberwareTier.TIER_4, "Industrial excavation arms tuned for controlled 3x3 extraction.", Items.NETHERITE_PICKAXE, true),
 
             def("basic_kiroshi_optics", "Basic Kiroshi Optics", CyberwareSlotType.FACE, CyberwareTier.TIER_1, "Foundational cyberoptic package.", Items.ENDER_EYE, CyberwareEffect.nightVision()),
             def("clairvoyant", "Clairvoyant", CyberwareSlotType.FACE, CyberwareTier.TIER_3, "Scan-heavy hunter optics.", Items.SPYGLASS, false, "basic_kiroshi_optics", 0, CyberwareEffect.nightVision(), CyberwareEffect.blockReach(0.5D)),
@@ -69,6 +70,9 @@ public final class CyberwareCatalog {
             def("the_oracle", "The Oracle", CyberwareSlotType.FACE, CyberwareTier.TIER_4, "Combined premium Kiroshi package.", Items.ENDER_EYE, false, "clairvoyant", 0, CyberwareEffect.nightVision(), CyberwareEffect.blockReach(1.0D), CyberwareEffect.entityReach(1.0D)),
             def("cockatrice", "Cockatrice", CyberwareSlotType.FACE, CyberwareTier.TIER_4, "Predatory iconic optics suite.", Items.FERMENTED_SPIDER_EYE, false, "the_oracle", 0, CyberwareEffect.nightVision(), CyberwareEffect.damage(1.0D)),
             def("behavioral_imprint_synced_faceplate", "Behavioral Imprint-synced Faceplate", CyberwareSlotType.FACE, CyberwareTier.TIER_5, "Identity-obscuring adaptive faceplate.", Items.PLAYER_HEAD),
+            def("forager_lens", "Forager Lens", CyberwareSlotType.FACE, CyberwareTier.TIER_1, "Agricultural optic package that tags ripe crops and ready hives.", Items.HONEYCOMB),
+            def("vein_reader_optics", "Vein Reader Optics", CyberwareSlotType.FACE, CyberwareTier.TIER_2, "Geology-focused optics that pulse out nearby ore signatures.", Items.RAW_IRON),
+            def("relic_scanner", "Relic Scanner", CyberwareSlotType.FACE, CyberwareTier.TIER_3, "Archive-grade scanner for caches, suspicious blocks, and dungeon infrastructure.", Items.BRUSH),
 
             def("bionic_joints", "Bionic Joints", CyberwareSlotType.SKELETON, CyberwareTier.TIER_1, "Simple but effective reinforcement.", Items.IRON_INGOT, CyberwareEffect.armor(2.0D)),
             def("dense_marrow", "Dense Marrow", CyberwareSlotType.SKELETON, CyberwareTier.TIER_2, "Weighty marrow reinforcement.", Items.BONE_BLOCK, CyberwareEffect.damage(1.0D)),
@@ -83,6 +87,7 @@ public final class CyberwareCatalog {
             def("spring_joints", "Spring Joints", CyberwareSlotType.SKELETON, CyberwareTier.TIER_2, "Impact-dampening skeletal joints.", Items.SLIME_BLOCK, CyberwareEffect.fallReduction(-0.15D), CyberwareEffect.safeFall(3.0D)),
             def("titanium_bones", "Titanium Bones", CyberwareSlotType.SKELETON, CyberwareTier.TIER_1, "Heavy titanium frame reinforcement.", Items.IRON_BLOCK, CyberwareEffect.knockbackResistance(0.15D), CyberwareEffect.hearts(2.0D)),
             def("universal_booster", "Universal Booster", CyberwareSlotType.SKELETON, CyberwareTier.TIER_3, "General sustain booster.", Items.GOLDEN_CARROT, CyberwareEffect.healthRegen(0.6D)),
+            def("cargo_spine", "Cargo Spine", CyberwareSlotType.SKELETON, CyberwareTier.TIER_1, "Load-bearing spine routing that helps vacuum up loose materials.", Items.HOPPER),
 
             def("ballistic_coprocessor", "Ballistic Coprocessor", CyberwareSlotType.HANDS, CyberwareTier.TIER_2, "Ballistic targeting assist.", Items.ARROW, CyberwareEffect.damage(1.0D)),
             def("handle_wrap", "Handle Wrap", CyberwareSlotType.HANDS, CyberwareTier.TIER_1, "Improved weapon handling overlays.", Items.LEATHER, CyberwareEffect.attackSpeed(0.20D)),
@@ -90,6 +95,9 @@ public final class CyberwareCatalog {
             def("shock_absorber", "Shock Absorber", CyberwareSlotType.HANDS, CyberwareTier.TIER_2, "Recoil and impact dampener.", Items.SLIME_BALL, CyberwareEffect.knockbackResistance(0.10D)),
             def("immovable_force", "Immovable Force", CyberwareSlotType.HANDS, CyberwareTier.TIER_4, "Iconic recoil-nullifying bracer.", Items.OBSIDIAN, false, "shock_absorber", 0, CyberwareEffect.knockbackResistance(0.20D)),
             def("smart_link", "Smart Link", CyberwareSlotType.HANDS, CyberwareTier.TIER_2, "Smart weapon handshake interface.", Items.TRIPWIRE_HOOK, CyberwareEffect.damage(1.0D), CyberwareEffect.entityReach(0.5D)),
+            def("precision_miner", "Precision Miner", CyberwareSlotType.HANDS, CyberwareTier.TIER_1, "Correct-tool guidance that speeds up clean mining lines.", Items.IRON_PICKAXE),
+            def("masons_grip", "Mason's Grip", CyberwareSlotType.HANDS, CyberwareTier.TIER_1, "Placement-biased grip routing for cleaner building reach.", Items.BRICKS, CyberwareEffect.blockReach(0.5D)),
+            def("harvester_hands", "Harvester Hands", CyberwareSlotType.HANDS, CyberwareTier.TIER_2, "Agrarian handware that streamlines harvest-and-replant loops.", Items.IRON_HOE),
 
             def("adrenaline_converter", "Adrenaline Converter", CyberwareSlotType.NERVOUS_SYSTEM, CyberwareTier.TIER_2, "Stress-to-speed neural converter.", Items.BLAZE_POWDER, CyberwareEffect.moveSpeed(0.20D)),
             def("adreno_trigger", "Adreno-trigger", CyberwareSlotType.NERVOUS_SYSTEM, CyberwareTier.TIER_4, "Advanced speed-trigger implant.", Items.REDSTONE_BLOCK, false, "adrenaline_converter", 0, CyberwareEffect.moveSpeed(0.40D), CyberwareEffect.attackSpeed(0.20D)),
@@ -103,6 +111,7 @@ public final class CyberwareCatalog {
             def("tyrosine_injector", "Tyrosine Injector", CyberwareSlotType.NERVOUS_SYSTEM, CyberwareTier.TIER_3, "Combat stimulant support line.", Items.GHAST_TEAR, CyberwareEffect.damage(2.0D)),
             def("visual_cortex_support", "Visual Cortex Support", CyberwareSlotType.NERVOUS_SYSTEM, CyberwareTier.TIER_2, "Perception support hardware.", Items.ENDER_PEARL, CyberwareEffect.entityReach(0.5D)),
             def("deep_field_visual_interface", "Deep-field Visual Interface", CyberwareSlotType.NERVOUS_SYSTEM, CyberwareTier.TIER_4, "Long-range perception interface.", Items.ENDER_EYE, false, "visual_cortex_support", 0, CyberwareEffect.entityReach(1.0D), CyberwareEffect.blockReach(1.0D)),
+            def("kiroshi_retrieval_suite", "Kiroshi Retrieval Suite", CyberwareSlotType.NERVOUS_SYSTEM, CyberwareTier.TIER_2, "Pickup-routing neuralware that pulls in nearby salvage and experience.", Items.HOPPER),
 
             def("adrenaline_booster", "Adrenaline Booster", CyberwareSlotType.CIRCULATORY_SYSTEM, CyberwareTier.TIER_1, "Circulatory combat booster.", Items.BEETROOT_SOUP, CyberwareEffect.healthRegen(0.6D)),
             def("biomonitor", "Biomonitor", CyberwareSlotType.CIRCULATORY_SYSTEM, CyberwareTier.TIER_3, "Automatic health monitor.", Items.RECOVERY_COMPASS, CyberwareEffect.healthRegen(1.0D)),
@@ -116,6 +125,7 @@ public final class CyberwareCatalog {
             def("microrotors", "Microrotors", CyberwareSlotType.CIRCULATORY_SYSTEM, CyberwareTier.TIER_2, "Attack-speed circulatory assist.", Items.WIND_CHARGE, CyberwareEffect.attackSpeed(0.30D)),
             def("second_heart", "Second Heart", CyberwareSlotType.CIRCULATORY_SYSTEM, CyberwareTier.TIER_5, "Emergency backup heart.", Items.TOTEM_OF_UNDYING, CyberwareEffect.hearts(6.0D), CyberwareEffect.bonusAbsorption(8.0D)),
             def("threatevac", "ThreatEvac", CyberwareSlotType.CIRCULATORY_SYSTEM, CyberwareTier.TIER_3, "Panic-response evacuation chemistry.", Items.RABBIT_FOOT, CyberwareEffect.moveSpeed(0.10D)),
+            def("hydrolung", "Hydrolung", CyberwareSlotType.CIRCULATORY_SYSTEM, CyberwareTier.TIER_2, "Flood-safe lungware that keeps underwater work stable.", Items.NAUTILUS_SHELL, CyberwareEffect.waterBreathing(), CyberwareEffect.dolphinsGrace()),
 
             def("carapace", "Carapace", CyberwareSlotType.INTEGUMENTARY_SYSTEM, CyberwareTier.TIER_2, "Heavy armor skin package.", Items.TURTLE_SCUTE, CyberwareEffect.armor(4.0D)),
             def("cellular_adapter", "Cellular Adapter", CyberwareSlotType.INTEGUMENTARY_SYSTEM, CyberwareTier.TIER_2, "Adaptive self-repair skinware.", Items.HONEY_BOTTLE, CyberwareEffect.healthRegen(0.6D)),
@@ -137,7 +147,8 @@ public final class CyberwareCatalog {
             def("jenkins_tendons", "Jenkins' Tendons", CyberwareSlotType.LEGS, CyberwareTier.TIER_2, "Sprint-biased tendon upgrade.", Items.LEATHER_BOOTS, CyberwareEffect.moveSpeed(0.10D)),
             def("leeroy_ligament_system", "Leeroy Ligament System", CyberwareSlotType.LEGS, CyberwareTier.TIER_4, "Iconic movement-speed leg upgrade.", Items.GOLDEN_BOOTS, false, "jenkins_tendons", 0, CyberwareEffect.moveSpeed(0.15D)),
             def("lynx_paws", "Lynx Paws", CyberwareSlotType.LEGS, CyberwareTier.TIER_2, "Silent movement paws.", Items.RABBIT_HIDE, CyberwareEffect.moveSpeed(0.05D), CyberwareEffect.safeFall(4.0D), CyberwareEffect.stepHeight(0.5D)),
-            def("reinforced_tendons", "Reinforced Tendons", CyberwareSlotType.LEGS, CyberwareTier.TIER_2, "Double-jump style tendon hardware.", Items.RABBIT_FOOT, CyberwareEffect.safeFall(6.0D))
+            def("reinforced_tendons", "Reinforced Tendons", CyberwareSlotType.LEGS, CyberwareTier.TIER_2, "Double-jump style tendon hardware.", Items.RABBIT_FOOT, CyberwareEffect.safeFall(6.0D)),
+            def("brushstep_legs", "Brushstep Legs", CyberwareSlotType.LEGS, CyberwareTier.TIER_2, "Terrain-smoothing legware for farm rows, leaves, and other drag-heavy ground.", Items.SWEET_BERRIES)
     );
 
     private static final Map<String, CyberwareDefinition> DEFINITIONS_BY_ID = createDefinitionMap();
@@ -155,6 +166,12 @@ public final class CyberwareCatalog {
             throw new IllegalArgumentException("Unknown cyberware id: " + id);
         }
         return definition;
+    }
+
+    public static List<CyberwareDefinition> definitionsByAcquisition(CyberwareAcquisitionMethod acquisitionMethod) {
+        return DEFINITIONS.stream()
+                .filter(definition -> definition.acquisitionMethod() == acquisitionMethod)
+                .toList();
     }
 
     public static CyberwareDefinition findUpgradeStep(CyberwareDefinition definition) {
@@ -260,6 +277,7 @@ public final class CyberwareCatalog {
                 displayName,
                 slotType,
                 tier,
+                CyberwareAcquisitionRules.resolve(id, tier),
                 description,
                 motifItem,
                 handheld,

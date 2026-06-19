@@ -84,38 +84,41 @@ public final class CyberwareDebugCommand {
         PlayerCyberwareInventory inventory = new PlayerCyberwareInventory(player);
         CompoundTag storedTag = PlayerCyberwareInventory.getStoredInventoryTag(player);
 
-        source.sendSuccess(() -> Component.literal("=== Cyberware Debug ==="), false);
-        source.sendSuccess(() -> Component.literal("Installed count: " + inventory.getInstalledCount()), false);
-        source.sendSuccess(() -> Component.literal("Chrome: " + inventory.getInstalledChromeCost() + " / " + inventory.getChromeCapacity()), false);
-        source.sendSuccess(() -> Component.literal("Cyberstrain: " + inventory.getCyberstrain()), false);
-        source.sendSuccess(() -> Component.literal("Effective cyberstrain: " + CyberstrainManager.getEffectiveCyberstrain(player, inventory)), false);
-        source.sendSuccess(() -> Component.literal("Psychosis state: " + CyberstrainManager.getPsychosisStateLabel(player, inventory)), false);
-        source.sendSuccess(() -> Component.literal("Psychosis active: " + CyberstrainManager.isPsychosisActive(player)), false);
-        source.sendSuccess(() -> Component.literal("Psychosis remaining: " + CyberstrainManager.getPsychosisSecondsRemaining(player) + " s"), false);
-        source.sendSuccess(() -> Component.literal("Suppression: " + CyberstrainManager.getSuppressionAmount(player)), false);
-        source.sendSuccess(() -> Component.literal("Overdose: " + CyberConsumableManager.getOverdosePoints(player)), false);
-        source.sendSuccess(() -> Component.literal("Live slot count: " + inventory.getSlots()), false);
-        source.sendSuccess(() -> Component.literal("Stored tag empty: " + storedTag.isEmpty()), false);
-        source.sendSuccess(() -> Component.literal("Stored tag: " + storedTag), false);
+        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.header"), false);
+        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.installed_count", inventory.getInstalledCount()), false);
+        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.chrome", inventory.getInstalledChromeCost(), inventory.getChromeCapacity()), false);
+        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.cyberstrain", inventory.getCyberstrain()), false);
+        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.effective_cyberstrain", CyberstrainManager.getEffectiveCyberstrain(player, inventory)), false);
+        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.psychosis_state", CyberstrainManager.getPsychosisStateLabel(player, inventory)), false);
+        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.psychosis_active", CyberstrainManager.isPsychosisActive(player)), false);
+        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.psychosis_remaining", CyberstrainManager.getPsychosisSecondsRemaining(player)), false);
+        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.suppression", CyberstrainManager.getSuppressionAmount(player)), false);
+        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.overdose", CyberConsumableManager.getOverdosePoints(player)), false);
+        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.live_slot_count", inventory.getSlots()), false);
+        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.stored_tag_empty", storedTag.isEmpty()), false);
+        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.stored_tag", storedTag), false);
 
         boolean anyInstalled = false;
         for (CyberwareSlot slot : CyberwareSlot.values()) {
             if (slot.ordinal() >= inventory.getSlots()) {
-                String line = slot.name() + " -> missing from live handler (slot count mismatch)";
-                source.sendSuccess(() -> Component.literal(line), false);
+                source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.slot_missing", slot.name()), false);
                 continue;
             }
 
             ItemStack stack = inventory.getStackInSlot(slot.ordinal());
             if (stack.getItem() instanceof CyberwareItem cyberwareItem) {
                 anyInstalled = true;
-                String line = slot.name() + " -> " + cyberwareItem.getDefinition().id() + " x" + stack.getCount();
-                source.sendSuccess(() -> Component.literal(line), false);
+                source.sendSuccess(() -> Component.translatable(
+                        "command.cyberneticenhancements.debug.slot_installed",
+                        slot.name(),
+                        stack.getHoverName(),
+                        stack.getCount()
+                ), false);
             }
         }
 
         if (!anyInstalled) {
-            source.sendSuccess(() -> Component.literal("No installed cyberware found in live inventory wrapper."), false);
+            source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.no_installed"), false);
         }
 
         return 1;
@@ -135,7 +138,7 @@ public final class CyberwareDebugCommand {
         NervousSystemCyberwareManager.clearCooldowns(player);
         LegCyberwareManager.clearCooldowns(player);
         CyberwareEffects.refreshPlayerCyberware(player);
-        source.sendSuccess(() -> Component.literal("Cleared all cyberware and consumable cooldowns."), false);
+        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.reset_cooldowns"), false);
         return 1;
     }
 
@@ -145,7 +148,7 @@ public final class CyberwareDebugCommand {
         CyberstrainManager.clearTemporaryStatuses(player);
         CombatStatusManager.clearStatuses(player);
         CyberwareEffects.refreshPlayerCyberware(player);
-        source.sendSuccess(() -> Component.literal("Cleared all temporary cyberware statuses and buffs."), false);
+        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.reset_buffs"), false);
         return 1;
     }
 
@@ -166,7 +169,7 @@ public final class CyberwareDebugCommand {
         CyberstrainManager.clearTemporaryStatuses(player);
         CombatStatusManager.clearStatuses(player);
         CyberwareEffects.refreshPlayerCyberware(player);
-        source.sendSuccess(() -> Component.literal("Cleared all cooldowns and temporary cyberware statuses."), false);
+        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.reset_all"), false);
         return 1;
     }
 
@@ -180,12 +183,12 @@ public final class CyberwareDebugCommand {
         ServerPlayer player = source.getPlayerOrException();
         CombatStatusType type = parseCombatStatusType(rawType);
         if (type == null) {
-            source.sendFailure(Component.literal("Unknown combat status: " + rawType + " (use shock, overheat, corrosion, trauma, bleed, or mark)"));
+            source.sendFailure(Component.translatable("command.cyberneticenhancements.debug.unknown_status", rawType));
             return 0;
         }
 
         CombatStatusManager.applyStatus(player, type, seconds * 20L, stacks, playerApplied);
-        source.sendSuccess(() -> Component.literal("Applied " + type.id() + " x" + stacks + " for " + seconds + "s (" + (playerApplied ? "player" : "ambient") + ")."), false);
+        source.sendSuccess(() -> Component.translatable("command.cyberneticenhancements.debug.applied_status", type.id(), stacks, seconds, playerApplied ? "player" : "ambient"), false);
         return 1;
     }
 

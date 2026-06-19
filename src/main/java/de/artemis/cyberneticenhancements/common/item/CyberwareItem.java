@@ -5,6 +5,7 @@ import de.artemis.cyberneticenhancements.common.cyberware.ArmCyberwareManager;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareDefinition;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareConditionHelper;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareEffect;
+import de.artemis.cyberneticenhancements.common.cyberware.CyberwareEffectType;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberwareAbilities;
 import de.artemis.cyberneticenhancements.common.cyberware.CirculatoryCyberwareManager;
 import de.artemis.cyberneticenhancements.common.cyberware.FrontalCortexManager;
@@ -82,6 +83,8 @@ public class CyberwareItem extends Item {
                 .withStyle(ChatFormatting.DARK_AQUA));
         tooltipComponents.add(Component.translatable("tooltip.cyberneticenhancements.cyberware_tier", Component.translatable(definition.tier().translationKey()))
                 .withStyle(definition.tier().getColor()));
+        tooltipComponents.add(Component.translatable("tooltip.cyberneticenhancements.acquisition", Component.translatable(definition.acquisitionMethod().translationKey()))
+                .withStyle(ChatFormatting.DARK_AQUA));
         tooltipComponents.add(Component.translatable("tooltip.cyberneticenhancements.chrome_cost", definition.chromeCost())
                 .withStyle(ChatFormatting.AQUA));
         tooltipComponents.add(Component.translatable(
@@ -105,12 +108,16 @@ public class CyberwareItem extends Item {
                     .withStyle(ChatFormatting.DARK_AQUA));
             appendStoredModulesTooltip(stack, context, tooltipComponents);
         }
-        if (CyberwareUpgradeHelper.getCapacityBonus(stack, definition) != 0) {
-            tooltipComponents.add(Component.translatable("tooltip.cyberneticenhancements.capacity_bonus", CyberwareUpgradeHelper.getCapacityBonus(stack, definition))
-                    .withStyle(ChatFormatting.GREEN));
-        }
+        double chromeHeadroom = CyberwareUpgradeHelper.getCapacityBonus(stack, definition);
         for (CyberwareEffect effect : definition.effects()) {
+            if (effect.type() == CyberwareEffectType.CHROME_CAPACITY) {
+                chromeHeadroom += effect.amount();
+                continue;
+            }
             tooltipComponents.add(effect.describe().copy().withStyle(ChatFormatting.GREEN));
+        }
+        if (chromeHeadroom > 0.0001D) {
+            tooltipComponents.add(new CyberwareEffect(CyberwareEffectType.CHROME_CAPACITY, chromeHeadroom).describe().copy().withStyle(ChatFormatting.GREEN));
         }
         FrontalCortexManager.appendBehaviorTooltip(definition, tooltipComponents);
         CyberwareAbilities.appendBehaviorTooltip(definition, tooltipComponents);

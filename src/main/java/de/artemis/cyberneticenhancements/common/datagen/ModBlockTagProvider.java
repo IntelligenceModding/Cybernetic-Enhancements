@@ -18,11 +18,13 @@ public final class ModBlockTagProvider extends BlockTagsProvider {
     @Override
     protected void addTags(HolderLookup.@NotNull Provider provider) {
         tag(BlockTags.MINEABLE_WITH_PICKAXE)
+                .add(ModBlocks.RELIC_CACHE.get())
                 .add(ModBlocks.RIPPER_STATION.get())
                 .add(ModBlocks.TECH_STATION.get())
                 .add(ModBlocks.RECYCLER_STATION.get());
 
         tag(BlockTags.NEEDS_STONE_TOOL)
+                .add(ModBlocks.RELIC_CACHE.get())
                 .add(ModBlocks.RIPPER_STATION.get())
                 .add(ModBlocks.TECH_STATION.get())
                 .add(ModBlocks.RECYCLER_STATION.get());

@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_rare_item_components": {
+      "conditions": {
+        "items": [
+          {
+            "items": "cyberneticenhancements:rare_item_components"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "cyberneticenhancements:epic_item_components"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_rare_item_components"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "cyberneticenhancements:epic_item_components"
+    ]
+  }
+}

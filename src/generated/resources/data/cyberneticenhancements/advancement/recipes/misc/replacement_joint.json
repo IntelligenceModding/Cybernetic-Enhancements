@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_servo_screws": {
+      "conditions": {
+        "items": [
+          {
+            "items": "cyberneticenhancements:servo_screws"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "cyberneticenhancements:replacement_joint"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_servo_screws"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "cyberneticenhancements:replacement_joint"
+    ]
+  }
+}

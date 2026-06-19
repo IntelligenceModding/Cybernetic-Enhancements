@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "cyberneticenhancements:micro_battery"
+    },
+    "E": {
+      "item": "cyberneticenhancements:epic_item_components"
+    },
+    "L": {
+      "item": "cyberneticenhancements:sensor_lens"
+    },
+    "N": {
+      "item": "minecraft:nether_star"
+    }
+  },
+  "pattern": [
+    " N ",
+    "EBE",
+    " L "
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:legendary_item_components"
+  }
+}

@@ -20,7 +20,8 @@ import java.util.UUID;
 
 public final class PsychosisPursuitController {
     private static final String WANDER_YAW_KEY = "cyberneticenhancements.psychosis_wander_yaw";
-    private static final double IMMEDIATE_VISIBLE_TARGET_RANGE = 10.0D;
+    private static final double IMMEDIATE_VISIBLE_TARGET_RANGE = 3.0D;
+    private static final double IMMEDIATE_COMBAT_OVERRIDE_RANGE = 8.0D;
     private static final double MAX_HIDDEN_TARGET_DIRECT_DISTANCE = CyberwareBalance.doubleValue("cyberstrain.psychosis.hidden_target_max_direct_distance");
     private static final double MAX_HIDDEN_TARGET_PATH_DISTANCE = CyberwareBalance.doubleValue("cyberstrain.psychosis.hidden_target_max_path_distance");
     private static final long PATH_RECALC_INTERVAL_TICKS = 10L;
@@ -46,6 +47,11 @@ public final class PsychosisPursuitController {
                 .filter(candidate -> candidate != null)
                 .toList();
 
+        LivingEntity immediateCombatTarget = selectImmediateCombatTarget(candidates);
+        if (immediateCombatTarget != null) {
+            return immediateCombatTarget;
+        }
+
         Integer bestPriority = candidates.stream()
                 .map(TargetCandidate::priority)
                 .min(Integer::compareTo)
@@ -58,14 +64,10 @@ public final class PsychosisPursuitController {
                 .filter(candidate -> candidate.priority() == bestPriority)
                 .toList();
 
-        LivingEntity immediateTarget = selectVisibleTarget(bestPriorityCandidates);
-        if (immediateTarget != null) {
-            return immediateTarget;
-        }
-
         return bestPriorityCandidates.stream()
                 .sorted(Comparator
                         .comparingDouble(TargetCandidate::pathDistance)
+                        .thenComparingInt(candidate -> candidate.visible() ? 0 : 1)
                         .thenComparingInt(candidate -> candidate.recentAggressor() ? 0 : 1)
                         .thenComparingDouble(TargetCandidate::directDistanceSqr))
                 .map(TargetCandidate::entity)
@@ -73,21 +75,34 @@ public final class PsychosisPursuitController {
                 .orElse(null);
     }
 
-    public static PursuitIntent buildHuntIntent(Player player, LivingEntity target, long gameTime) {
-        boolean targetVisible = player.hasLineOfSight(target);
-        if (targetVisible) {
-            return buildDirectHuntIntent(player, target);
-        }
+    private static LivingEntity selectImmediateCombatTarget(List<TargetCandidate> candidates) {
+        double maxDistanceSqr = IMMEDIATE_COMBAT_OVERRIDE_RANGE * IMMEDIATE_COMBAT_OVERRIDE_RANGE;
+        return candidates.stream()
+                .filter(TargetCandidate::visible)
+                .filter(candidate -> candidate.directDistanceSqr() <= maxDistanceSqr)
+                .sorted(Comparator
+                        .comparingInt(TargetCandidate::priority)
+                        .thenComparingDouble(TargetCandidate::directDistanceSqr)
+                        .thenComparingInt(candidate -> candidate.recentAggressor() ? 0 : 1))
+                .map(TargetCandidate::entity)
+                .findFirst()
+                .orElse(null);
+    }
 
+    public static PursuitIntent buildHuntIntent(Player player, LivingEntity target, long gameTime) {
         PathFollowTarget pathFollowTarget = resolvePathTargetPosition(player, target, gameTime);
         Vec3 pathTargetPosition = pathFollowTarget.position();
         Vec3 moveDelta = pathTargetPosition.subtract(player.position());
         Vec3 moveHorizontal = flatten(moveDelta);
         if (moveHorizontal.lengthSqr() < 0.0001D) {
-            return new PursuitIntent(player.getYRot(), player.getXRot(), 0.0F, 0.0F, false, true);
+            return buildCloseRangeIntent(player, target);
         }
 
-        Vec3 lookTargetPosition = pathTargetPosition.add(0.0D, Math.max(0.4D, target.getBbHeight() * 0.25D), 0.0D);
+        boolean targetVisible = player.hasLineOfSight(target);
+        boolean closeCombat = targetVisible && player.distanceToSqr(target) <= 16.0D;
+        Vec3 lookTargetPosition = closeCombat
+                ? target.position().add(0.0D, target.getBbHeight() * 0.65D, 0.0D)
+                : pathTargetPosition.add(0.0D, Math.max(0.4D, target.getBbHeight() * 0.25D), 0.0D);
         Vec3 lookDelta = lookTargetPosition.subtract(player.getEyePosition());
         Vec3 lookHorizontal = flatten(lookDelta);
         if (lookHorizontal.lengthSqr() < 0.0001D) {
@@ -96,15 +111,8 @@ public final class PsychosisPursuitController {
 
         float lookYaw = (float) (Math.toDegrees(Math.atan2(lookHorizontal.z, lookHorizontal.x)) - 90.0D);
         float pitch = (float) Mth.clamp(-Math.toDegrees(Math.atan2(lookDelta.y, Math.max(0.001D, lookHorizontal.length()))), -35.0D, 35.0D);
-
-        Vec3 moveDirection = moveHorizontal.normalize();
-        float moveYaw = (float) (Math.toDegrees(Math.atan2(moveDirection.z, moveDirection.x)) - 90.0D);
-        float yawDifference = Mth.wrapDegrees(moveYaw - lookYaw);
-        float yawDifferenceRadians = yawDifference * Mth.DEG_TO_RAD;
-        float forward = Mth.clamp((float) Math.cos(yawDifferenceRadians), 0.35F, 1.0F);
-        float strafe = Mth.clamp((float) -Math.sin(yawDifferenceRadians), -1.0F, 1.0F);
         boolean jump = pathFollowTarget.shouldJump() || player.horizontalCollision;
-        return new PursuitIntent(lookYaw, pitch, forward, strafe, jump, true);
+        return new PursuitIntent(lookYaw, pitch, 1.0F, 0.0F, jump, true);
     }
 
     public static PursuitIntent buildWanderIntent(Player player, long gameTime) {
@@ -257,7 +265,7 @@ public final class PsychosisPursuitController {
     private static TargetCandidate createTargetCandidate(Player player, LivingEntity target, LivingEntity recentAggressor) {
         boolean visible = player.hasLineOfSight(target);
         double directDistanceSqr = target.distanceToSqr(player);
-        if (visible) {
+        if (visible && directDistanceSqr <= IMMEDIATE_VISIBLE_TARGET_RANGE * IMMEDIATE_VISIBLE_TARGET_RANGE) {
             return new TargetCandidate(
                     target,
                     targetPriority(target),
@@ -272,7 +280,7 @@ public final class PsychosisPursuitController {
             return null;
         }
 
-        if (directDistanceSqr > MAX_HIDDEN_TARGET_DIRECT_DISTANCE * MAX_HIDDEN_TARGET_DIRECT_DISTANCE) {
+        if (!visible && directDistanceSqr > MAX_HIDDEN_TARGET_DIRECT_DISTANCE * MAX_HIDDEN_TARGET_DIRECT_DISTANCE) {
             return null;
         }
 
@@ -284,47 +292,30 @@ public final class PsychosisPursuitController {
         }
 
         double pathDistance = computePathDistance(navigator, path, player.position());
-        if (pathDistance > MAX_HIDDEN_TARGET_PATH_DISTANCE) {
+        if (!visible && pathDistance > MAX_HIDDEN_TARGET_PATH_DISTANCE) {
             return null;
         }
 
         return new TargetCandidate(
                 target,
                 targetPriority(target),
-                false,
+                visible,
                 target == recentAggressor,
                 pathDistance,
                 directDistanceSqr
         );
     }
 
-    private static LivingEntity selectVisibleTarget(List<TargetCandidate> candidates) {
-        return candidates.stream()
-                .filter(TargetCandidate::visible)
-                .sorted(Comparator
-                        .comparingInt((TargetCandidate candidate) -> candidate.directDistanceSqr() <= IMMEDIATE_VISIBLE_TARGET_RANGE * IMMEDIATE_VISIBLE_TARGET_RANGE ? 0 : 1)
-                        .thenComparingDouble(TargetCandidate::directDistanceSqr)
-                        .thenComparingInt(candidate -> candidate.recentAggressor() ? 0 : 1))
-                .map(TargetCandidate::entity)
-                .findFirst()
-                .orElse(null);
-    }
-
-    private static PursuitIntent buildDirectHuntIntent(Player player, LivingEntity target) {
-        Vec3 targetPosition = target.position().add(0.0D, target.getBbHeight() * 0.65D, 0.0D);
-        Vec3 lookDelta = targetPosition.subtract(player.getEyePosition());
-        Vec3 moveDelta = target.position().subtract(player.position());
-        Vec3 moveHorizontal = flatten(moveDelta);
-        if (moveHorizontal.lengthSqr() < 0.0001D) {
+    private static PursuitIntent buildCloseRangeIntent(Player player, LivingEntity target) {
+        Vec3 lookDelta = target.position().add(0.0D, target.getBbHeight() * 0.65D, 0.0D).subtract(player.getEyePosition());
+        Vec3 lookHorizontal = flatten(lookDelta);
+        if (lookHorizontal.lengthSqr() < 0.0001D) {
             return new PursuitIntent(player.getYRot(), player.getXRot(), 0.0F, 0.0F, false, true);
         }
 
-        Vec3 moveDirection = moveHorizontal.normalize();
-        float yaw = (float) (Math.toDegrees(Math.atan2(moveDirection.z, moveDirection.x)) - 90.0D);
-        float pitch = (float) Mth.clamp(-Math.toDegrees(Math.atan2(lookDelta.y, Math.max(0.001D, moveHorizontal.length()))), -35.0D, 35.0D);
-        boolean shouldJump = player.horizontalCollision
-                || target.getY() > player.getY() + 0.6D && moveHorizontal.lengthSqr() < 6.25D;
-        return new PursuitIntent(yaw, pitch, 1.0F, 0.0F, shouldJump, true);
+        float yaw = (float) (Math.toDegrees(Math.atan2(lookHorizontal.z, lookHorizontal.x)) - 90.0D);
+        float pitch = (float) Mth.clamp(-Math.toDegrees(Math.atan2(lookDelta.y, Math.max(0.001D, lookHorizontal.length()))), -45.0D, 45.0D);
+        return new PursuitIntent(yaw, pitch, 0.4F, 0.0F, false, true);
     }
 
     private static double computePathDistance(Zombie navigator, Path path, Vec3 startPosition) {

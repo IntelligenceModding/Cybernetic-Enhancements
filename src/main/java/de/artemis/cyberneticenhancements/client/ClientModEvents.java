@@ -1,36 +1,59 @@
 package de.artemis.cyberneticenhancements.client;
 
+import de.artemis.cyberneticenhancements.client.render.FixerEntityRenderer;
+import de.artemis.cyberneticenhancements.client.render.RelicCacheBlockEntityRenderer;
+import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiScreen;
+import de.artemis.cyberneticenhancements.client.screen.FixerDialogScreen;
+import de.artemis.cyberneticenhancements.client.screen.RelicCacheHackScreen;
 import de.artemis.cyberneticenhancements.client.screen.RecyclerStationScreen;
 import de.artemis.cyberneticenhancements.client.screen.RipperStationScreen;
 import de.artemis.cyberneticenhancements.client.screen.TechStationScreen;
+import de.artemis.cyberneticenhancements.client.screen.WikiLaunchButton;
 import de.artemis.cyberneticenhancements.client.tooltip.ModTooltipStyle;
 import de.artemis.cyberneticenhancements.client.tooltip.UpgradeProgressClientTooltip;
 import de.artemis.cyberneticenhancements.client.tooltip.UpgradeProgressTooltip;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberpsychosisClientState;
 import de.artemis.cyberneticenhancements.common.network.ActivateArmCyberwarePayload;
+import de.artemis.cyberneticenhancements.common.network.ArchiveContactsRequestPayload;
+import de.artemis.cyberneticenhancements.common.network.ArchiveQuestsRequestPayload;
 import de.artemis.cyberneticenhancements.common.network.ActivateAuxiliaryCyberwarePayload;
 import de.artemis.cyberneticenhancements.common.network.ActivateCyberwarePayload;
 import de.artemis.cyberneticenhancements.common.network.ActivateFaceCyberwarePayload;
 import de.artemis.cyberneticenhancements.common.network.ActivateLegCyberwarePayload;
+import de.artemis.cyberneticenhancements.common.registry.ModBlockEntities;
+import de.artemis.cyberneticenhancements.common.registry.ModBlocks;
+import de.artemis.cyberneticenhancements.common.registry.ModEntityTypes;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
 import net.minecraft.client.Options;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.OutlineBufferSource;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.BlockHitResult;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import de.artemis.cyberneticenhancements.common.registry.ModMenuTypes;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.MovementInputUpdateEvent;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterClientTooltipComponentFactoriesEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.event.RenderGuiLayerEvent;
 import net.neoforged.neoforge.client.event.RenderTooltipEvent;
+import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
@@ -45,25 +68,40 @@ public final class ClientModEvents {
     private static final int HAZARD_OUTLINE_B = 0xB5;
     private static boolean jumpKeyWasDown;
     private static boolean airborneLegJumpArmed;
-    private static boolean psychosisForcedMouseRelease;
+    private static boolean psychosisMouseSuppressed;
     private static Field mouseAccumulatedDxField;
     private static Field mouseAccumulatedDyField;
     private static Field mouseXField;
     private static Field mouseYField;
+    private static Field mouseGrabbedField;
     private static Field mouseIgnoreFirstMoveField;
     private static Method mouseSetIgnoreFirstMoveMethod;
     private static boolean mouseReflectionInitialized;
+    private static Field containerHoveredSlotField;
+    private static boolean containerReflectionInitialized;
 
     private ClientModEvents() {
     }
 
     public static void onClientSetup(FMLClientSetupEvent event) {
+        event.enqueueWork(() -> ModBlocks.allRelicCaches().forEach(block -> ItemBlockRenderTypes.setRenderLayer(block.get(), RenderType.translucent())));
+    }
+
+    public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        event.registerBlockEntityRenderer(ModBlockEntities.RELIC_CACHE.get(), RelicCacheBlockEntityRenderer::new);
+        event.registerEntityRenderer(ModEntityTypes.FIXER.get(), FixerEntityRenderer::new);
+        event.registerEntityRenderer(ModEntityTypes.RIPPERDOC.get(), FixerEntityRenderer::new);
+        event.registerEntityRenderer(ModEntityTypes.TECHIE.get(), FixerEntityRenderer::new);
+        event.registerEntityRenderer(ModEntityTypes.NETRUNNER.get(), FixerEntityRenderer::new);
+        event.registerEntityRenderer(ModEntityTypes.MERC.get(), FixerEntityRenderer::new);
     }
 
     public static void registerScreens(RegisterMenuScreensEvent event) {
         event.register(ModMenuTypes.RIPPER_STATION.get(), RipperStationScreen::new);
         event.register(ModMenuTypes.TECH_STATION.get(), TechStationScreen::new);
         event.register(ModMenuTypes.RECYCLER_STATION.get(), RecyclerStationScreen::new);
+        event.register(ModMenuTypes.FIXER_DIALOG.get(), FixerDialogScreen::new);
+        event.register(ModMenuTypes.RELIC_CACHE_HACK.get(), RelicCacheHackScreen::new);
     }
 
     public static void registerTooltipComponents(RegisterClientTooltipComponentFactoriesEvent event) {
@@ -79,7 +117,14 @@ public final class ClientModEvents {
         FaceHazardHighlightClientState.prune();
 
         if (CyberpsychosisClientState.isControlLocked()) {
-            ensurePsychosisMouseReleased(minecraft);
+            if (minecraft.screen != null) {
+                disablePsychosisMouseSuppression(minecraft);
+                jumpKeyWasDown = false;
+                airborneLegJumpArmed = false;
+                return;
+            }
+
+            enablePsychosisMouseSuppression(minecraft);
             suppressPsychosisMouseLook(minecraft);
             releaseControlKeys(minecraft.options);
             jumpKeyWasDown = false;
@@ -102,7 +147,7 @@ public final class ClientModEvents {
             return;
         }
 
-        restoreMouseAfterPsychosis(minecraft);
+        disablePsychosisMouseSuppression(minecraft);
 
         while (ModKeyMappings.ACTIVATE_CYBERWARE.consumeClick()) {
             PacketDistributor.sendToServer(new ActivateCyberwarePayload());
@@ -141,6 +186,9 @@ public final class ClientModEvents {
                             : "message.cyberneticenhancements.hud.disabled"),
                     true
             );
+        }
+        while (ModKeyMappings.OPEN_ARCHIVE.consumeClick()) {
+            openArchiveScreen(minecraft, minecraft.screen, resolveArchiveEntryId(minecraft));
         }
     }
 
@@ -252,12 +300,81 @@ public final class ClientModEvents {
 
     public static void onClientLogout(ClientPlayerNetworkEvent.LoggingOut event) {
         CyberpsychosisClientState.setControlLocked(false);
+        ArchiveContactsClientState.clear();
+        ArchiveQuestsClientState.clear();
         CyberwareHudClientState.clear();
         PsychosisOverlayClientState.clear();
         FaceHazardHighlightClientState.clear();
         jumpKeyWasDown = false;
         airborneLegJumpArmed = false;
-        psychosisForcedMouseRelease = false;
+        psychosisMouseSuppressed = false;
+    }
+
+    public static void onScreenInit(ScreenEvent.Init.Post event) {
+        Screen screen = event.getScreen();
+        if (!(screen instanceof InventoryScreen
+                || screen instanceof RipperStationScreen
+                || screen instanceof TechStationScreen
+                || screen instanceof RecyclerStationScreen)) {
+            return;
+        }
+
+        int width = 78;
+        int height = 18;
+        int x = screen.width - width - 12;
+        int y = 10;
+        event.addListener(new WikiLaunchButton(
+                x,
+                y,
+                width,
+                height,
+                Component.translatable("screen.cyberneticenhancements.archive.button"),
+                () -> openArchiveScreen(Minecraft.getInstance(), screen, null)
+        ));
+    }
+
+    public static void onScreenRender(ScreenEvent.Render.Post event) {
+        if (!(event.getScreen() instanceof AbstractContainerScreen<?> containerScreen)
+                || event.getScreen() instanceof CyberwareWikiScreen) {
+            return;
+        }
+
+        ItemStack hoveredStack = hoveredContainerStack(containerScreen);
+        String entryId = CyberwareWikiScreen.findEntryId(hoveredStack);
+        if (entryId == null) {
+            return;
+        }
+
+        Font font = Minecraft.getInstance().font;
+        Component hint = Component.translatable("screen.cyberneticenhancements.archive.hover_hint", ModKeyMappings.OPEN_ARCHIVE.getTranslatedKeyMessage());
+        int width = font.width(hint) + 10;
+        int x = event.getScreen().width - width - 12;
+        int y = event.getScreen().height - 18;
+        event.getGuiGraphics().fill(x, y, x + width, y + 14, 0xCC0D1319);
+        event.getGuiGraphics().fill(x, y, x + width, y + 1, 0xFF1EE2B5);
+        event.getGuiGraphics().drawString(font, hint, x + 5, y + 3, 0xFFE5F2FF, false);
+    }
+
+    public static void onScreenKeyPressed(ScreenEvent.KeyPressed.Pre event) {
+        if (!(event.getScreen() instanceof AbstractContainerScreen<?> containerScreen)
+                || event.getScreen() instanceof CyberwareWikiScreen) {
+            return;
+        }
+
+        if (event.getScreen().getFocused() instanceof EditBox editBox
+                && editBox.isVisible()
+                && editBox.isFocused()) {
+            return;
+        }
+
+        if (!ModKeyMappings.OPEN_ARCHIVE.matches(event.getKeyCode(), event.getScanCode())) {
+            return;
+        }
+
+        Minecraft minecraft = Minecraft.getInstance();
+        String entryId = CyberwareWikiScreen.findEntryId(hoveredContainerStack(containerScreen));
+        openArchiveScreen(minecraft, event.getScreen(), entryId);
+        event.setCanceled(true);
     }
 
     private static Entity resolveHighlightedEntity(Minecraft minecraft, UUID entityId) {
@@ -309,25 +426,6 @@ public final class ClientModEvents {
         minecraft.player.hasImpulse = true;
     }
 
-    private static void ensurePsychosisMouseReleased(Minecraft minecraft) {
-        if (minecraft.screen != null || psychosisForcedMouseRelease) {
-            return;
-        }
-
-        minecraft.mouseHandler.releaseMouse();
-        psychosisForcedMouseRelease = true;
-        suppressPsychosisMouseLook(minecraft);
-    }
-
-    private static void restoreMouseAfterPsychosis(Minecraft minecraft) {
-        if (!psychosisForcedMouseRelease || minecraft.screen != null) {
-            return;
-        }
-
-        minecraft.mouseHandler.grabMouse();
-        psychosisForcedMouseRelease = false;
-    }
-
     private static void suppressPsychosisMouseLook(Minecraft minecraft) {
         MouseHandler mouseHandler = minecraft.mouseHandler;
         initializeMouseReflection();
@@ -342,6 +440,29 @@ public final class ClientModEvents {
         invokeMouseIgnoreFirstMove(mouseHandler);
     }
 
+    private static void enablePsychosisMouseSuppression(Minecraft minecraft) {
+        if (psychosisMouseSuppressed || minecraft.screen != null) {
+            return;
+        }
+
+        initializeMouseReflection();
+        setMouseBoolean(mouseGrabbedField, minecraft.mouseHandler, false);
+        psychosisMouseSuppressed = true;
+    }
+
+    private static void disablePsychosisMouseSuppression(Minecraft minecraft) {
+        if (!psychosisMouseSuppressed) {
+            return;
+        }
+
+        initializeMouseReflection();
+        setMouseBoolean(mouseGrabbedField, minecraft.mouseHandler, true);
+        if (minecraft.screen == null) {
+            suppressPsychosisMouseLook(minecraft);
+        }
+        psychosisMouseSuppressed = false;
+    }
+
     private static void initializeMouseReflection() {
         if (mouseReflectionInitialized) {
             return;
@@ -352,6 +473,7 @@ public final class ClientModEvents {
         mouseAccumulatedDyField = resolveMouseField("accumulatedDY", "f_91517_");
         mouseXField = resolveMouseField("xpos", "f_91507_");
         mouseYField = resolveMouseField("ypos", "f_91508_");
+        mouseGrabbedField = resolveMouseField("mouseGrabbed", "f_91520_");
         mouseIgnoreFirstMoveField = resolveMouseField("ignoreFirstMove", "f_91511_");
         mouseSetIgnoreFirstMoveMethod = resolveMouseMethod("setIgnoreFirstMove", "m_91599_", "m_91603_");
     }
@@ -408,5 +530,74 @@ public final class ClientModEvents {
             mouseSetIgnoreFirstMoveMethod.invoke(mouseHandler);
         } catch (ReflectiveOperationException ignored) {
         }
+    }
+
+    private static void openArchiveScreen(Minecraft minecraft, Screen parent, String entryId) {
+        if (minecraft == null || minecraft.level == null || minecraft.screen instanceof CyberwareWikiScreen) {
+            return;
+        }
+        if (minecraft.player != null) {
+            PacketDistributor.sendToServer(new ArchiveContactsRequestPayload());
+            PacketDistributor.sendToServer(new ArchiveQuestsRequestPayload());
+        }
+        minecraft.setScreen(entryId == null ? new CyberwareWikiScreen(parent) : new CyberwareWikiScreen(parent, entryId));
+    }
+
+    private static String resolveArchiveEntryId(Minecraft minecraft) {
+        if (minecraft == null) {
+            return null;
+        }
+
+        if (minecraft.screen instanceof AbstractContainerScreen<?> containerScreen) {
+            String hoveredEntry = CyberwareWikiScreen.findEntryId(hoveredContainerStack(containerScreen));
+            if (hoveredEntry != null) {
+                return hoveredEntry;
+            }
+        }
+
+        if (minecraft.level != null && minecraft.hitResult instanceof BlockHitResult blockHitResult) {
+            return CyberwareWikiScreen.findEntryId(minecraft.level.getBlockState(blockHitResult.getBlockPos()).getBlock());
+        }
+        return null;
+    }
+
+    private static ItemStack hoveredContainerStack(AbstractContainerScreen<?> containerScreen) {
+        Slot hoveredSlot = hoveredSlot(containerScreen);
+        if (hoveredSlot == null || !hoveredSlot.hasItem()) {
+            return ItemStack.EMPTY;
+        }
+        return hoveredSlot.getItem();
+    }
+
+    private static Slot hoveredSlot(AbstractContainerScreen<?> containerScreen) {
+        initializeContainerScreenReflection();
+        if (containerHoveredSlotField == null) {
+            return null;
+        }
+        try {
+            return (Slot) containerHoveredSlotField.get(containerScreen);
+        } catch (IllegalAccessException ignored) {
+            return null;
+        }
+    }
+
+    private static void initializeContainerScreenReflection() {
+        if (containerReflectionInitialized) {
+            return;
+        }
+        containerReflectionInitialized = true;
+        containerHoveredSlotField = resolveContainerScreenField("hoveredSlot", "f_97716_");
+    }
+
+    private static Field resolveContainerScreenField(String... candidateNames) {
+        for (String candidateName : candidateNames) {
+            try {
+                Field field = AbstractContainerScreen.class.getDeclaredField(candidateName);
+                field.setAccessible(true);
+                return field;
+            } catch (ReflectiveOperationException ignored) {
+            }
+        }
+        return null;
     }
 }

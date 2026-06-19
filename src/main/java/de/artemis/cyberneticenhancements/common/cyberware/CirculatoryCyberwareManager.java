@@ -29,6 +29,7 @@ public final class CirculatoryCyberwareManager {
     private static final String MICROROTORS_ID = "microrotors";
     private static final String SECOND_HEART_ID = "second_heart";
     private static final String THREATEVAC_ID = "threatevac";
+    private static final String HYDROLUNG_ID = "hydrolung";
 
     private static final Map<UUID, Long> ADRENALINE_READY_UNTIL_TICK = new HashMap<>();
     private static final Map<UUID, Long> ISOMETRIC_READY_UNTIL_TICK = new HashMap<>();
@@ -52,7 +53,8 @@ public final class CirculatoryCyberwareManager {
                  HEAL_ON_KILL_ID,
                  MICROROTORS_ID,
                  SECOND_HEART_ID,
-                 THREATEVAC_ID -> true;
+                 THREATEVAC_ID,
+                 HYDROLUNG_ID -> true;
             default -> false;
         };
     }
@@ -64,6 +66,21 @@ public final class CirculatoryCyberwareManager {
 
         tooltipComponents.add(Component.translatable("tooltip.cyberneticenhancements.special." + definition.id())
                 .withStyle(ChatFormatting.DARK_GREEN));
+    }
+
+    public static void mergePassiveEffects(Player player, PlayerCyberwareInventory inventory, java.util.EnumMap<CyberwareEffectType, Double> totals) {
+        int hydrolungCount = inventory.countInstalledCyberware(HYDROLUNG_ID);
+        if (hydrolungCount > 0 && player.isInWaterOrBubble()) {
+            totals.merge(
+                    CyberwareEffectType.BLOCK_BREAK_SPEED,
+                    CyberwareBalance.doubleValue("circulatory.hydrolung.break_speed_bonus") * hydrolungCount,
+                    Double::sum
+            );
+        }
+    }
+
+    public static boolean requiresRealtimeRefresh(Player player) {
+        return new PlayerCyberwareInventory(player).countInstalledCyberware(HYDROLUNG_ID) > 0;
     }
 
     public static void onIncomingDamage(LivingIncomingDamageEvent event) {

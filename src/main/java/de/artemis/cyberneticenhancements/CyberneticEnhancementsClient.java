@@ -11,6 +11,7 @@ import net.neoforged.neoforge.common.NeoForge;
 public class CyberneticEnhancementsClient {
     public CyberneticEnhancementsClient(IEventBus modEventBus) {
         modEventBus.addListener(ClientModEvents::onClientSetup);
+        modEventBus.addListener(ClientModEvents::registerRenderers);
         modEventBus.addListener(ClientModEvents::registerScreens);
         modEventBus.addListener(ClientModEvents::registerTooltipComponents);
         modEventBus.addListener(ModKeyMappings::register);
@@ -21,6 +22,9 @@ public class CyberneticEnhancementsClient {
         NeoForge.EVENT_BUS.addListener(ClientModEvents::onTooltipColor);
         NeoForge.EVENT_BUS.addListener(ClientModEvents::onRenderGuiLayer);
         NeoForge.EVENT_BUS.addListener(ClientModEvents::onRenderLevelStage);
+        NeoForge.EVENT_BUS.addListener(ClientModEvents::onScreenInit);
+        NeoForge.EVENT_BUS.addListener(ClientModEvents::onScreenRender);
+        NeoForge.EVENT_BUS.addListener(ClientModEvents::onScreenKeyPressed);
         NeoForge.EVENT_BUS.addListener(ClientModEvents::onClientLogout);
     }
 }

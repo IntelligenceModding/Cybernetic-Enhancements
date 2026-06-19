@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "P": {
+      "item": "cyberneticenhancements:conductive_paste"
+    },
+    "S": {
+      "item": "cyberneticenhancements:servo_screws"
+    },
+    "W": {
+      "item": "cyberneticenhancements:copper_wiring"
+    }
+  },
+  "pattern": [
+    " S ",
+    "WIW",
+    " P "
+  ],
+  "result": {
+    "count": 1,
+    "id": "cyberneticenhancements:replacement_joint"
+  }
+}

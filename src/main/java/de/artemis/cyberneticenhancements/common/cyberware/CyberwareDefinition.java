@@ -9,6 +9,7 @@ public record CyberwareDefinition(
         String displayName,
         CyberwareSlotType slotType,
         CyberwareTier tier,
+        CyberwareAcquisitionMethod acquisitionMethod,
         String description,
         ItemLike motifItem,
         boolean handheld,
@@ -19,6 +20,10 @@ public record CyberwareDefinition(
 ) {
     public String descriptionKey() {
         return "tooltip.cyberneticenhancements." + id;
+    }
+
+    public boolean isCraftable() {
+        return acquisitionMethod == CyberwareAcquisitionMethod.CRAFTABLE;
     }
 
     public int chromeCost() {

@@ -49,6 +49,7 @@ public final class CyberwareEffects {
         CyberwareAbilities.onPlayerTick(player);
         FaceCyberwareManager.onPlayerTick(player);
         ArmCyberwareManager.onPlayerTick(player);
+        SkeletonCyberwareManager.onPlayerTick(player);
         NervousSystemCyberwareManager.onPlayerTick(player);
         IntegumentaryCyberwareManager.onPlayerTick(player);
         LegCyberwareManager.onPlayerTick(player);
@@ -61,7 +62,9 @@ public final class CyberwareEffects {
         boolean shouldRefreshNow = shouldRunSecondTasks
                 || TemporaryCyberwareEffectManager.hasStoredEffects(player)
                 || hasManagedMobEffects(player)
-                || LegCyberwareManager.requiresRealtimeRefresh(player);
+                || LegCyberwareManager.requiresRealtimeRefresh(player)
+                || HandsCyberwareManager.requiresRealtimeRefresh(player)
+                || CirculatoryCyberwareManager.requiresRealtimeRefresh(player);
         if (shouldRefreshNow) {
             EnumMap<CyberwareEffectType, Double> totals = refreshPlayerCyberware(player);
             if (shouldRunSecondTasks) {
@@ -166,6 +169,8 @@ public final class CyberwareEffects {
         }
         TemporaryCyberwareEffectManager.mergeActiveEffects(player, totals, player.level().getGameTime());
         FrontalCortexManager.mergePassiveEffects(player, inventory, totals);
+        HandsCyberwareManager.mergePassiveEffects(player, inventory, totals);
+        CirculatoryCyberwareManager.mergePassiveEffects(player, inventory, totals);
         SkeletonCyberwareManager.mergePassiveEffects(player, inventory, totals);
         IntegumentaryCyberwareManager.mergePassiveEffects(player, inventory, totals);
         LegCyberwareManager.mergePassiveEffects(player, inventory, totals);

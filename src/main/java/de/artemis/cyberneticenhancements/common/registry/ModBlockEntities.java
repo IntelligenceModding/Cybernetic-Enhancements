@@ -1,6 +1,7 @@
 package de.artemis.cyberneticenhancements.common.registry;
 
 import de.artemis.cyberneticenhancements.CyberneticEnhancements;
+import de.artemis.cyberneticenhancements.common.blockentity.RelicCacheBlockEntity;
 import de.artemis.cyberneticenhancements.common.blockentity.RecyclerStationBlockEntity;
 import de.artemis.cyberneticenhancements.common.blockentity.TechStationBlockEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -18,6 +19,16 @@ public final class ModBlockEntities {
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<RecyclerStationBlockEntity>> RECYCLER_STATION =
             BLOCK_ENTITIES.register("recycler_station", () -> BlockEntityType.Builder.of(RecyclerStationBlockEntity::new, ModBlocks.RECYCLER_STATION.get()).build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<RelicCacheBlockEntity>> RELIC_CACHE =
+            BLOCK_ENTITIES.register("relic_cache", () -> BlockEntityType.Builder.of(
+                    RelicCacheBlockEntity::new,
+                    ModBlocks.RELIC_CACHE.get(),
+                    ModBlocks.UNCOMMON_RELIC_CACHE.get(),
+                    ModBlocks.RARE_RELIC_CACHE.get(),
+                    ModBlocks.EPIC_RELIC_CACHE.get(),
+                    ModBlocks.LEGENDARY_RELIC_CACHE.get()
+            ).build(null));
 
     private ModBlockEntities() {
     }
