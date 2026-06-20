@@ -22,8 +22,9 @@ public final class WikiLaunchButton extends AbstractButton {
     @Override
     protected void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         var font = Minecraft.getInstance().font;
-        int fill = isHoveredOrFocused() ? StationScreenStyle.SLOT_ACTIVE : StationScreenStyle.PANEL_ALT;
-        WikiFrameRenderer.drawPanelWithAccentTop(guiGraphics, getX(), getY(), width, height, fill, isHoveredOrFocused() ? StationScreenStyle.ACCENT : StationScreenStyle.FRAME_HIGHLIGHT_SOFT);
+        boolean hovered = isHovered();
+        int fill = hovered ? StationScreenStyle.SLOT_ACTIVE : StationScreenStyle.PANEL_ALT;
+        WikiFrameRenderer.drawPanelWithAccentTop(guiGraphics, getX(), getY(), width, height, fill, hovered ? StationScreenStyle.ACCENT : StationScreenStyle.FRAME_HIGHLIGHT_SOFT);
         guiGraphics.drawCenteredString(font, getMessage(), getX() + width / 2, getY() + (height - 8) / 2, active ? StationScreenStyle.TEXT_PRIMARY : StationScreenStyle.TEXT_SECONDARY);
     }
 

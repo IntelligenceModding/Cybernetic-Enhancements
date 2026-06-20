@@ -63,6 +63,8 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
     private static final String NPC_CATEGORY_TAG = "NpcCategory";
     private static final String NPC_APPEARANCE_TAG = "NpcAppearance";
     private static final String NPC_NAME_COLOR_TAG = "NpcNameColor";
+    private static final String NPC_BASE_NAME_TAG = "NpcBaseName";
+    private static final String NPC_NICKNAME_TAG = "NpcNickname";
     private static final String MEETUP_CUSTOMER_TAG = "MeetupCustomer";
     private static final String MEETUP_EXPIRES_AT_TAG = "MeetupExpiresAt";
     private static final String MEETUP_RETURN_AT_TAG = "MeetupReturnAt";
@@ -110,6 +112,8 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
             SynchedEntityData.defineId(AbstractCityNpcEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<String> NPC_NAME_COLOR =
             SynchedEntityData.defineId(AbstractCityNpcEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<String> NPC_BASE_NAME =
+            SynchedEntityData.defineId(AbstractCityNpcEntity.class, EntityDataSerializers.STRING);
     private static final long MEETUP_WINDOW_TICKS = 30L * 20L;
     private static final long ANNOYANCE_WINDOW_TICKS = 2L * 60L * 20L;
     private static final long NO_FUNDS_PENALTY_COOLDOWN_TICKS = 30L * 20L;
@@ -124,6 +128,9 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
     private long meetupExpiresAt;
     private long meetupReturnAt;
     private boolean meetupSpent;
+    private String savedNicknameOverride = "";
+    private String savedAppearanceOverride = "";
+    private String savedNameColorOverride = "aqua";
 
     protected AbstractCityNpcEntity(EntityType<? extends AbstractCityNpcEntity> entityType, Level level) {
         super(entityType, level);
@@ -171,6 +178,7 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         builder.define(NPC_CATEGORY, "");
         builder.define(NPC_APPEARANCE, "");
         builder.define(NPC_NAME_COLOR, "aqua");
+        builder.define(NPC_BASE_NAME, "");
     }
 
     @Override
@@ -247,14 +255,23 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
             return;
         }
 
-        FixerIdentitySavedData.IdentityAssignment identity = FixerIdentitySavedData.get(serverLevel).getOrAssignIdentity(getUUID(), npcTypeId(), serverLevel.random);
+        FixerIdentitySavedData identities = FixerIdentitySavedData.get(serverLevel);
+        if (!savedNicknameOverride.isBlank() || !savedAppearanceOverride.isBlank() || !savedNameColorOverride.isBlank()) {
+            identities.getOrAssignIdentity(getUUID(), npcTypeId(), serverLevel.random);
+            identities.renameIdentity(getUUID(), savedNicknameOverride);
+            identities.setAppearance(getUUID(), savedAppearanceOverride);
+            identities.setNameColor(getUUID(), savedNameColorOverride);
+        }
+
+        FixerIdentitySavedData.IdentityAssignment identity = identities.getOrAssignIdentity(getUUID(), npcTypeId(), serverLevel.random);
         setCustomName(styledName(identity.displayName(), identity.nameColorId()));
         entityData.set(NPC_CATEGORY, identity.category().id());
         entityData.set(NPC_APPEARANCE, identity.appearance());
         entityData.set(NPC_NAME_COLOR, identity.nameColorId());
-        setCustomNameVisible(true);
+        entityData.set(NPC_BASE_NAME, identity.name());
+        setCustomNameVisible(nameVisibleFor(identity.nameColorId()));
         if (hasRestriction()) {
-            FixerIdentitySavedData.get(serverLevel).updateHome(getUUID(), serverLevel.dimension().location().toString(), getRestrictCenter());
+            identities.updateHome(getUUID(), serverLevel.dimension().location().toString(), getRestrictCenter());
         }
     }
 
@@ -270,6 +287,10 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         return entityData.get(NPC_NAME_COLOR);
     }
 
+    public String baseName() {
+        return entityData.get(NPC_BASE_NAME);
+    }
+
     public boolean hasResolvedIdentity() {
         return hasCustomName() && !entityData.get(NPC_CATEGORY).isBlank();
     }
@@ -278,8 +299,9 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         entityData.set(NPC_CATEGORY, category.id());
         entityData.set(NPC_APPEARANCE, appearanceId == null ? "" : appearanceId);
         entityData.set(NPC_NAME_COLOR, normalizeNameColorId(nameColorId));
+        entityData.set(NPC_BASE_NAME, displayName == null ? "" : displayName);
         setCustomName(styledName(displayName, nameColorId));
-        setCustomNameVisible(true);
+        setCustomNameVisible(nameVisibleFor(nameColorId));
     }
 
     public boolean hasMaxTrust(Player player) {
@@ -298,8 +320,9 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         if (updated == null) {
             return false;
         }
+        savedNicknameOverride = sanitized;
         setCustomName(styledName(updated.displayName(), updated.nameColorId()));
-        setCustomNameVisible(true);
+        setCustomNameVisible(nameVisibleFor(updated.nameColorId()));
         return true;
     }
 
@@ -312,9 +335,10 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         if (updated == null) {
             return false;
         }
+        savedNameColorOverride = updated.nameColorId();
         entityData.set(NPC_NAME_COLOR, updated.nameColorId());
         setCustomName(styledName(updated.displayName(), updated.nameColorId()));
-        setCustomNameVisible(true);
+        setCustomNameVisible(nameVisibleFor(updated.nameColorId()));
         return true;
     }
 
@@ -327,6 +351,7 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         if (updated == null) {
             return false;
         }
+        savedAppearanceOverride = updated.appearance();
         entityData.set(NPC_APPEARANCE, updated.appearance());
         return true;
     }
@@ -625,6 +650,10 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         tag.putString(NPC_CATEGORY_TAG, entityData.get(NPC_CATEGORY));
         tag.putString(NPC_APPEARANCE_TAG, entityData.get(NPC_APPEARANCE));
         tag.putString(NPC_NAME_COLOR_TAG, entityData.get(NPC_NAME_COLOR));
+        tag.putString(NPC_BASE_NAME_TAG, entityData.get(NPC_BASE_NAME));
+        if (!savedNicknameOverride.isBlank()) {
+            tag.putString(NPC_NICKNAME_TAG, savedNicknameOverride);
+        }
     }
 
     @Override
@@ -641,6 +670,38 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
         entityData.set(NPC_CATEGORY, NpcCategory.fromId(tag.getString(NPC_CATEGORY_TAG)).id());
         entityData.set(NPC_APPEARANCE, tag.getString(NPC_APPEARANCE_TAG));
         entityData.set(NPC_NAME_COLOR, normalizeNameColorId(tag.getString(NPC_NAME_COLOR_TAG)));
+        entityData.set(NPC_BASE_NAME, tag.getString(NPC_BASE_NAME_TAG));
+        savedNicknameOverride = tag.contains(NPC_NICKNAME_TAG, Tag.TAG_STRING) ? tag.getString(NPC_NICKNAME_TAG) : "";
+        savedAppearanceOverride = entityData.get(NPC_APPEARANCE);
+        savedNameColorOverride = entityData.get(NPC_NAME_COLOR);
+        if (!savedNicknameOverride.isBlank()) {
+            setCustomName(styledName(savedNicknameOverride, entityData.get(NPC_NAME_COLOR)));
+        }
+        refreshDisplayedName();
+    }
+
+    @Override
+    public void onSyncedDataUpdated(EntityDataAccessor<?> key) {
+        super.onSyncedDataUpdated(key);
+        if (NPC_NAME_COLOR.equals(key) || NPC_BASE_NAME.equals(key)) {
+            refreshDisplayedName();
+        }
+    }
+
+    private void refreshDisplayedName() {
+        String displayName = currentDisplayNameText();
+        if (!displayName.isBlank()) {
+            setCustomName(styledName(displayName, entityData.get(NPC_NAME_COLOR)));
+        }
+        setCustomNameVisible(nameVisibleFor(entityData.get(NPC_NAME_COLOR)));
+    }
+
+    private String currentDisplayNameText() {
+        Component customName = getCustomName();
+        if (customName != null && !customName.getString().isBlank()) {
+            return customName.getString();
+        }
+        return entityData.get(NPC_BASE_NAME);
     }
 
     private static Component styledName(String displayName, String nameColorId) {
@@ -649,20 +710,31 @@ public abstract class AbstractCityNpcEntity extends PathfinderMob {
 
     private static ChatFormatting resolveNameColor(String nameColorId) {
         return switch (normalizeNameColorId(nameColorId)) {
+            case "blue" -> ChatFormatting.BLUE;
             case "gold" -> ChatFormatting.GOLD;
             case "green" -> ChatFormatting.GREEN;
             case "red" -> ChatFormatting.RED;
             case "white" -> ChatFormatting.WHITE;
             case "light_purple" -> ChatFormatting.LIGHT_PURPLE;
+            case "hidden" -> ChatFormatting.WHITE;
             default -> ChatFormatting.AQUA;
         };
     }
 
     private static String normalizeNameColorId(String nameColorId) {
         return switch (nameColorId == null ? "" : nameColorId.trim().toLowerCase()) {
-            case "gold", "green", "red", "white", "light_purple" -> nameColorId.trim().toLowerCase();
+            case "blue", "gold", "green", "red", "white", "light_purple", "hidden" -> nameColorId.trim().toLowerCase();
             default -> "aqua";
         };
+    }
+
+    private static boolean nameVisibleFor(String nameColorId) {
+        return !"hidden".equals(normalizeNameColorId(nameColorId));
+    }
+
+    @Override
+    public boolean shouldShowName() {
+        return nameVisibleFor(entityData.get(NPC_NAME_COLOR)) && super.shouldShowName();
     }
 
     @Override

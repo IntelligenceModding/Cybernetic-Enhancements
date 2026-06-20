@@ -36,7 +36,7 @@ public final class FixerEntityRenderer extends HumanoidMobRenderer<AbstractCityN
     public ResourceLocation getTextureLocation(AbstractCityNpcEntity entity) {
         if (!entity.appearanceOverride().isBlank()) {
             ResourceLocation override = ResourceLocation.tryParse(entity.appearanceOverride());
-            if (override != null && listTextures(override.getPath()).contains(override)) {
+            if (override != null) {
                 return override;
             }
         }

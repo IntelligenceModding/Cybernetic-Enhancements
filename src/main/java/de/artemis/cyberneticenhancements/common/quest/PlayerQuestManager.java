@@ -365,7 +365,14 @@ public final class PlayerQuestManager {
         }
         cleanupContractArtifacts(player, active);
 
-        PlayerEurodollarManager.add(player, active.rewardMoney());
+        PlayerEurodollarManager.add(
+                player,
+                active.rewardMoney(),
+                "quest_reward",
+                "Contract payout",
+                active.issuerId(),
+                active.issuerName()
+        );
         issuer.raiseTrust(player, active.rewardTrust());
         issuer.recordPaidTransaction(player);
         ItemStack rewardItem = active.rewardItemStack();

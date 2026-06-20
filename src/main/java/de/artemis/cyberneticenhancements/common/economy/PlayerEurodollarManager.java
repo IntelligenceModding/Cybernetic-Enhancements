@@ -1,50 +1,133 @@
 package de.artemis.cyberneticenhancements.common.economy;
 
+import net.minecraft.Util;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtAccounter;
+import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.Tag;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.storage.LevelResource;
+import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 
 public final class PlayerEurodollarManager {
     private static final String EURODOLLARS_KEY = "cyberneticenhancements.eurodollars";
+    private static final String LEDGER_KEY = "cyberneticenhancements.eurodollar_ledger";
+    private static final String REQUESTS_KEY = "cyberneticenhancements.eurodollar_requests";
+    private static final String SEQUENCE_KEY = "cyberneticenhancements.eurodollar_sequence";
     private static final int MAX_BALANCE = 999_999_999;
+    private static final int MAX_LEDGER_ENTRIES = 120;
+    private static final int MAX_PENDING_REQUESTS = 24;
 
     private PlayerEurodollarManager() {
     }
 
     public static int balance(Player player) {
-        int stored = player.getPersistentData().getInt(EURODOLLARS_KEY);
-        return clampBalance(stored);
+        return balance(player.getPersistentData());
     }
 
     public static void setBalance(Player player, int amount) {
-        player.getPersistentData().putInt(EURODOLLARS_KEY, clampBalance(amount));
+        setBalance(player, amount, "admin_set", "Administrative balance set", null, null);
+    }
+
+    public static void setBalance(
+            Player player,
+            int amount,
+            String typeId,
+            String note,
+            @Nullable UUID counterpartyId,
+            @Nullable String counterpartyName
+    ) {
+        int previous = balance(player);
+        int updated = clampBalance(amount);
+        setStoredBalance(player.getPersistentData(), updated);
+        int delta = updated - previous;
+        if (delta != 0) {
+            appendTransaction(player, typeId, delta, note, counterpartyId, counterpartyName);
+        }
     }
 
     public static int add(Player player, int amount) {
+        return add(player, amount, "income", "Account credit", null, null);
+    }
+
+    public static int add(
+            Player player,
+            int amount,
+            String typeId,
+            String note,
+            @Nullable UUID counterpartyId,
+            @Nullable String counterpartyName
+    ) {
         if (amount <= 0) {
             return balance(player);
         }
-        int updated = clampBalance(balance(player) + amount);
-        setBalance(player, updated);
+        int previous = balance(player);
+        int updated = clampBalance(previous + amount);
+        setStoredBalance(player.getPersistentData(), updated);
+        int delta = updated - previous;
+        if (delta != 0) {
+            appendTransaction(player, typeId, delta, note, counterpartyId, counterpartyName);
+        }
         return updated;
     }
 
     public static int remove(Player player, int amount) {
+        return remove(player, amount, "expense", "Account debit", null, null);
+    }
+
+    public static int remove(
+            Player player,
+            int amount,
+            String typeId,
+            String note,
+            @Nullable UUID counterpartyId,
+            @Nullable String counterpartyName
+    ) {
         if (amount <= 0) {
             return balance(player);
         }
-        int updated = Math.max(0, balance(player) - amount);
-        setBalance(player, updated);
+        int previous = balance(player);
+        int updated = Math.max(0, previous - amount);
+        setStoredBalance(player.getPersistentData(), updated);
+        int delta = updated - previous;
+        if (delta != 0) {
+            appendTransaction(player, typeId, delta, note, counterpartyId, counterpartyName);
+        }
         return updated;
     }
 
     public static int change(Player player, int delta) {
+        return change(player, delta, delta >= 0 ? "income" : "expense", "Account adjustment", null, null);
+    }
+
+    public static int change(
+            Player player,
+            int delta,
+            String typeId,
+            String note,
+            @Nullable UUID counterpartyId,
+            @Nullable String counterpartyName
+    ) {
         if (delta == 0) {
             return balance(player);
         }
         if (delta > 0) {
-            return add(player, delta);
+            return add(player, delta, typeId, note, counterpartyId, counterpartyName);
         }
-        return remove(player, -delta);
+        return remove(player, -delta, typeId, note, counterpartyId, counterpartyName);
     }
 
     public static boolean canAfford(Player player, int amount) {
@@ -52,27 +135,558 @@ public final class PlayerEurodollarManager {
     }
 
     public static boolean tryWithdraw(Player player, int amount) {
+        return tryWithdraw(player, amount, "expense", "Account debit", null, null);
+    }
+
+    public static boolean tryWithdraw(
+            Player player,
+            int amount,
+            String typeId,
+            String note,
+            @Nullable UUID counterpartyId,
+            @Nullable String counterpartyName
+    ) {
         if (amount <= 0) {
             return true;
         }
         if (!canAfford(player, amount)) {
             return false;
         }
-        remove(player, amount);
+        remove(player, amount, typeId, note, counterpartyId, counterpartyName);
         return true;
+    }
+
+    public static TransferResult sendToPlayer(ServerPlayer from, ServerPlayer to, int amount) {
+        if (amount <= 0) {
+            return TransferResult.INVALID_AMOUNT;
+        }
+        if (from.getUUID().equals(to.getUUID())) {
+            return TransferResult.SELF_TARGET;
+        }
+        if (!tryWithdraw(from, amount, "player_sent", "Sent funds", to.getUUID(), to.getGameProfile().getName())) {
+            return TransferResult.INSUFFICIENT_FUNDS;
+        }
+        add(to, amount, "player_received", "Received funds", from.getUUID(), from.getGameProfile().getName());
+        return TransferResult.OK;
+    }
+
+    public static TransferResult createRequest(ServerPlayer from, ServerPlayer to, int amount) {
+        return createRequest(from, to.getUUID(), to.getGameProfile().getName(), amount);
+    }
+
+    public static TransferResult createRequest(ServerPlayer from, UUID toPlayerId, String toPlayerName, int amount) {
+        if (amount <= 0) {
+            return TransferResult.INVALID_AMOUNT;
+        }
+        if (from.getUUID().equals(toPlayerId)) {
+            return TransferResult.SELF_TARGET;
+        }
+        PaymentRequest request = new PaymentRequest(
+                UUID.randomUUID(),
+                from.getUUID(),
+                from.getGameProfile().getName(),
+                toPlayerId,
+                toPlayerName,
+                amount,
+                currentDay(from)
+        );
+        ServerPlayer onlineTarget = from.server.getPlayerList().getPlayer(toPlayerId);
+        if (onlineTarget != null) {
+            appendRequest(from, request);
+            appendRequest(onlineTarget, request);
+            appendTransaction(from, "request_sent", 0, "Requested funds", toPlayerId, toPlayerName);
+            appendTransaction(onlineTarget, "request_received", 0, "Incoming payment request", from.getUUID(), from.getGameProfile().getName());
+            return TransferResult.OK;
+        }
+        if (!offlinePlayerDataExists(from.server, toPlayerId)) {
+            return TransferResult.TARGET_NOT_FOUND;
+        }
+        appendRequest(from, request);
+        appendTransaction(from, "request_sent", 0, "Requested funds", toPlayerId, toPlayerName);
+        appendRequestOffline(from.server, toPlayerId, request);
+        appendTransactionOffline(from.server, toPlayerId, "request_received", 0, "Incoming payment request", from.getUUID(), from.getGameProfile().getName());
+        return TransferResult.OK;
+    }
+
+    public static TransferResult approveRequest(ServerPlayer approver, UUID requestId) {
+        PaymentRequest request = findRequest(approver, requestId);
+        if (request == null) {
+            return TransferResult.REQUEST_NOT_FOUND;
+        }
+        if (!request.toPlayerId().equals(approver.getUUID())) {
+            return TransferResult.REQUEST_NOT_INCOMING;
+        }
+        ServerPlayer requester = approver.server.getPlayerList().getPlayer(request.fromPlayerId());
+        if (requester == null && !offlinePlayerDataExists(approver.server, request.fromPlayerId())) {
+            return TransferResult.TARGET_NOT_FOUND;
+        }
+        if (!tryWithdraw(
+                approver,
+                request.amount(),
+                "request_paid",
+                "Paid requested funds",
+                request.fromPlayerId(),
+                request.fromPlayerName()
+        )) {
+            return TransferResult.INSUFFICIENT_FUNDS;
+        }
+        if (requester != null) {
+            add(
+                    requester,
+                    request.amount(),
+                    "request_received_paid",
+                    "Request payment received",
+                    approver.getUUID(),
+                    approver.getGameProfile().getName()
+            );
+        } else if (!changeOfflineBalance(
+                approver.server,
+                request.fromPlayerId(),
+                request.amount(),
+                "request_received_paid",
+                "Request payment received",
+                approver.getUUID(),
+                approver.getGameProfile().getName()
+        )) {
+            return TransferResult.TARGET_NOT_FOUND;
+        }
+        removeRequest(approver, requestId);
+        if (requester != null) {
+            removeRequest(requester, requestId);
+        } else {
+            removeRequestOffline(approver.server, request.fromPlayerId(), requestId);
+        }
+        return TransferResult.OK;
+    }
+
+    public static TransferResult declineRequest(ServerPlayer actor, UUID requestId) {
+        PaymentRequest request = findRequest(actor, requestId);
+        if (request == null) {
+            return TransferResult.REQUEST_NOT_FOUND;
+        }
+        boolean incoming = request.toPlayerId().equals(actor.getUUID());
+        boolean outgoing = request.fromPlayerId().equals(actor.getUUID());
+        if (!incoming && !outgoing) {
+            return TransferResult.REQUEST_NOT_FOUND;
+        }
+        ServerPlayer counterpart = actor.server.getPlayerList().getPlayer(incoming ? request.fromPlayerId() : request.toPlayerId());
+        removeRequest(actor, requestId);
+        if (counterpart != null) {
+            removeRequest(counterpart, requestId);
+            appendTransaction(counterpart, "request_declined", 0, "Payment request closed", actor.getUUID(), actor.getGameProfile().getName());
+        } else {
+            removeRequestOffline(actor.server, incoming ? request.fromPlayerId() : request.toPlayerId(), requestId);
+            appendTransactionOffline(actor.server, incoming ? request.fromPlayerId() : request.toPlayerId(), "request_declined", 0, "Payment request closed", actor.getUUID(), actor.getGameProfile().getName());
+        }
+        appendTransaction(actor, "request_declined", 0, "Payment request closed", counterpart == null ? null : counterpart.getUUID(), counterpart == null ? (incoming ? request.fromPlayerName() : request.toPlayerName()) : counterpart.getGameProfile().getName());
+        return TransferResult.OK;
+    }
+
+    public static List<TransactionEntry> ledger(Player player) {
+        List<TransactionEntry> entries = readLedger(player.getPersistentData());
+        entries.sort(Comparator.comparingLong(TransactionEntry::sequence).reversed());
+        return List.copyOf(entries);
+    }
+
+    public static List<PaymentRequest> requests(Player player) {
+        List<PaymentRequest> requests = readRequests(player.getPersistentData());
+        requests.sort(Comparator.comparingLong(PaymentRequest::createdDay).reversed().thenComparing(request -> request.requestId().toString()));
+        return List.copyOf(requests);
+    }
+
+    public static int totalIncome(Player player) {
+        int total = 0;
+        for (TransactionEntry entry : ledger(player)) {
+            if (entry.amount() > 0) {
+                total += entry.amount();
+            }
+        }
+        return total;
+    }
+
+    public static int totalExpense(Player player) {
+        int total = 0;
+        for (TransactionEntry entry : ledger(player)) {
+            if (entry.amount() < 0) {
+                total += -entry.amount();
+            }
+        }
+        return total;
+    }
+
+    public static int[] graphNet(Player player, int buckets) {
+        int[] values = new int[Math.max(1, buckets)];
+        long currentDay = currentDay(player);
+        for (TransactionEntry entry : ledger(player)) {
+            long delta = currentDay - entry.day();
+            if (delta < 0 || delta >= values.length) {
+                continue;
+            }
+            int index = values.length - 1 - (int) delta;
+            values[index] += entry.amount();
+        }
+        return values;
     }
 
     public static void copyState(Player fromPlayer, Player toPlayer) {
         CompoundTag fromData = fromPlayer.getPersistentData();
         CompoundTag toData = toPlayer.getPersistentData();
-        if (fromData.contains(EURODOLLARS_KEY)) {
-            toData.putInt(EURODOLLARS_KEY, clampBalance(fromData.getInt(EURODOLLARS_KEY)));
+        copyTagIfPresent(fromData, toData, EURODOLLARS_KEY);
+        copyTagIfPresent(fromData, toData, LEDGER_KEY);
+        copyTagIfPresent(fromData, toData, REQUESTS_KEY);
+        copyTagIfPresent(fromData, toData, SEQUENCE_KEY);
+    }
+
+    private static void copyTagIfPresent(CompoundTag fromData, CompoundTag toData, String key) {
+        if (fromData.contains(key)) {
+            toData.put(key, fromData.get(key).copy());
         } else {
-            toData.remove(EURODOLLARS_KEY);
+            toData.remove(key);
         }
+    }
+
+    private static int balance(CompoundTag persistentData) {
+        return clampBalance(persistentData.getInt(EURODOLLARS_KEY));
+    }
+
+    private static void setStoredBalance(CompoundTag persistentData, int amount) {
+        persistentData.putInt(EURODOLLARS_KEY, clampBalance(amount));
+    }
+
+    private static void appendTransaction(
+            Player player,
+            String typeId,
+            int amount,
+            String note,
+            @Nullable UUID counterpartyId,
+            @Nullable String counterpartyName
+    ) {
+        List<TransactionEntry> entries = readLedger(player.getPersistentData());
+        entries.add(0, new TransactionEntry(
+                nextSequence(player.getPersistentData()),
+                currentDay(player),
+                sanitizeType(typeId),
+                amount,
+                counterpartyId == null ? "" : counterpartyId.toString(),
+                counterpartyName == null ? "" : counterpartyName,
+                note == null ? "" : note
+        ));
+        if (entries.size() > MAX_LEDGER_ENTRIES) {
+            entries = new ArrayList<>(entries.subList(0, MAX_LEDGER_ENTRIES));
+        }
+        writeLedger(player.getPersistentData(), entries);
+    }
+
+    private static void appendRequest(Player player, PaymentRequest request) {
+        List<PaymentRequest> requests = readRequests(player.getPersistentData());
+        requests.removeIf(existing -> existing.requestId().equals(request.requestId()));
+        requests.add(0, request);
+        if (requests.size() > MAX_PENDING_REQUESTS) {
+            requests = new ArrayList<>(requests.subList(0, MAX_PENDING_REQUESTS));
+        }
+        writeRequests(player.getPersistentData(), requests);
+    }
+
+    private static void removeRequest(Player player, UUID requestId) {
+        List<PaymentRequest> requests = readRequests(player.getPersistentData());
+        if (requests.removeIf(request -> request.requestId().equals(requestId))) {
+            writeRequests(player.getPersistentData(), requests);
+        }
+    }
+
+    private static @Nullable PaymentRequest findRequest(Player player, UUID requestId) {
+        for (PaymentRequest request : readRequests(player.getPersistentData())) {
+            if (request.requestId().equals(requestId)) {
+                return request;
+            }
+        }
+        return null;
+    }
+
+    private static List<TransactionEntry> readLedger(CompoundTag persistentData) {
+        List<TransactionEntry> entries = new ArrayList<>();
+        ListTag listTag = persistentData.getList(LEDGER_KEY, Tag.TAG_COMPOUND);
+        for (Tag tag : listTag) {
+            if (tag instanceof CompoundTag compoundTag) {
+                entries.add(TransactionEntry.fromTag(compoundTag));
+            }
+        }
+        return entries;
+    }
+
+    private static void writeLedger(CompoundTag persistentData, List<TransactionEntry> entries) {
+        ListTag listTag = new ListTag();
+        for (TransactionEntry entry : entries) {
+            listTag.add(entry.toTag());
+        }
+        persistentData.put(LEDGER_KEY, listTag);
+    }
+
+    private static List<PaymentRequest> readRequests(CompoundTag persistentData) {
+        List<PaymentRequest> requests = new ArrayList<>();
+        ListTag listTag = persistentData.getList(REQUESTS_KEY, Tag.TAG_COMPOUND);
+        for (Tag tag : listTag) {
+            if (tag instanceof CompoundTag compoundTag) {
+                requests.add(PaymentRequest.fromTag(compoundTag));
+            }
+        }
+        return requests;
+    }
+
+    private static void writeRequests(CompoundTag persistentData, List<PaymentRequest> requests) {
+        ListTag listTag = new ListTag();
+        for (PaymentRequest request : requests) {
+            listTag.add(request.toTag());
+        }
+        persistentData.put(REQUESTS_KEY, listTag);
+    }
+
+    private static long nextSequence(CompoundTag persistentData) {
+        long next = persistentData.getLong(SEQUENCE_KEY) + 1L;
+        persistentData.putLong(SEQUENCE_KEY, next);
+        return next;
+    }
+
+    private static long currentDay(Player player) {
+        return player.level().getDayTime() / 24000L;
+    }
+
+    private static String sanitizeType(String raw) {
+        return raw == null || raw.isBlank()
+                ? "generic"
+                : raw.toLowerCase(Locale.ROOT).replace(' ', '_');
     }
 
     private static int clampBalance(int amount) {
         return Math.max(0, Math.min(MAX_BALANCE, amount));
+    }
+
+    private static boolean appendRequestOffline(MinecraftServer server, UUID playerId, PaymentRequest request) {
+        return updateOfflinePlayerData(server, playerId, persistentData -> {
+            List<PaymentRequest> requests = readRequests(persistentData);
+            requests.removeIf(existing -> existing.requestId().equals(request.requestId()));
+            requests.add(0, request);
+            if (requests.size() > MAX_PENDING_REQUESTS) {
+                requests = new ArrayList<>(requests.subList(0, MAX_PENDING_REQUESTS));
+            }
+            writeRequests(persistentData, requests);
+        });
+    }
+
+    private static boolean removeRequestOffline(MinecraftServer server, UUID playerId, UUID requestId) {
+        return updateOfflinePlayerData(server, playerId, persistentData -> {
+            List<PaymentRequest> requests = readRequests(persistentData);
+            if (requests.removeIf(request -> request.requestId().equals(requestId))) {
+                writeRequests(persistentData, requests);
+            }
+        });
+    }
+
+    private static boolean appendTransactionOffline(
+            MinecraftServer server,
+            UUID playerId,
+            String typeId,
+            int amount,
+            String note,
+            @Nullable UUID counterpartyId,
+            @Nullable String counterpartyName
+    ) {
+        return updateOfflinePlayerData(server, playerId, persistentData -> {
+            List<TransactionEntry> entries = readLedger(persistentData);
+            entries.add(0, new TransactionEntry(
+                    nextSequence(persistentData),
+                    server.overworld().getDayTime() / 24000L,
+                    sanitizeType(typeId),
+                    amount,
+                    counterpartyId == null ? "" : counterpartyId.toString(),
+                    counterpartyName == null ? "" : counterpartyName,
+                    note == null ? "" : note
+            ));
+            if (entries.size() > MAX_LEDGER_ENTRIES) {
+                entries = new ArrayList<>(entries.subList(0, MAX_LEDGER_ENTRIES));
+            }
+            writeLedger(persistentData, entries);
+        });
+    }
+
+    private static boolean changeOfflineBalance(
+            MinecraftServer server,
+            UUID playerId,
+            int delta,
+            String typeId,
+            String note,
+            @Nullable UUID counterpartyId,
+            @Nullable String counterpartyName
+    ) {
+        return updateOfflinePlayerData(server, playerId, persistentData -> {
+            int updated = clampBalance(balance(persistentData) + delta);
+            int actualDelta = updated - balance(persistentData);
+            setStoredBalance(persistentData, updated);
+            if (actualDelta != 0) {
+                List<TransactionEntry> entries = readLedger(persistentData);
+                entries.add(0, new TransactionEntry(
+                        nextSequence(persistentData),
+                        server.overworld().getDayTime() / 24000L,
+                        sanitizeType(typeId),
+                        actualDelta,
+                        counterpartyId == null ? "" : counterpartyId.toString(),
+                        counterpartyName == null ? "" : counterpartyName,
+                        note == null ? "" : note
+                ));
+                if (entries.size() > MAX_LEDGER_ENTRIES) {
+                    entries = new ArrayList<>(entries.subList(0, MAX_LEDGER_ENTRIES));
+                }
+                writeLedger(persistentData, entries);
+            }
+        });
+    }
+
+    private static boolean updateOfflinePlayerData(MinecraftServer server, UUID playerId, java.util.function.Consumer<CompoundTag> mutator) {
+        OfflinePlayerData data = loadOfflinePlayerData(server, playerId);
+        if (data == null) {
+            return false;
+        }
+        mutator.accept(data.persistentData());
+        return saveOfflinePlayerData(data);
+    }
+
+    private static @Nullable OfflinePlayerData loadOfflinePlayerData(MinecraftServer server, UUID playerId) {
+        Path file = server.getWorldPath(LevelResource.PLAYER_DATA_DIR).resolve(playerId + ".dat");
+        if (!Files.exists(file) || !Files.isRegularFile(file)) {
+            return null;
+        }
+        try {
+            CompoundTag rootTag = NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap());
+            if (rootTag == null) {
+                return null;
+            }
+            CompoundTag persistentData = rootTag.contains("ForgeData", Tag.TAG_COMPOUND)
+                    ? rootTag.getCompound("ForgeData").copy()
+                    : new CompoundTag();
+            return new OfflinePlayerData(file, rootTag, persistentData);
+        } catch (IOException ignored) {
+            return null;
+        }
+    }
+
+    private static boolean saveOfflinePlayerData(OfflinePlayerData data) {
+        try {
+            data.rootTag().put("ForgeData", data.persistentData());
+            Path parent = data.file().getParent();
+            if (parent != null) {
+                parent.toFile().mkdirs();
+            }
+            File tempBackingFile = File.createTempFile(data.file().getFileName().toString() + "-", ".dat", parent == null ? null : parent.toFile());
+            Path tempFile = tempBackingFile.toPath();
+            NbtIo.writeCompressed(data.rootTag(), tempFile);
+            Path backupFile = data.file().resolveSibling(data.file().getFileName().toString() + "_old");
+            Util.safeReplaceFile(data.file(), tempFile, backupFile);
+            return true;
+        } catch (IOException ignored) {
+            return false;
+        }
+    }
+
+    private static boolean offlinePlayerDataExists(MinecraftServer server, UUID playerId) {
+        Path file = server.getWorldPath(LevelResource.PLAYER_DATA_DIR).resolve(playerId + ".dat");
+        return Files.exists(file) && Files.isRegularFile(file);
+    }
+
+    private record OfflinePlayerData(Path file, CompoundTag rootTag, CompoundTag persistentData) {
+    }
+
+    public enum TransferResult {
+        OK,
+        INVALID_AMOUNT,
+        SELF_TARGET,
+        INSUFFICIENT_FUNDS,
+        TARGET_NOT_FOUND,
+        TARGET_OFFLINE,
+        REQUEST_NOT_FOUND,
+        REQUEST_NOT_INCOMING
+    }
+
+    public record TransactionEntry(
+            long sequence,
+            long day,
+            String typeId,
+            int amount,
+            String counterpartyId,
+            String counterpartyName,
+            String note
+    ) {
+        private static final String SEQUENCE_TAG = "Sequence";
+        private static final String DAY_TAG = "Day";
+        private static final String TYPE_TAG = "Type";
+        private static final String AMOUNT_TAG = "Amount";
+        private static final String COUNTERPARTY_ID_TAG = "CounterpartyId";
+        private static final String COUNTERPARTY_NAME_TAG = "CounterpartyName";
+        private static final String NOTE_TAG = "Note";
+
+        public CompoundTag toTag() {
+            CompoundTag tag = new CompoundTag();
+            tag.putLong(SEQUENCE_TAG, sequence);
+            tag.putLong(DAY_TAG, day);
+            tag.putString(TYPE_TAG, typeId);
+            tag.putInt(AMOUNT_TAG, amount);
+            tag.putString(COUNTERPARTY_ID_TAG, counterpartyId);
+            tag.putString(COUNTERPARTY_NAME_TAG, counterpartyName);
+            tag.putString(NOTE_TAG, note);
+            return tag;
+        }
+
+        public static TransactionEntry fromTag(CompoundTag tag) {
+            return new TransactionEntry(
+                    tag.getLong(SEQUENCE_TAG),
+                    tag.getLong(DAY_TAG),
+                    tag.getString(TYPE_TAG),
+                    tag.getInt(AMOUNT_TAG),
+                    tag.getString(COUNTERPARTY_ID_TAG),
+                    tag.getString(COUNTERPARTY_NAME_TAG),
+                    tag.getString(NOTE_TAG)
+            );
+        }
+    }
+
+    public record PaymentRequest(
+            UUID requestId,
+            UUID fromPlayerId,
+            String fromPlayerName,
+            UUID toPlayerId,
+            String toPlayerName,
+            int amount,
+            long createdDay
+    ) {
+        private static final String REQUEST_ID_TAG = "RequestId";
+        private static final String FROM_ID_TAG = "FromPlayerId";
+        private static final String FROM_NAME_TAG = "FromPlayerName";
+        private static final String TO_ID_TAG = "ToPlayerId";
+        private static final String TO_NAME_TAG = "ToPlayerName";
+        private static final String AMOUNT_TAG = "Amount";
+        private static final String CREATED_DAY_TAG = "CreatedDay";
+
+        public CompoundTag toTag() {
+            CompoundTag tag = new CompoundTag();
+            tag.putString(REQUEST_ID_TAG, requestId.toString());
+            tag.putString(FROM_ID_TAG, fromPlayerId.toString());
+            tag.putString(FROM_NAME_TAG, fromPlayerName);
+            tag.putString(TO_ID_TAG, toPlayerId.toString());
+            tag.putString(TO_NAME_TAG, toPlayerName);
+            tag.putInt(AMOUNT_TAG, amount);
+            tag.putLong(CREATED_DAY_TAG, createdDay);
+            return tag;
+        }
+
+        public static PaymentRequest fromTag(CompoundTag tag) {
+            return new PaymentRequest(
+                    UUID.fromString(tag.getString(REQUEST_ID_TAG)),
+                    UUID.fromString(tag.getString(FROM_ID_TAG)),
+                    tag.getString(FROM_NAME_TAG),
+                    UUID.fromString(tag.getString(TO_ID_TAG)),
+                    tag.getString(TO_NAME_TAG),
+                    tag.getInt(AMOUNT_TAG),
+                    tag.getLong(CREATED_DAY_TAG)
+            );
+        }
     }
 }

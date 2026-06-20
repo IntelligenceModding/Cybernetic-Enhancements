@@ -3,6 +3,7 @@ package de.artemis.cyberneticenhancements.client.screen;
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
+import de.artemis.cyberneticenhancements.client.ArchiveBankingClientState;
 import de.artemis.cyberneticenhancements.client.ArchiveContactsClientState;
 import de.artemis.cyberneticenhancements.client.ArchiveQuestsClientState;
 import de.artemis.cyberneticenhancements.client.render.FixerEntityRenderer;
@@ -19,6 +20,9 @@ import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.WikiEnt
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.WikiSection;
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiData.WikiTopic;
 import de.artemis.cyberneticenhancements.common.network.ArchiveContactActionPayload;
+import de.artemis.cyberneticenhancements.common.network.ArchiveBankingActionPayload;
+import de.artemis.cyberneticenhancements.common.network.ArchiveBankingPayload;
+import de.artemis.cyberneticenhancements.common.network.ArchiveBankingRequestPayload;
 import de.artemis.cyberneticenhancements.common.network.ArchiveContactsPayload;
 import de.artemis.cyberneticenhancements.common.network.ArchiveContactsRequestPayload;
 import de.artemis.cyberneticenhancements.common.network.ArchiveQuestActionPayload;
@@ -28,8 +32,11 @@ import de.artemis.cyberneticenhancements.common.world.NpcIdentityConfig.NpcCateg
 import de.artemis.cyberneticenhancements.common.registry.ModBlocks;
 import de.artemis.cyberneticenhancements.common.registry.ModItems;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.PlayerFaceRenderer;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.renderer.RenderType;
@@ -87,12 +94,18 @@ public final class CyberwareWikiScreen extends Screen {
     private static final int TOP_TAB_GAP = 6;
     private static final int CONTACT_FILTER_TAB_HEIGHT = 18;
     private static final int CONTACT_FILTER_TAB_GAP = 4;
+    private static final int BANK_FILTER_TAB_HEIGHT = 18;
+    private static final int BANK_FILTER_TAB_GAP = 4;
     private static final long OPEN_ANIMATION_MS = 220L;
     private static final long CONTENT_ANIMATION_MS = 180L;
     private static final long BOOT_SEQUENCE_MS = 2400L;
     private static final long BOOT_FADE_MS = 260L;
+    private static final String BANKING_TAB_ID = "banking";
     private static final String CONTACTS_TAB_ID = "contacts";
     private static final String QUESTS_TAB_ID = "quests";
+    private static final String BANK_FILTER_ALL = "all";
+    private static final String BANK_FILTER_INCOME = "income";
+    private static final String BANK_FILTER_EXPENSE = "expense";
     private static final String CONTACT_FILTER_ALL = "all";
     private static final String CONTACT_FILTER_PINNED = "pinned";
     private static final String CONTACT_FILTER_HIDDEN = "hidden";
@@ -128,7 +141,11 @@ public final class CyberwareWikiScreen extends Screen {
     private int currentMouseY;
     private final String initialEntryId;
     private int contactsRefreshCooldown;
+    private String activeBankFilterId = BANK_FILTER_ALL;
     private String activeContactsFilterId = CONTACT_FILTER_ALL;
+    private EditBox bankTargetField;
+    private EditBox bankAmountField;
+    private boolean bankPlayerDropdownOpen;
 
     public CyberwareWikiScreen(Screen parent) {
         this(parent, null);
@@ -150,6 +167,7 @@ public final class CyberwareWikiScreen extends Screen {
 
     @Override
     protected void init() {
+        initBankingFields();
         activateTab(activeTab);
         if (initialEntryId != null) {
             selectEntryById(initialEntryId);
@@ -158,6 +176,7 @@ public final class CyberwareWikiScreen extends Screen {
 
     @Override
     public void onClose() {
+        ArchiveBankingClientState.clear();
         ArchiveContactsClientState.clear();
         ArchiveQuestsClientState.clear();
         Minecraft.getInstance().setScreen(parent);
@@ -166,7 +185,7 @@ public final class CyberwareWikiScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
-        if ((!isContactsTab() && !isQuestsTab()) || minecraft == null || minecraft.player == null) {
+        if ((!isContactsTab() && !isQuestsTab() && !isBankingTab()) || minecraft == null || minecraft.player == null) {
             return;
         }
         if (contactsRefreshCooldown > 0) {
@@ -175,6 +194,8 @@ public final class CyberwareWikiScreen extends Screen {
         }
         if (isContactsTab()) {
             requestContactsRefresh();
+        } else if (isBankingTab()) {
+            requestBankingRefresh();
         } else {
             requestQuestsRefresh();
         }
@@ -184,6 +205,20 @@ public final class CyberwareWikiScreen extends Screen {
     @Override
     public boolean isPauseScreen() {
         return false;
+    }
+
+    private void initBankingFields() {
+        bankTargetField = new EditBox(font, 0, 0, 120, 18, Component.translatable("screen.cyberneticenhancements.archive.banking.target"));
+        bankTargetField.setMaxLength(32);
+        bankTargetField.setHint(Component.translatable("screen.cyberneticenhancements.archive.banking.target"));
+        bankTargetField.setVisible(false);
+        addRenderableWidget(bankTargetField);
+
+        bankAmountField = new EditBox(font, 0, 0, 72, 18, Component.translatable("screen.cyberneticenhancements.archive.banking.amount"));
+        bankAmountField.setMaxLength(9);
+        bankAmountField.setHint(Component.translatable("screen.cyberneticenhancements.archive.banking.amount"));
+        bankAmountField.setVisible(false);
+        addRenderableWidget(bankAmountField);
     }
 
     @Override
@@ -214,10 +249,14 @@ public final class CyberwareWikiScreen extends Screen {
         Pane navPane = layout.navPane();
         Pane listPane = layout.listPane();
         Pane articlePane = layout.articlePane();
+        boolean bankingTab = isBankingTab();
         boolean contactsTab = isContactsTab();
         boolean questsTab = isQuestsTab();
+        if (!bankingTab) {
+            setBankingFieldsVisible(false);
+        }
 
-        if (!contactsTab && !questsTab) {
+        if (!bankingTab && !contactsTab && !questsTab) {
             drawPanelShell(guiGraphics, navPane, activeTab == null ? Component.translatable("screen.cyberneticenhancements.archive.topics") : activeTab.navigationTitle(), 0);
             if (!layout.listCollapsed()) {
                 drawPanelShell(guiGraphics, listPane, selectedSection == null ? Component.translatable("screen.cyberneticenhancements.archive.entries") : selectedSection.title());
@@ -230,8 +269,16 @@ public final class CyberwareWikiScreen extends Screen {
             renderArticle(guiGraphics, articlePane);
             renderPinButton(guiGraphics, articlePane);
         } else {
-            drawPanelShell(guiGraphics, articlePane, questsTab ? Component.translatable("screen.cyberneticenhancements.archive.quests.title") : Component.translatable("screen.cyberneticenhancements.archive.contacts.title"), 0);
-            if (contactsTab) {
+            drawPanelShell(guiGraphics, articlePane,
+                    bankingTab
+                            ? Component.translatable("screen.cyberneticenhancements.archive.banking.title")
+                            : questsTab
+                            ? Component.translatable("screen.cyberneticenhancements.archive.quests.title")
+                            : Component.translatable("screen.cyberneticenhancements.archive.contacts.title"),
+                    0);
+            if (bankingTab) {
+                renderBankingRoster(guiGraphics, articlePane, mouseX, mouseY, partialTick);
+            } else if (contactsTab) {
                 renderContactsRoster(guiGraphics, articlePane);
             } else {
                 renderQuestsRoster(guiGraphics, articlePane);
@@ -256,8 +303,12 @@ public final class CyberwareWikiScreen extends Screen {
         }
 
         RootLayout layout = rootLayout();
+        boolean bankingTab = isBankingTab();
         boolean contactsTab = isContactsTab();
         boolean questsTab = isQuestsTab();
+        if (bankingTab) {
+            TextFieldFocusHelper.unfocusOnOutsideClick(this, mouseX, mouseY, List.of(bankTargetField, bankAmountField));
+        }
         if (handleArchiveTabClick(mouseX, mouseY, layout.rootX(), layout.rootY(), layout.rootWidth())) {
             return true;
         }
@@ -268,7 +319,7 @@ public final class CyberwareWikiScreen extends Screen {
             return true;
         }
 
-        if (!contactsTab && !questsTab) {
+        if (!bankingTab && !contactsTab && !questsTab) {
             if (tryStartScrollbarDrag(mouseX, mouseY, layout.navPane(), navScroll, maxNavScroll(), DragTarget.NAV)) {
                 return true;
             }
@@ -278,18 +329,22 @@ public final class CyberwareWikiScreen extends Screen {
             if (tryStartScrollbarDrag(mouseX, mouseY, layout.articlePane(), articleScroll, maxArticleScroll(layout.articlePane()), DragTarget.ARTICLE)) {
                 return true;
             }
-        } else if (tryStartScrollbarDrag(mouseX, mouseY, layout.articlePane(), articleScroll, contactsTab ? maxContactsScroll(layout.articlePane()) : maxQuestsScroll(layout.articlePane()), DragTarget.ARTICLE)) {
+        } else if (tryStartScrollbarDrag(mouseX, mouseY, layout.articlePane(), articleScroll,
+                bankingTab ? maxBankingScroll(layout.articlePane()) : contactsTab ? maxContactsScroll(layout.articlePane()) : maxQuestsScroll(layout.articlePane()), DragTarget.ARTICLE)) {
             return true;
         }
 
-        if (!contactsTab && !questsTab && handlePinButtonClick(mouseX, mouseY, layout.articlePane())) {
+        if (!bankingTab && !contactsTab && !questsTab && handlePinButtonClick(mouseX, mouseY, layout.articlePane())) {
             return true;
         }
 
-        if (!contactsTab && !questsTab && handleNavigationClick(mouseX, mouseY, layout.navPane())) {
+        if (!bankingTab && !contactsTab && !questsTab && handleNavigationClick(mouseX, mouseY, layout.navPane())) {
             return true;
         }
-        if (!contactsTab && !questsTab && !layout.listCollapsed() && handleEntryClick(mouseX, mouseY, layout.listPane())) {
+        if (!bankingTab && !contactsTab && !questsTab && !layout.listCollapsed() && handleEntryClick(mouseX, mouseY, layout.listPane())) {
+            return true;
+        }
+        if (bankingTab && handleBankingClick(mouseX, mouseY, layout.articlePane())) {
             return true;
         }
         if (contactsTab && handleContactsClick(mouseX, mouseY, layout.articlePane())) {
@@ -335,7 +390,7 @@ public final class CyberwareWikiScreen extends Screen {
                     dragScrollbar(listScroll, layout.listPane(), mouseY, maxListScroll());
                 }
             }
-            case ARTICLE -> dragScrollbar(articleScroll, layout.articlePane(), mouseY, isContactsTab() ? maxContactsScroll(layout.articlePane()) : isQuestsTab() ? maxQuestsScroll(layout.articlePane()) : maxArticleScroll(layout.articlePane()));
+            case ARTICLE -> dragScrollbar(articleScroll, layout.articlePane(), mouseY, isBankingTab() ? maxBankingScroll(layout.articlePane()) : isContactsTab() ? maxContactsScroll(layout.articlePane()) : isQuestsTab() ? maxQuestsScroll(layout.articlePane()) : maxArticleScroll(layout.articlePane()));
             default -> {
             }
         }
@@ -349,9 +404,9 @@ public final class CyberwareWikiScreen extends Screen {
         }
         RootLayout layout = rootLayout();
         double amount = -scrollY * 24.0D;
-        if (isContactsTab() || isQuestsTab()) {
+        if (isBankingTab() || isContactsTab() || isQuestsTab()) {
             if (isInsidePane(mouseX, mouseY, layout.articlePane())) {
-                articleScroll.add(amount, isContactsTab() ? maxContactsScroll(layout.articlePane()) : maxQuestsScroll(layout.articlePane()));
+                articleScroll.add(amount, isBankingTab() ? maxBankingScroll(layout.articlePane()) : isContactsTab() ? maxContactsScroll(layout.articlePane()) : maxQuestsScroll(layout.articlePane()));
                 return true;
             }
             return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
@@ -373,6 +428,9 @@ public final class CyberwareWikiScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (isBankingTab() && handleBankingFieldKeyPressed(keyCode, scanCode, modifiers)) {
+            return true;
+        }
         if (keyCode == 256 || Minecraft.getInstance().options.keyInventory.matches(keyCode, scanCode)) {
             onClose();
             return true;
@@ -381,6 +439,20 @@ public final class CyberwareWikiScreen extends Screen {
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean charTyped(char codePoint, int modifiers) {
+        if (isBankingTab() && bankingFieldFocused()) {
+            if (bankTargetField.charTyped(codePoint, modifiers)) {
+                return true;
+            }
+            if (bankAmountField.charTyped(codePoint, modifiers)) {
+                return true;
+            }
+            return true;
+        }
+        return super.charTyped(codePoint, modifiers);
     }
 
     private void renderNavigation(GuiGraphics guiGraphics, Pane pane, int mouseX, int mouseY) {
@@ -606,6 +678,551 @@ public final class CyberwareWikiScreen extends Screen {
         drawScrollbar(guiGraphics, pane, articleScroll, maxScroll, viewportHeight, viewportY);
     }
 
+    private void renderBankingRoster(GuiGraphics guiGraphics, Pane pane, int mouseX, int mouseY, float partialTick) {
+        int viewportY = pane.y + PANEL_HEADER_HEIGHT + 6;
+        int viewportHeight = pane.height - PANEL_HEADER_HEIGHT - 12;
+        double maxScroll = maxBankingScroll(pane);
+        int contentWidth = pane.width - 20 - (maxScroll > 0.0D ? SCROLLBAR_WIDTH : 0);
+        int contentX = pane.x + 10;
+        int headerY = pane.y + PANEL_HEADER_HEIGHT + 8;
+
+        float contentAnim = easeOutCubic(animationProgress(contentChangedAt, CONTENT_ANIMATION_MS));
+        int contentOffsetX = Math.round((1.0F - contentAnim) * 14.0F);
+        int alphaMask = ((int) (contentAnim * 255.0F) << 24) | 0x00FFFFFF;
+
+        articleScroll.clamp(maxScroll);
+        guiGraphics.enableScissor(pane.x + 4, viewportY, contentX + contentWidth + 4, viewportY + viewportHeight);
+        int y = headerY - (int) Math.round(articleScroll.current);
+
+        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.subtitle"), contentX + contentOffsetX, y, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
+        y += 18;
+
+        if (!ArchiveBankingClientState.isLoaded()) {
+            setBankingFieldsVisible(false);
+            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.syncing"), contentX + contentOffsetX, y + 6, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
+            guiGraphics.disableScissor();
+            drawScrollbar(guiGraphics, pane, articleScroll, maxScroll, viewportHeight, viewportY);
+            return;
+        }
+
+        ArchiveBankingPayload banking = ArchiveBankingClientState.get();
+        drawBankingSummary(guiGraphics, banking, contentX + contentOffsetX, y, contentWidth, alphaMask);
+        y += 50;
+
+        drawBankingGraph(guiGraphics, banking.graphNet(), contentX + contentOffsetX, y, contentWidth, alphaMask);
+        y += 70;
+
+        updateBankingFieldLayout(contentX + contentOffsetX, y, contentWidth);
+        drawBankingActionPanel(guiGraphics, banking, contentX + contentOffsetX, y, contentWidth, alphaMask, mouseX, mouseY, partialTick);
+        y += bankingActionPanelHeight() + 6;
+
+        y = drawBankingRequestsPanel(guiGraphics, banking.requests(), contentX + contentOffsetX, y, contentWidth, alphaMask);
+
+        List<BankFilter> filters = bankFilters();
+        y = renderBankFilterTabs(guiGraphics, filters, contentX + contentOffsetX, y, contentWidth, alphaMask);
+
+        List<ArchiveBankingPayload.LedgerEntry> entries = filteredBankEntries(banking.entries());
+        if (entries.isEmpty()) {
+            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.entries.empty"), contentX + contentOffsetX, y + 6, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
+        } else {
+            for (ArchiveBankingPayload.LedgerEntry entry : entries) {
+                int rowHeight = bankEntryRowHeight(entry, contentWidth);
+                drawBankEntryRow(guiGraphics, entry, contentX + contentOffsetX, y, contentWidth, rowHeight, alphaMask);
+                y += rowHeight + 4;
+            }
+        }
+
+        guiGraphics.disableScissor();
+        drawScrollbar(guiGraphics, pane, articleScroll, maxScroll, viewportHeight, viewportY);
+    }
+
+    private void drawBankingSummary(GuiGraphics guiGraphics, ArchiveBankingPayload banking, int x, int y, int width, int alphaMask) {
+        int chipWidth = Math.max(96, (width - 12) / 4);
+        drawMiniChip(guiGraphics, x, y, chipWidth, CHIP_HEIGHT, Component.translatable("screen.cyberneticenhancements.archive.banking.balance", banking.balance()), alphaMask);
+        drawMiniChip(guiGraphics, x + chipWidth + 4, y, chipWidth, CHIP_HEIGHT, Component.translatable("screen.cyberneticenhancements.archive.banking.income", banking.totalIncome()), alphaMask);
+        drawMiniChip(guiGraphics, x + (chipWidth + 4) * 2, y, chipWidth, CHIP_HEIGHT, Component.translatable("screen.cyberneticenhancements.archive.banking.expense", banking.totalExpense()), alphaMask);
+        drawMiniChip(guiGraphics, x + (chipWidth + 4) * 3, y, chipWidth, CHIP_HEIGHT, Component.translatable("screen.cyberneticenhancements.archive.banking.net", banking.net()), alphaMask);
+        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.summary"), x, y + 26, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
+    }
+
+    private void drawBankingGraph(GuiGraphics guiGraphics, List<Integer> points, int x, int y, int width, int alphaMask) {
+        int height = 60;
+        WikiFrameRenderer.drawPanel(guiGraphics, x, y, width, height, withAlpha(StationScreenStyle.PANEL_DEEP, alphaMask));
+        guiGraphics.fill(x + 2, y + 2, x + width - 2, y + 18, withAlpha(StationScreenStyle.PANEL_ALT, alphaMask));
+        guiGraphics.fill(x + 2, y + 18, x + width - 2, y + 19, withAlpha(StationScreenStyle.FRAME_HIGHLIGHT_SOFT, alphaMask));
+        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.graph"), x + 6, y + 6, withAlpha(StationScreenStyle.ACCENT, alphaMask), false);
+
+        int graphX = x + 8;
+        int graphY = y + 24;
+        int graphWidth = width - 16;
+        int graphHeight = 28;
+        guiGraphics.fill(graphX, graphY + graphHeight / 2, graphX + graphWidth, graphY + graphHeight / 2 + 1, withAlpha(StationScreenStyle.FRAME_HIGHLIGHT_SOFT, alphaMask));
+
+        int maxAbs = 1;
+        for (int point : points) {
+            maxAbs = Math.max(maxAbs, Math.abs(point));
+        }
+        int barGap = 3;
+        int barWidth = Math.max(6, (graphWidth - Math.max(0, points.size() - 1) * barGap) / Math.max(1, points.size()));
+        for (int index = 0; index < points.size(); index++) {
+            int value = points.get(index);
+            int barX = graphX + index * (barWidth + barGap);
+            int magnitude = Math.max(1, Math.round((Math.abs(value) / (float) maxAbs) * (graphHeight / 2f - 2)));
+            if (value >= 0) {
+                guiGraphics.fill(barX, graphY + graphHeight / 2 - magnitude, barX + barWidth, graphY + graphHeight / 2, withAlpha(StationScreenStyle.ACCENT, alphaMask));
+            } else {
+                guiGraphics.fill(barX, graphY + graphHeight / 2 + 1, barX + barWidth, graphY + graphHeight / 2 + 1 + magnitude, withAlpha(0xFFCF5C5C, alphaMask));
+            }
+        }
+        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.graph.caption"), x + 6, y + 48, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
+    }
+
+    private void drawBankingActionPanel(GuiGraphics guiGraphics, ArchiveBankingPayload banking, int x, int y, int width, int alphaMask, int mouseX, int mouseY, float partialTick) {
+        int panelHeight = bankingActionPanelHeight();
+        WikiFrameRenderer.drawPanel(guiGraphics, x, y, width, panelHeight, withAlpha(StationScreenStyle.PANEL_DEEP, alphaMask));
+        guiGraphics.fill(x + 2, y + 2, x + width - 2, y + 18, withAlpha(StationScreenStyle.PANEL_ALT, alphaMask));
+        guiGraphics.fill(x + 2, y + 18, x + width - 2, y + 19, withAlpha(StationScreenStyle.FRAME_HIGHLIGHT_SOFT, alphaMask));
+        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.actions"), x + 6, y + 6, withAlpha(StationScreenStyle.ACCENT, alphaMask), false);
+        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.target"), bankTargetField.getX(), y + 24, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
+        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.amount"), bankAmountField.getX(), y + 24, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
+        setBankingFieldsVisible(true);
+        bankTargetField.render(guiGraphics, mouseX, mouseY, partialTick);
+        bankAmountField.render(guiGraphics, mouseX, mouseY, partialTick);
+        drawBankPlayerDropdownToggle(guiGraphics, x, y, width, alphaMask);
+        drawContactActionButton(guiGraphics, bankSendButtonBounds(x, y, width), Component.translatable("screen.cyberneticenhancements.archive.banking.button.send"), alphaMask);
+        drawContactActionButton(guiGraphics, bankRequestButtonBounds(x, y, width), Component.translatable("screen.cyberneticenhancements.archive.banking.button.request"), alphaMask);
+        if (bankPlayerDropdownOpen) {
+            drawBankPlayerDropdown(guiGraphics, x, y, width, alphaMask);
+        }
+    }
+
+    private int drawBankingRequestsPanel(GuiGraphics guiGraphics, List<ArchiveBankingPayload.RequestEntry> requests, int x, int y, int width, int alphaMask) {
+        int panelHeight = bankingRequestsPanelHeight(requests, width);
+        int innerX = x + 6;
+        int innerY = y + 24;
+        int innerWidth = width - 12;
+        WikiFrameRenderer.drawPanel(guiGraphics, x, y, width, panelHeight, withAlpha(StationScreenStyle.PANEL_DEEP, alphaMask));
+        guiGraphics.fill(x + 2, y + 2, x + width - 2, y + 18, withAlpha(StationScreenStyle.PANEL_ALT, alphaMask));
+        guiGraphics.fill(x + 2, y + 18, x + width - 2, y + 19, withAlpha(StationScreenStyle.FRAME_HIGHLIGHT_SOFT, alphaMask));
+        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.requests"), x + 6, y + 6, withAlpha(StationScreenStyle.ACCENT, alphaMask), false);
+        if (requests.isEmpty()) {
+            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.requests.empty"), innerX, innerY + 2, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
+        } else {
+            for (ArchiveBankingPayload.RequestEntry request : requests) {
+                int cardHeight = bankRequestCardHeight(request);
+                drawBankRequestCard(guiGraphics, request, innerX, innerY, innerWidth, cardHeight, alphaMask);
+                innerY += cardHeight + SECTION_GAP;
+            }
+        }
+        return y + panelHeight + 8;
+    }
+
+    private void drawBankPlayerDropdownToggle(GuiGraphics guiGraphics, int x, int y, int width, int alphaMask) {
+        Rect bounds = bankPlayerDropdownToggleBounds(x, y, width);
+        int fill = bankPlayerDropdownOpen ? blendColors(StationScreenStyle.PANEL_ALT, StationScreenStyle.SLOT_ACTIVE, 0.78F) : StationScreenStyle.SECTION_SHADOW;
+        int accent = bankPlayerDropdownOpen ? StationScreenStyle.ACCENT : StationScreenStyle.FRAME_HIGHLIGHT_SOFT;
+        WikiFrameRenderer.drawPanelWithAccentTop(guiGraphics, bounds.x(), bounds.y(), bounds.width(), bounds.height(), withAlpha(fill, alphaMask), withAlpha(accent, alphaMask));
+        String arrow = bankPlayerDropdownOpen ? "^" : "v";
+        guiGraphics.drawString(font, arrow, bounds.x() + (bounds.width() - font.width(arrow)) / 2, bounds.y() + 5, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
+    }
+
+    private void drawBankPlayerDropdown(GuiGraphics guiGraphics, int x, int y, int width, int alphaMask) {
+        List<PlayerInfo> players = onlineBankPlayers();
+        Rect bounds = bankPlayerDropdownBounds(x, y, width, players.size());
+        WikiFrameRenderer.drawPanel(guiGraphics, bounds.x(), bounds.y(), bounds.width(), bounds.height(), withAlpha(StationScreenStyle.PANEL_DEEP, alphaMask));
+        if (players.isEmpty()) {
+            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.archive.banking.players.none"), bounds.x() + 8, bounds.y() + 8, withAlpha(StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
+            return;
+        }
+        int rowY = bounds.y() + 4;
+        for (int index = 0; index < players.size(); index++) {
+            PlayerInfo player = players.get(index);
+            Rect row = bankPlayerDropdownRowBounds(x, y, width, index);
+            int rowFill = index % 2 == 0 ? StationScreenStyle.PANEL_ALT : StationScreenStyle.SECTION_SHADOW;
+            guiGraphics.fill(row.x(), row.y(), row.x() + row.width(), row.y() + row.height(), withAlpha(rowFill, alphaMask));
+            PlayerFaceRenderer.draw(guiGraphics, player.getSkin().texture(), row.x() + 4, row.y() + 3, 12);
+            guiGraphics.drawString(font, trimStyled(Component.literal(player.getProfile().getName()), row.width() - 24), row.x() + 20, row.y() + 5, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
+            rowY += row.height();
+        }
+    }
+
+    private int renderBankFilterTabs(GuiGraphics guiGraphics, List<BankFilter> filters, int startX, int startY, int width, int alphaMask) {
+        for (Rect bounds : bankFilterTabBounds(filters, startX, startY, width)) {
+            boolean active = bounds.id().equals(activeBankFilterId);
+            int fill = active ? blendColors(StationScreenStyle.PANEL_ALT, StationScreenStyle.SLOT_ACTIVE, 0.78F) : StationScreenStyle.SECTION_SHADOW;
+            int accent = active ? StationScreenStyle.ACCENT : StationScreenStyle.FRAME_HIGHLIGHT_SOFT;
+            WikiFrameRenderer.drawPanelWithAccentTop(guiGraphics, bounds.x(), bounds.y(), bounds.width(), bounds.height(), withAlpha(fill, alphaMask), withAlpha(accent, alphaMask));
+            FormattedCharSequence label = trimStyled(bankFilterLabel(bounds.id(), filters), bounds.width() - 10);
+            guiGraphics.drawString(font, label, bounds.x() + (bounds.width() - font.width(label)) / 2, bounds.y() + 5, withAlpha(active ? StationScreenStyle.TEXT_PRIMARY : StationScreenStyle.TEXT_SECONDARY, alphaMask), false);
+        }
+        return startY + bankFilterTabsHeight(filters, width) + 4;
+    }
+
+    private void drawBankEntryRow(GuiGraphics guiGraphics, ArchiveBankingPayload.LedgerEntry entry, int x, int y, int width, int height, int alphaMask) {
+        WikiFrameRenderer.drawPanel(guiGraphics, x, y, width, height, withAlpha(StationScreenStyle.PANEL_DEEP, alphaMask));
+        guiGraphics.fill(x + 2, y + 2, x + width - 2, y + 18, withAlpha(StationScreenStyle.PANEL_ALT, alphaMask));
+        guiGraphics.fill(x + 2, y + 18, x + width - 2, y + 19, withAlpha(StationScreenStyle.FRAME_HIGHLIGHT_SOFT, alphaMask));
+
+        String amount = (entry.amount() >= 0 ? "+" : "") + entry.amount() + " €$";
+        int amountColor = entry.amount() >= 0 ? StationScreenStyle.ACCENT : 0xFFCF5C5C;
+        guiGraphics.drawString(font, trimStyled(Component.literal(entry.note()), width - 130), x + 8, y + 6, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
+        guiGraphics.drawString(font, Component.literal(amount), x + width - font.width(amount) - 8, y + 6, withAlpha(amountColor, alphaMask), false);
+
+        int lineY = y + 26;
+        Component counterpart = entry.counterpartyName().isBlank()
+                ? Component.translatable("screen.cyberneticenhancements.archive.banking.counterparty.system")
+                : Component.translatable("screen.cyberneticenhancements.archive.banking.counterparty.named", entry.counterpartyName());
+        drawWrappedQuestLine(guiGraphics, counterpart, x + 8, lineY, width - 16, alphaMask);
+        lineY += wrappedQuestLineHeight(counterpart, width - 16);
+        Component type = Component.translatable("screen.cyberneticenhancements.archive.banking.entry.type", humanizeId(entry.typeId()));
+        drawWrappedQuestLine(guiGraphics, type, x + 8, lineY, width - 16, alphaMask);
+        lineY += wrappedQuestLineHeight(type, width - 16);
+        Component day = Component.translatable("screen.cyberneticenhancements.archive.banking.entry.day", entry.day());
+        drawWrappedQuestLine(guiGraphics, day, x + 8, lineY, width - 16, alphaMask);
+    }
+
+    private void drawBankRequestCard(GuiGraphics guiGraphics, ArchiveBankingPayload.RequestEntry request, int x, int y, int width, int height, int alphaMask) {
+        WikiFrameRenderer.drawPanel(guiGraphics, x, y, width, height, withAlpha(StationScreenStyle.PANEL_DEEP, alphaMask));
+        guiGraphics.fill(x + 2, y + 2, x + width - 2, y + 20, withAlpha(StationScreenStyle.PANEL_ALT, alphaMask));
+        guiGraphics.fill(x + 2, y + 20, x + width - 2, y + 21, withAlpha(StationScreenStyle.FRAME_HIGHLIGHT_SOFT, alphaMask));
+
+        Component title = request.incoming()
+                ? Component.translatable("screen.cyberneticenhancements.archive.banking.request.incoming", request.fromName())
+                : Component.translatable("screen.cyberneticenhancements.archive.banking.request.outgoing", request.toName());
+        guiGraphics.drawString(font, trimStyled(title, width - 160), x + 8, y + 6, withAlpha(StationScreenStyle.TEXT_PRIMARY, alphaMask), false);
+        guiGraphics.drawString(font, Component.literal(request.amount() + " €$"), x + width - 72, y + 6, withAlpha(StationScreenStyle.ACCENT, alphaMask), false);
+
+        int lineY = y + 28;
+        drawWrappedQuestLine(guiGraphics, Component.translatable("screen.cyberneticenhancements.archive.banking.entry.day", request.createdDay()), x + 8, lineY, width - 16, alphaMask);
+        if (request.incoming()) {
+            drawContactActionButton(guiGraphics, bankApproveRequestBounds(request, x, y, width), Component.translatable("screen.cyberneticenhancements.archive.banking.button.approve"), alphaMask);
+            drawContactActionButton(guiGraphics, bankDeclineRequestBounds(request, x, y, width), Component.translatable("screen.cyberneticenhancements.archive.banking.button.decline"), alphaMask);
+        } else {
+            drawContactActionButton(guiGraphics, bankDeclineRequestBounds(request, x, y, width), Component.translatable("screen.cyberneticenhancements.archive.banking.button.cancel"), alphaMask);
+        }
+    }
+
+    private boolean handleBankingClick(double mouseX, double mouseY, Pane pane) {
+        if (!ArchiveBankingClientState.isLoaded()) {
+            return false;
+        }
+        double maxScroll = maxBankingScroll(pane);
+        int contentWidth = pane.width - 20 - (maxScroll > 0.0D ? SCROLLBAR_WIDTH : 0);
+        int contentX = pane.x + 10;
+        int y = pane.y + PANEL_HEADER_HEIGHT + 8 - (int) Math.round(articleScroll.current);
+        y += 18 + 50 + 70;
+
+        Rect dropdownToggle = bankPlayerDropdownToggleBounds(contentX, y, contentWidth);
+        if (isInside(mouseX, mouseY, dropdownToggle)) {
+            bankPlayerDropdownOpen = !bankPlayerDropdownOpen;
+            playClick();
+            return true;
+        }
+        if (bankPlayerDropdownOpen) {
+            List<PlayerInfo> players = onlineBankPlayers();
+            for (int index = 0; index < players.size(); index++) {
+                Rect row = bankPlayerDropdownRowBounds(contentX, y, contentWidth, index);
+                if (isInside(mouseX, mouseY, row)) {
+                    bankTargetField.setValue(players.get(index).getProfile().getName());
+                    bankPlayerDropdownOpen = false;
+                    clearBankingFieldFocus();
+                    playClick();
+                    return true;
+                }
+            }
+        }
+
+        Rect send = bankSendButtonBounds(contentX, y, contentWidth);
+        if (isInside(mouseX, mouseY, send)) {
+            PacketDistributor.sendToServer(new ArchiveBankingActionPayload(
+                    ArchiveBankingActionPayload.ACTION_SEND,
+                    bankTargetField.getValue(),
+                    parseBankAmountField(),
+                    ""
+            ));
+            bankPlayerDropdownOpen = false;
+            playClick();
+            return true;
+        }
+        Rect request = bankRequestButtonBounds(contentX, y, contentWidth);
+        if (isInside(mouseX, mouseY, request)) {
+            PacketDistributor.sendToServer(new ArchiveBankingActionPayload(
+                    ArchiveBankingActionPayload.ACTION_REQUEST,
+                    bankTargetField.getValue(),
+                    parseBankAmountField(),
+                    ""
+            ));
+            bankPlayerDropdownOpen = false;
+            playClick();
+            return true;
+        }
+
+        List<BankFilter> filters = bankFilters();
+        y += bankingActionPanelHeight() + 6;
+
+        ArchiveBankingPayload banking = ArchiveBankingClientState.get();
+        int requestsPanelHeight = bankingRequestsPanelHeight(banking.requests(), contentWidth);
+        int requestsInnerX = contentX + 6;
+        int requestsInnerY = y + 24;
+        int requestsInnerWidth = contentWidth - 12;
+        for (ArchiveBankingPayload.RequestEntry requestEntry : banking.requests()) {
+            if (requestEntry.incoming()) {
+                Rect approve = bankApproveRequestBounds(requestEntry, requestsInnerX, requestsInnerY, requestsInnerWidth);
+                if (isInside(mouseX, mouseY, approve)) {
+                    PacketDistributor.sendToServer(new ArchiveBankingActionPayload(ArchiveBankingActionPayload.ACTION_APPROVE, "", 0, requestEntry.requestId()));
+                    playClick();
+                    return true;
+                }
+            }
+            Rect decline = bankDeclineRequestBounds(requestEntry, requestsInnerX, requestsInnerY, requestsInnerWidth);
+            if (isInside(mouseX, mouseY, decline)) {
+                PacketDistributor.sendToServer(new ArchiveBankingActionPayload(ArchiveBankingActionPayload.ACTION_DECLINE, "", 0, requestEntry.requestId()));
+                playClick();
+                return true;
+            }
+            requestsInnerY += bankRequestCardHeight(requestEntry) + SECTION_GAP;
+        }
+
+        y += requestsPanelHeight + 8;
+
+        for (Rect bounds : bankFilterTabBounds(filters, contentX, y, contentWidth)) {
+            if (isInside(mouseX, mouseY, bounds)) {
+                setBankFilter(bounds.id());
+                playClick();
+                return true;
+            }
+        }
+
+        y += bankFilterTabsHeight(filters, contentWidth) + 4;
+        bankPlayerDropdownOpen = false;
+        return false;
+    }
+
+    private void updateBankingFieldLayout(int x, int y, int width) {
+        int fieldY = y + 24;
+        int buttonsWidth = 144;
+        int dropdownWidth = 18;
+        int amountWidth = Math.max(96, font.width(Component.translatable("screen.cyberneticenhancements.archive.banking.amount")) + 18);
+        int gap = 8;
+        int targetWidth = Math.max(92, width - amountWidth - dropdownWidth - buttonsWidth - gap * 4 - 8);
+        bankTargetField.setX(x + 6);
+        bankTargetField.setY(fieldY);
+        bankTargetField.setWidth(targetWidth);
+        bankTargetField.setHeight(18);
+        bankAmountField.setX(bankTargetField.getX() + targetWidth + gap + dropdownWidth + gap);
+        bankAmountField.setY(fieldY);
+        bankAmountField.setWidth(amountWidth);
+        bankAmountField.setHeight(18);
+    }
+
+    private void setBankingFieldsVisible(boolean visible) {
+        if (bankTargetField != null) {
+            bankTargetField.setVisible(visible);
+        }
+        if (bankAmountField != null) {
+            bankAmountField.setVisible(visible);
+        }
+    }
+
+    private boolean handleBankingFieldKeyPressed(int keyCode, int scanCode, int modifiers) {
+        if (!bankingFieldFocused()) {
+            return false;
+        }
+        if (keyCode == 257 || keyCode == 335 || keyCode == 256) {
+            clearBankingFieldFocus();
+            return true;
+        }
+        if (bankTargetField.keyPressed(keyCode, scanCode, modifiers)) {
+            return true;
+        }
+        if (bankAmountField.keyPressed(keyCode, scanCode, modifiers)) {
+            return true;
+        }
+        return true;
+    }
+
+    private boolean bankingFieldFocused() {
+        return (bankTargetField != null && bankTargetField.isVisible() && bankTargetField.isFocused())
+                || (bankAmountField != null && bankAmountField.isVisible() && bankAmountField.isFocused());
+    }
+
+    private void clearBankingFieldFocus() {
+        TextFieldFocusHelper.clearFocus(this, List.of(bankTargetField, bankAmountField));
+    }
+
+    private int parseBankAmountField() {
+        if (bankAmountField == null) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(bankAmountField.getValue().trim());
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
+    }
+
+    private List<BankFilter> bankFilters() {
+        return List.of(
+                new BankFilter(BANK_FILTER_ALL, Component.translatable("screen.cyberneticenhancements.archive.banking.filter.all")),
+                new BankFilter(BANK_FILTER_INCOME, Component.translatable("screen.cyberneticenhancements.archive.banking.filter.income")),
+                new BankFilter(BANK_FILTER_EXPENSE, Component.translatable("screen.cyberneticenhancements.archive.banking.filter.expense"))
+        );
+    }
+
+    private List<ArchiveBankingPayload.LedgerEntry> filteredBankEntries(List<ArchiveBankingPayload.LedgerEntry> entries) {
+        List<ArchiveBankingPayload.LedgerEntry> filtered = new ArrayList<>();
+        for (ArchiveBankingPayload.LedgerEntry entry : entries) {
+            if (BANK_FILTER_INCOME.equals(activeBankFilterId) && entry.amount() <= 0) {
+                continue;
+            }
+            if (BANK_FILTER_EXPENSE.equals(activeBankFilterId) && entry.amount() >= 0) {
+                continue;
+            }
+            filtered.add(entry);
+        }
+        return filtered;
+    }
+
+    private List<Rect> bankFilterTabBounds(List<BankFilter> filters, int startX, int startY, int availableWidth) {
+        List<Rect> bounds = new ArrayList<>(filters.size());
+        int x = startX;
+        for (BankFilter filter : filters) {
+            int tabWidth = Math.max(68, font.width(filter.label()) + 18);
+            if (x > startX && x + tabWidth > startX + availableWidth) {
+                x = startX;
+                startY += BANK_FILTER_TAB_HEIGHT + BANK_FILTER_TAB_GAP;
+            }
+            bounds.add(new Rect(filter.id(), x, startY, tabWidth, BANK_FILTER_TAB_HEIGHT));
+            x += tabWidth + BANK_FILTER_TAB_GAP;
+        }
+        return bounds;
+    }
+
+    private int bankFilterTabsHeight(List<BankFilter> filters, int availableWidth) {
+        if (filters.isEmpty()) {
+            return 0;
+        }
+        int rows = 1;
+        int rowWidth = 0;
+        for (BankFilter filter : filters) {
+            int tabWidth = Math.max(68, font.width(filter.label()) + 18);
+            if (rowWidth > 0 && rowWidth + BANK_FILTER_TAB_GAP + tabWidth > availableWidth) {
+                rows++;
+                rowWidth = tabWidth;
+            } else {
+                rowWidth = rowWidth == 0 ? tabWidth : rowWidth + BANK_FILTER_TAB_GAP + tabWidth;
+            }
+        }
+        return rows * BANK_FILTER_TAB_HEIGHT + Math.max(0, rows - 1) * BANK_FILTER_TAB_GAP;
+    }
+
+    private Component bankFilterLabel(String id, List<BankFilter> filters) {
+        for (BankFilter filter : filters) {
+            if (filter.id().equals(id)) {
+                return filter.label();
+            }
+        }
+        return Component.literal(id);
+    }
+
+    private void setBankFilter(String filterId) {
+        if (filterId == null || filterId.equals(activeBankFilterId)) {
+            return;
+        }
+        activeBankFilterId = filterId;
+        articleScroll.reset();
+        contentChangedAt = animationAnchorTime();
+    }
+
+    private int bankEntryRowHeight(ArchiveBankingPayload.LedgerEntry entry, int width) {
+        int bodyWidth = width - 16;
+        int height = 24;
+        height += wrappedQuestLineHeight(
+                entry.counterpartyName().isBlank()
+                        ? Component.translatable("screen.cyberneticenhancements.archive.banking.counterparty.system")
+                        : Component.translatable("screen.cyberneticenhancements.archive.banking.counterparty.named", entry.counterpartyName()),
+                bodyWidth);
+        height += wrappedQuestLineHeight(Component.translatable("screen.cyberneticenhancements.archive.banking.entry.type", humanizeId(entry.typeId())), bodyWidth);
+        height += wrappedQuestLineHeight(Component.translatable("screen.cyberneticenhancements.archive.banking.entry.day", entry.day()), bodyWidth);
+        return height + 8;
+    }
+
+    private int bankRequestCardHeight(ArchiveBankingPayload.RequestEntry request) {
+        return request.incoming() ? 58 : 50;
+    }
+
+    private int bankingActionPanelHeight() {
+        return 52 + bankPlayerDropdownHeight();
+    }
+
+    private int bankPlayerDropdownHeight() {
+        if (!bankPlayerDropdownOpen) {
+            return 0;
+        }
+        int rows = Math.max(1, onlineBankPlayers().size());
+        return 4 + rows * 18 + 4;
+    }
+
+    private int bankingRequestsPanelHeight(List<ArchiveBankingPayload.RequestEntry> requests, int width) {
+        int height = 34;
+        if (requests.isEmpty()) {
+            return height + 18;
+        }
+        for (ArchiveBankingPayload.RequestEntry request : requests) {
+            height += bankRequestCardHeight(request) + SECTION_GAP;
+        }
+        return height + 6;
+    }
+
+    private List<PlayerInfo> onlineBankPlayers() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.getConnection() == null) {
+            return List.of();
+        }
+        List<PlayerInfo> players = new ArrayList<>();
+        String selfName = minecraft.player == null ? "" : minecraft.player.getGameProfile().getName();
+        for (PlayerInfo info : minecraft.getConnection().getOnlinePlayers()) {
+            if (info.getProfile().getName().equalsIgnoreCase(selfName)) {
+                continue;
+            }
+            players.add(info);
+        }
+        players.sort((left, right) -> left.getProfile().getName().compareToIgnoreCase(right.getProfile().getName()));
+        return players;
+    }
+
+    private Rect bankSendButtonBounds(int x, int y, int width) {
+        int rightX = x + width - 142;
+        return new Rect("bank_send", rightX, y + 24, 64, 18);
+    }
+
+    private Rect bankRequestButtonBounds(int x, int y, int width) {
+        int rightX = x + width - 74;
+        return new Rect("bank_request", rightX, y + 24, 64, 18);
+    }
+
+    private Rect bankPlayerDropdownToggleBounds(int x, int y, int width) {
+        return new Rect("bank_dropdown", bankTargetField.getX() + bankTargetField.getWidth() + 8, y + 24, 18, 18);
+    }
+
+    private Rect bankPlayerDropdownBounds(int x, int y, int width, int playerCount) {
+        int rows = Math.max(1, playerCount);
+        return new Rect("bank_dropdown_rows", bankTargetField.getX(), y + 44, bankTargetField.getWidth() + 26, 8 + rows * 18);
+    }
+
+    private Rect bankPlayerDropdownRowBounds(int x, int y, int width, int index) {
+        Rect dropdown = bankPlayerDropdownBounds(x, y, width, onlineBankPlayers().size());
+        return new Rect("bank_dropdown_row_" + index, dropdown.x() + 4, dropdown.y() + 4 + index * 18, dropdown.width() - 8, 18);
+    }
+
+    private Rect bankApproveRequestBounds(ArchiveBankingPayload.RequestEntry request, int x, int y, int width) {
+        return new Rect(request.requestId() + ":approve", x + width - 142, y + 28, 64, 18);
+    }
+
+    private Rect bankDeclineRequestBounds(ArchiveBankingPayload.RequestEntry request, int x, int y, int width) {
+        return new Rect(request.requestId() + ":decline", x + width - 74, y + 28, 64, 18);
+    }
+
     private void drawQuestCard(GuiGraphics guiGraphics, ArchiveQuestsPayload.QuestEntry quest, int x, int y, int width, int height, int alphaMask) {
         WikiFrameRenderer.drawPanel(guiGraphics, x, y, width, height, withAlpha(StationScreenStyle.PANEL_DEEP, alphaMask));
         guiGraphics.fill(x + 2, y + 2, x + width - 2, y + 20, withAlpha(StationScreenStyle.PANEL_ALT, alphaMask));
@@ -748,6 +1365,28 @@ public final class CyberwareWikiScreen extends Screen {
             return height + 22;
         }
         return height + contacts.size() * contactCardHeight() + Math.max(0, contacts.size() - 1) * SECTION_GAP;
+    }
+
+    private int measureBankingHeight(Pane pane) {
+        int contentWidth = pane.width - 20 - SCROLLBAR_WIDTH;
+        int height = 18 + 50 + 70 + bankingActionPanelHeight() + 6;
+        height += ArchiveBankingClientState.isLoaded()
+                ? bankingRequestsPanelHeight(ArchiveBankingClientState.get().requests(), contentWidth) + 8
+                : bankingRequestsPanelHeight(List.of(), contentWidth) + 8;
+        List<BankFilter> filters = bankFilters();
+        height += bankFilterTabsHeight(filters, contentWidth) + 4;
+        if (!ArchiveBankingClientState.isLoaded()) {
+            return height + 22;
+        }
+        ArchiveBankingPayload banking = ArchiveBankingClientState.get();
+        List<ArchiveBankingPayload.LedgerEntry> entries = filteredBankEntries(banking.entries());
+        if (entries.isEmpty()) {
+            return height + 22;
+        }
+        for (ArchiveBankingPayload.LedgerEntry entry : entries) {
+            height += bankEntryRowHeight(entry, contentWidth) + 4;
+        }
+        return height;
     }
 
     private int measureQuestsHeight(Pane pane) {
@@ -1719,6 +2358,11 @@ public final class CyberwareWikiScreen extends Screen {
         return Math.max(0.0D, measureContactsHeight(pane) - viewportHeight + 4.0D);
     }
 
+    private double maxBankingScroll(Pane pane) {
+        int viewportHeight = pane.height - PANEL_HEADER_HEIGHT - 12;
+        return Math.max(0.0D, measureBankingHeight(pane) - viewportHeight + 4.0D);
+    }
+
     private double maxQuestsScroll(Pane pane) {
         int viewportHeight = pane.height - PANEL_HEADER_HEIGHT - 12;
         return Math.max(0.0D, measureQuestsHeight(pane) - viewportHeight + 4.0D);
@@ -1758,7 +2402,11 @@ public final class CyberwareWikiScreen extends Screen {
         seedTopicExpansion(topics, 1.0F);
         sectionChangedAt = animationAnchorTime();
         contentChangedAt = animationAnchorTime();
-        if (isContactsTab()) {
+        if (isBankingTab()) {
+            selectedSection = null;
+            selectedEntry = null;
+            requestBankingRefresh();
+        } else if (isContactsTab()) {
             selectedSection = null;
             selectedEntry = null;
             requestContactsRefresh();
@@ -1774,6 +2422,12 @@ public final class CyberwareWikiScreen extends Screen {
     private void requestContactsRefresh() {
         if (minecraft != null && minecraft.player != null) {
             PacketDistributor.sendToServer(new ArchiveContactsRequestPayload());
+        }
+    }
+
+    private void requestBankingRefresh() {
+        if (minecraft != null && minecraft.player != null) {
+            PacketDistributor.sendToServer(new ArchiveBankingRequestPayload());
         }
     }
 
@@ -1851,7 +2505,7 @@ public final class CyberwareWikiScreen extends Screen {
         int rootHeight = height - OUTER_MARGIN * 2;
         int contentY = rootY + TOP_BAR_HEIGHT + PANEL_GAP;
         int contentHeight = rootHeight - TOP_BAR_HEIGHT - FOOTER_HEIGHT - PANEL_GAP * 2;
-        if (isContactsTab() || isQuestsTab()) {
+        if (isBankingTab() || isContactsTab() || isQuestsTab()) {
             Pane fullPane = new Pane(rootX + PANEL_GAP, contentY, rootWidth - PANEL_GAP * 2, contentHeight);
             Pane hiddenPane = new Pane(0, 0, 0, 0);
             return new RootLayout(rootX, rootY, rootWidth, rootHeight, hiddenPane, hiddenPane, fullPane, true);
@@ -1869,6 +2523,10 @@ public final class CyberwareWikiScreen extends Screen {
 
     private boolean shouldCollapseListPane() {
         return selectedSection != null && selectedSection.entries().size() <= 1;
+    }
+
+    private boolean isBankingTab() {
+        return activeTab != null && BANKING_TAB_ID.equals(activeTab.id());
     }
 
     private boolean isContactsTab() {
@@ -2325,6 +2983,9 @@ public final class CyberwareWikiScreen extends Screen {
     }
 
     private record ContactFilter(String id, Component label, String npcTypeId) {
+    }
+
+    private record BankFilter(String id, Component label) {
     }
 
     private record Rect(String id, int x, int y, int width, int height) {

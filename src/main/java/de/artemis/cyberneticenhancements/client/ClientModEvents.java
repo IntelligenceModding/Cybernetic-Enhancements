@@ -1,5 +1,6 @@
 package de.artemis.cyberneticenhancements.client;
 
+import de.artemis.cyberneticenhancements.client.ArchiveBankingClientState;
 import de.artemis.cyberneticenhancements.client.render.FixerEntityRenderer;
 import de.artemis.cyberneticenhancements.client.render.RelicCacheBlockEntityRenderer;
 import de.artemis.cyberneticenhancements.client.screen.CyberwareWikiScreen;
@@ -14,6 +15,7 @@ import de.artemis.cyberneticenhancements.client.tooltip.UpgradeProgressClientToo
 import de.artemis.cyberneticenhancements.client.tooltip.UpgradeProgressTooltip;
 import de.artemis.cyberneticenhancements.common.cyberware.CyberpsychosisClientState;
 import de.artemis.cyberneticenhancements.common.network.ActivateArmCyberwarePayload;
+import de.artemis.cyberneticenhancements.common.network.ArchiveBankingRequestPayload;
 import de.artemis.cyberneticenhancements.common.network.ArchiveContactsRequestPayload;
 import de.artemis.cyberneticenhancements.common.network.ArchiveQuestsRequestPayload;
 import de.artemis.cyberneticenhancements.common.network.ActivateAuxiliaryCyberwarePayload;
@@ -23,6 +25,7 @@ import de.artemis.cyberneticenhancements.common.network.ActivateLegCyberwarePayl
 import de.artemis.cyberneticenhancements.common.registry.ModBlockEntities;
 import de.artemis.cyberneticenhancements.common.registry.ModBlocks;
 import de.artemis.cyberneticenhancements.common.registry.ModEntityTypes;
+import de.artemis.cyberneticenhancements.common.ui.Icons;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
 import net.minecraft.client.Options;
@@ -181,9 +184,9 @@ public final class ClientModEvents {
         while (ModKeyMappings.TOGGLE_HUD.consumeClick()) {
             boolean enabled = HudVisibilityController.toggleHud();
             minecraft.player.displayClientMessage(
-                    Component.translatable(enabled
+                    Icons.INFO.withText(Component.translatable(enabled
                             ? "message.cyberneticenhancements.hud.enabled"
-                            : "message.cyberneticenhancements.hud.disabled"),
+                            : "message.cyberneticenhancements.hud.disabled")),
                     true
             );
         }
@@ -300,6 +303,7 @@ public final class ClientModEvents {
 
     public static void onClientLogout(ClientPlayerNetworkEvent.LoggingOut event) {
         CyberpsychosisClientState.setControlLocked(false);
+        ArchiveBankingClientState.clear();
         ArchiveContactsClientState.clear();
         ArchiveQuestsClientState.clear();
         CyberwareHudClientState.clear();
@@ -537,6 +541,7 @@ public final class ClientModEvents {
             return;
         }
         if (minecraft.player != null) {
+            PacketDistributor.sendToServer(new ArchiveBankingRequestPayload());
             PacketDistributor.sendToServer(new ArchiveContactsRequestPayload());
             PacketDistributor.sendToServer(new ArchiveQuestsRequestPayload());
         }

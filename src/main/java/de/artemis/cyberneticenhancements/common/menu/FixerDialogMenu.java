@@ -240,7 +240,7 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
                 responseId = RESPONSE_CACHE_INTEL;
             }
             case OPTION_STABILIZE -> {
-                if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_STABILIZE))) {
+                if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_STABILIZE), "Paid for stabilization")) {
                     responseId = npc.isRefusing(serverPlayer) ? RESPONSE_COOL_OFF : RESPONSE_NEED_FUNDS;
                 } else {
                     CyberstrainManager.applySuppressionDose(serverPlayer, 18, 90L * 20L, false);
@@ -254,7 +254,7 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
                     responseId = RESPONSE_PURGE_LOCKED;
                 } else if (!purgeReady()) {
                     responseId = RESPONSE_PURGE_COOLDOWN;
-                } else if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_PURGE))) {
+                } else if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_PURGE), "Paid for full purge")) {
                     responseId = npc.isRefusing(serverPlayer) ? RESPONSE_COOL_OFF : RESPONSE_NEED_FUNDS;
                 } else {
                     CyberstrainManager.purgeNegativeStatuses(serverPlayer, true);
@@ -265,7 +265,7 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
                 }
             }
             case OPTION_BUY_MAXDOC_MK2 -> {
-                if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_BUY_MAXDOC_MK2))) {
+                if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_BUY_MAXDOC_MK2), "Purchased stock")) {
                     responseId = npc.isRefusing(serverPlayer) ? RESPONSE_COOL_OFF : RESPONSE_NEED_FUNDS;
                 } else {
                     grantShopItem(serverPlayer, optionId);
@@ -275,7 +275,7 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
                 }
             }
             case OPTION_BUY_RAM_JOLT -> {
-                if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_BUY_RAM_JOLT))) {
+                if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_BUY_RAM_JOLT), "Purchased stock")) {
                     responseId = npc.isRefusing(serverPlayer) ? RESPONSE_COOL_OFF : RESPONSE_NEED_FUNDS;
                 } else {
                     grantShopItem(serverPlayer, optionId);
@@ -287,7 +287,7 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
             case OPTION_BUY_CHROME_SUPPRESSANT -> {
                 if (npc.trustLevel(serverPlayer) < 1) {
                     responseId = RESPONSE_INTRO;
-                } else if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_BUY_CHROME_SUPPRESSANT))) {
+                } else if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_BUY_CHROME_SUPPRESSANT), "Purchased stock")) {
                     responseId = npc.isRefusing(serverPlayer) ? RESPONSE_COOL_OFF : RESPONSE_NEED_FUNDS;
                 } else {
                     grantShopItem(serverPlayer, optionId);
@@ -299,7 +299,7 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
             case OPTION_BUY_IMMUNOBLOCKERS -> {
                 if (npc.trustLevel(serverPlayer) < 3) {
                     responseId = RESPONSE_IMMUNOBLOCKERS_LOCKED;
-                } else if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_BUY_IMMUNOBLOCKERS))) {
+                } else if (!chargeFunds(serverPlayer, priceForServerOption(OPTION_BUY_IMMUNOBLOCKERS), "Purchased stock")) {
                     responseId = npc.isRefusing(serverPlayer) ? RESPONSE_COOL_OFF : RESPONSE_NEED_FUNDS;
                 } else {
                     grantShopItem(serverPlayer, optionId);
@@ -366,8 +366,15 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
         };
     }
 
-    private boolean chargeFunds(ServerPlayer player, int count) {
-        boolean paid = PlayerEurodollarManager.tryWithdraw(player, count);
+    private boolean chargeFunds(ServerPlayer player, int count, String note) {
+        boolean paid = PlayerEurodollarManager.tryWithdraw(
+                player,
+                count,
+                "npc_purchase",
+                note,
+                npc == null ? null : npc.getUUID(),
+                npc == null ? null : npc.getName().getString()
+        );
         if (!paid && npc != null) {
             npc.penalizeNoFundsAttempt(player);
         }
@@ -505,6 +512,9 @@ public final class FixerDialogMenu extends AbstractBaseMenu {
     }
 
     public boolean identityUnlocked() {
+        if (npc != null && player instanceof ServerPlayer serverPlayer) {
+            return npc.hasMaxTrust(serverPlayer);
+        }
         return trustPoints() >= TRUST_MAX_POINTS;
     }
 

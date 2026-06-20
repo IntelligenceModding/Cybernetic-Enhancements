@@ -74,6 +74,13 @@ final class CyberwareWikiData {
                         buildWikiTopics()
                 ),
                 new ArchiveTab(
+                        "banking",
+                        Component.translatable("screen.cyberneticenhancements.archive.tab.banking"),
+                        Component.translatable("screen.cyberneticenhancements.archive.mode.banking.subtitle"),
+                        Component.translatable("screen.cyberneticenhancements.archive.navigation.banking"),
+                        List.of()
+                ),
+                new ArchiveTab(
                         "contacts",
                         Component.translatable("screen.cyberneticenhancements.archive.tab.contacts"),
                         Component.translatable("screen.cyberneticenhancements.archive.mode.contacts.subtitle"),

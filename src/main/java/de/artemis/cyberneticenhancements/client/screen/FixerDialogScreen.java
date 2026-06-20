@@ -17,6 +17,7 @@ import de.artemis.cyberneticenhancements.common.network.NpcIdentityAppearancePay
 import de.artemis.cyberneticenhancements.common.network.NpcIdentityNameColorPayload;
 import de.artemis.cyberneticenhancements.common.network.NpcIdentityNicknamePayload;
 import de.artemis.cyberneticenhancements.common.registry.ModEntityTypes;
+import de.artemis.cyberneticenhancements.common.ui.Icons;
 import de.artemis.cyberneticenhancements.common.world.NpcIdentityConfig.NpcCategory;
 import com.mojang.math.Axis;
 import net.minecraft.client.gui.GuiGraphics;
@@ -29,6 +30,8 @@ import net.minecraft.network.chat.FormattedText;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.locale.Language;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.entity.player.Inventory;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.joml.Quaternionf;
@@ -55,31 +58,34 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     private static final int CHOICES_HEIGHT = 146;
     private static final int CHOICE_BUTTON_HEIGHT = 18;
     private static final int CHOICE_BUTTON_GAP = 4;
+    private static final int CHOICE_ICON_Y_OFFSET = 1;
     private static final int TRANSCRIPT_TITLE_GAP = 8;
     private static final int TRANSCRIPT_BUBBLE_GAP = 8;
     private static final int TRUST_BAR_HEIGHT = 8;
     private static final int IDENTITY_LABEL_Y_OFFSET = 28;
     private static final int IDENTITY_FIELD_Y_OFFSET = 40;
     private static final int IDENTITY_GALLERY_Y_OFFSET = 68;
-    private static final int IDENTITY_FIELD_WIDTH = 196;
     private static final int IDENTITY_COLOR_BUTTON_SIZE = 18;
     private static final int IDENTITY_COLOR_BUTTON_GAP = 4;
-    private static final int IDENTITY_TILE_HEIGHT = 82;
+    private static final int IDENTITY_TILE_MIN_HEIGHT = 70;
     private static final int IDENTITY_TILE_GAP = 8;
-    private static final int IDENTITY_VISIBLE_SKINS = 5;
+    private static final int IDENTITY_VISIBLE_SKINS = 4;
     private static final int IDENTITY_SCROLLBAR_HEIGHT = 8;
+    private static final int IDENTITY_SCROLLBAR_GAP = 10;
     private static final int IMAGE_W = 420;
     private static final int IMAGE_H = 484;
 
     private final List<ChoiceButton> choiceButtons = new ArrayList<>();
     private final List<ColorPresetButton> colorButtons = new ArrayList<>();
     private static final NameColorPreset[] NAME_COLOR_PRESETS = new NameColorPreset[] {
-            new NameColorPreset("aqua", 0x4FE9E2),
-            new NameColorPreset("gold", 0xF0C04D),
-            new NameColorPreset("green", 0x57C26E),
-            new NameColorPreset("red", 0xD65D5D),
-            new NameColorPreset("light_purple", 0xD88FF7),
-            new NameColorPreset("white", 0xE8EDF2)
+            new NameColorPreset("aqua", 0xFF4FE9E2),
+            new NameColorPreset("blue", 0xFF5D86F1),
+            new NameColorPreset("gold", 0xFFF0C04D),
+            new NameColorPreset("green", 0xFF57C26E),
+            new NameColorPreset("red", 0xFFD65D5D),
+            new NameColorPreset("light_purple", 0xFFD88FF7),
+            new NameColorPreset("white", 0xFFE8EDF2),
+            new NameColorPreset("hidden", 0x00000000)
     };
     private EditBox nicknameField;
     private ConversationMode mode = ConversationMode.DIALOGUE;
@@ -89,6 +95,8 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     private String selectedNameColorId = "aqua";
     private int skinPage;
     private AbstractCityNpcEntity previewNpc;
+    private int lastMouseX;
+    private int lastMouseY;
 
     public FixerDialogScreen(FixerDialogMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
@@ -106,7 +114,7 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     protected void init() {
         super.init();
         choiceButtons.clear();
-        nicknameField = new EditBox(font, identityFieldX(), identityFieldY(), IDENTITY_FIELD_WIDTH, 18, Component.translatable("screen.cyberneticenhancements.npc.identity.nickname"));
+        nicknameField = new EditBox(font, identityFieldX(), identityFieldY(), identityFieldWidth(), 18, Component.translatable("screen.cyberneticenhancements.npc.identity.nickname"));
         nicknameField.setMaxLength(32);
         nicknameField.setVisible(false);
         addRenderableWidget(nicknameField);
@@ -117,9 +125,9 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
             colorButtons.add(button);
             addRenderableWidget(button);
         }
-        int buttonX = leftPos + CONTENT_PADDING + 10;
-        int buttonWidth = imageWidth - CONTENT_PADDING * 2 - 20;
-        int startY = choicesY() + PANEL_TEXT_PADDING_Y + font.lineHeight + 8;
+        int buttonX = actionButtonsX();
+        int buttonWidth = actionButtonsWidth();
+        int startY = actionButtonsStartY();
         for (int index = 0; index < 5; index++) {
             ChoiceButton button = new ChoiceButton(buttonX, startY + index * (CHOICE_BUTTON_HEIGHT + CHOICE_BUTTON_GAP), buttonWidth, CHOICE_BUTTON_HEIGHT);
             choiceButtons.add(button);
@@ -135,7 +143,7 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         if (nicknameField != null) {
             nicknameField.setX(identityFieldX());
             nicknameField.setY(identityFieldY());
-            nicknameField.setWidth(Math.min(IDENTITY_FIELD_WIDTH, transcriptWidth() - PANEL_TEXT_PADDING_X * 2));
+            nicknameField.setWidth(identityFieldWidth());
             nicknameField.setVisible(mode == ConversationMode.IDENTITY);
             nicknameField.setEditable(mode == ConversationMode.IDENTITY && menu.identityUnlocked());
         }
@@ -147,6 +155,15 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
             button.active = menu.identityUnlocked();
             button.selected = button.preset.colorId().equals(selectedNameColorId);
         }
+        int buttonX = actionButtonsX();
+        int buttonWidth = actionButtonsWidth();
+        int startY = actionButtonsStartY();
+        for (int index = 0; index < choiceButtons.size(); index++) {
+            ChoiceButton button = choiceButtons.get(index);
+            button.setX(buttonX);
+            button.setY(startY + index * (CHOICE_BUTTON_HEIGHT + CHOICE_BUTTON_GAP));
+            button.setWidth(buttonWidth);
+        }
         refreshChoices();
     }
 
@@ -157,14 +174,22 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         guiGraphics.fill(x0, y0, x0 + imageWidth, y0 + imageHeight, OUTER_BG);
         drawPanel(guiGraphics, x0, y0, imageWidth, imageHeight, PANEL_BG);
         drawPanel(guiGraphics, headerX(), headerY(), headerWidth(), headerHeight(), PANEL_ALT);
-        drawPanel(guiGraphics, statusX(), statusY(), statusWidth(), statusHeight(), PANEL_ALT);
+        if (mode != ConversationMode.IDENTITY) {
+            drawPanel(guiGraphics, statusX(), statusY(), statusWidth(), statusHeight(), PANEL_ALT);
+        }
         drawPanel(guiGraphics, transcriptX(), transcriptY(), transcriptWidth(), transcriptHeight(), PANEL_ALT);
-        drawPanel(guiGraphics, choicesX(), choicesY(), choicesWidth(), choicesHeight(), PANEL_ALT);
+        if (mode != ConversationMode.IDENTITY) {
+            drawPanel(guiGraphics, choicesX(), choicesY(), choicesWidth(), choicesHeight(), PANEL_ALT);
+        }
 
         renderHeader(guiGraphics);
-        renderStatus(guiGraphics);
+        if (mode != ConversationMode.IDENTITY) {
+            renderStatus(guiGraphics);
+        }
         renderTranscript(guiGraphics);
-        renderChoiceHeader(guiGraphics);
+        if (mode != ConversationMode.IDENTITY) {
+            renderChoiceHeader(guiGraphics);
+        }
     }
 
     @Override
@@ -173,30 +198,50 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        lastMouseX = mouseX;
+        lastMouseY = mouseY;
         renderBackground(guiGraphics, mouseX, mouseY, partialTick);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         renderTooltip(guiGraphics, mouseX, mouseY);
+        renderChoiceTooltip(guiGraphics, mouseX, mouseY);
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (super.mouseClicked(mouseX, mouseY, button)) {
-            return true;
-        }
-        if (mode != ConversationMode.IDENTITY || button != 0 || !menu.identityUnlocked()) {
-            return false;
-        }
-        int skinIndex = clickedIdentitySkin(mouseX, mouseY);
-        if (skinIndex >= 0) {
-            List<ResourceLocation> skins = availableSkins();
-            if (skinIndex < skins.size()) {
-                selectedAppearanceId = skins.get(skinIndex).toString();
-                PacketDistributor.sendToServer(new NpcIdentityAppearancePayload(selectedAppearanceId));
-                alignSkinScrollToSelection();
+        if (button == 0
+                && mode == ConversationMode.IDENTITY
+                && nicknameField != null
+                && nicknameField.isVisible()
+                && nicknameField.isFocused()) {
+            if (TextFieldFocusHelper.unfocusOnOutsideClick(this, mouseX, mouseY, List.of(nicknameField))) {
+                sendNicknameUpdate();
             }
-            return true;
         }
-        return clickedIdentityScrollbar(mouseX, mouseY);
+        if (mode == ConversationMode.IDENTITY && button == 0 && menu.identityUnlocked()) {
+            int skinIndex = clickedIdentitySkin(mouseX, mouseY);
+            if (skinIndex >= 0) {
+                List<ResourceLocation> skins = availableSkins();
+                if (skinIndex < skins.size()) {
+                    selectedAppearanceId = skins.get(skinIndex).toString();
+                    AbstractCityNpcEntity npc = currentNpcEntity();
+                    if (npc != null) {
+                        npc.applyClientPreviewIdentity(
+                                selectedAppearanceId,
+                                npc.npcCategory(),
+                                currentNpcDisplayName(),
+                                currentNameColorId()
+                        );
+                    }
+                    PacketDistributor.sendToServer(new NpcIdentityAppearancePayload(selectedAppearanceId));
+                    alignSkinScrollToSelection();
+                }
+                return true;
+            }
+            if (clickedIdentityScrollbar(mouseX, mouseY)) {
+                return true;
+            }
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
@@ -204,8 +249,20 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         if (mode == ConversationMode.IDENTITY
                 && nicknameField != null
                 && nicknameField.isVisible()
-                && nicknameField.isFocused()
-                && nicknameField.keyPressed(keyCode, scanCode, modifiers)) {
+                && nicknameField.isFocused()) {
+            if (keyCode == 256) {
+                sendNicknameUpdate();
+                TextFieldFocusHelper.clearFocus(this, List.of(nicknameField));
+                return true;
+            }
+            if (keyCode == 257 || keyCode == 335) {
+                sendNicknameUpdate();
+                TextFieldFocusHelper.clearFocus(this, List.of(nicknameField));
+                return true;
+            }
+            if (nicknameField.keyPressed(keyCode, scanCode, modifiers)) {
+                return true;
+            }
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
@@ -264,26 +321,38 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         List<ChoiceSpec> choices = new ArrayList<>();
         for (NpcDialogueChoice choice : node.choices()) {
             choices.add(customChoice(
+                    iconForDialogueChoice(choice),
                     Component.translatable(choice.translationKey()),
                     true,
                     () -> runDialogueChoice(choice)
             ));
         }
-        if (menu.identityUnlocked()) {
-            choices.add(customChoice(
-                    Component.translatable("screen.cyberneticenhancements.npc.choice.identity"),
-                    true,
-                    this::openIdentityMode
-            ));
-        }
+        boolean identityUnlocked = menu.identityUnlocked();
+        choices.add(customChoice(
+                ChoiceIcon.IDENTITY,
+                Component.translatable("screen.cyberneticenhancements.npc.choice.identity"),
+                identityUnlocked,
+                identityUnlocked ? null : Component.translatable("screen.cyberneticenhancements.npc.identity.locked"),
+                this::openIdentityMode
+        ));
         return choices;
+    }
+
+    private ChoiceIcon iconForDialogueChoice(NpcDialogueChoice choice) {
+        return switch (choice.view()) {
+            case SHOP -> ChoiceIcon.SHOP;
+            case SERVICES -> ChoiceIcon.SERVICE;
+            case CONTRACTS -> ChoiceIcon.QUEST;
+            case CLOSE -> ChoiceIcon.BACK;
+            case DIALOGUE -> ChoiceIcon.TALK;
+        };
     }
 
     private List<ChoiceSpec> serviceChoices() {
         List<ChoiceSpec> choices = new ArrayList<>();
-        choices.add(serverChoice(choiceKey("service_stabilize"), playerKey("service_stabilize"), FixerDialogMenu.OPTION_STABILIZE, menu.priceForOption(FixerDialogMenu.OPTION_STABILIZE), true, menu.isOptionAvailable(FixerDialogMenu.OPTION_STABILIZE)));
-        choices.add(serverChoice(choiceKey("service_purge"), playerKey("service_purge"), FixerDialogMenu.OPTION_PURGE, menu.priceForOption(FixerDialogMenu.OPTION_PURGE), true, menu.isOptionAvailable(FixerDialogMenu.OPTION_PURGE)));
-        choices.add(localChoice("screen.cyberneticenhancements.fixer.choice.back", playerKey("back"), npcLineKey("back"), () -> switchMode(ConversationMode.DIALOGUE, playerKey("back"), npcLineKey("back"))));
+        choices.add(serverChoice(ChoiceIcon.SERVICE, choiceKey("service_stabilize"), playerKey("service_stabilize"), FixerDialogMenu.OPTION_STABILIZE, menu.priceForOption(FixerDialogMenu.OPTION_STABILIZE), true, menu.isOptionAvailable(FixerDialogMenu.OPTION_STABILIZE)));
+        choices.add(serverChoice(ChoiceIcon.SERVICE, choiceKey("service_purge"), playerKey("service_purge"), FixerDialogMenu.OPTION_PURGE, menu.priceForOption(FixerDialogMenu.OPTION_PURGE), true, menu.isOptionAvailable(FixerDialogMenu.OPTION_PURGE)));
+        choices.add(localChoice(ChoiceIcon.BACK, "screen.cyberneticenhancements.fixer.choice.back", playerKey("back"), npcLineKey("back"), () -> switchMode(ConversationMode.DIALOGUE, playerKey("back"), npcLineKey("back"))));
         return choices;
     }
 
@@ -293,7 +362,7 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         choices.add(shopChoice(FixerDialogMenu.OPTION_BUY_RAM_JOLT, 1));
         choices.add(shopChoice(FixerDialogMenu.OPTION_BUY_CHROME_SUPPRESSANT, 2));
         choices.add(shopChoice(FixerDialogMenu.OPTION_BUY_IMMUNOBLOCKERS, 3));
-        choices.add(localChoice("screen.cyberneticenhancements.fixer.choice.back", playerKey("back"), npcLineKey("back"), () -> switchMode(ConversationMode.DIALOGUE, playerKey("back"), npcLineKey("back"))));
+        choices.add(localChoice(ChoiceIcon.BACK, "screen.cyberneticenhancements.fixer.choice.back", playerKey("back"), npcLineKey("back"), () -> switchMode(ConversationMode.DIALOGUE, playerKey("back"), npcLineKey("back"))));
         return choices;
     }
 
@@ -301,11 +370,13 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         List<ChoiceSpec> choices = new ArrayList<>();
         if (menu.hasActiveContract()) {
             choices.add(customChoice(
+                    ChoiceIcon.QUEST,
                     Component.translatable("screen.cyberneticenhancements.fixer.choice.contract.turn_in", menu.activeContractTitle()),
                     menu.activeContractReady(),
                     () -> sendOption(FixerDialogMenu.OPTION_TURN_IN_CONTRACT, playerKey("turn_in_contract"))
             ));
             choices.add(customChoice(
+                    ChoiceIcon.QUEST,
                     Component.translatable("screen.cyberneticenhancements.fixer.choice.contract.abandon", menu.activeContractTitle()),
                     true,
                     () -> sendOption(FixerDialogMenu.OPTION_ABANDON_CONTRACT, playerKey("abandon_contract"))
@@ -317,49 +388,44 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
                 }
                 final int offerSlot = slot;
                 choices.add(customChoice(
+                        ChoiceIcon.QUEST,
                         Component.translatable("screen.cyberneticenhancements.fixer.choice.contract.accept", menu.offerTitle(slot), menu.offerRewardMoney(slot)),
                         true,
                         () -> sendOption(FixerDialogMenu.OPTION_ACCEPT_CONTRACT_1 + offerSlot, playerKey("accept_contract"))
                 ));
             }
         }
-        choices.add(localChoice("screen.cyberneticenhancements.fixer.choice.back", playerKey("back"), npcLineKey("back"), () -> switchMode(ConversationMode.DIALOGUE, playerKey("back"), npcLineKey("back"))));
+        choices.add(localChoice(ChoiceIcon.BACK, "screen.cyberneticenhancements.fixer.choice.back", playerKey("back"), npcLineKey("back"), () -> switchMode(ConversationMode.DIALOGUE, playerKey("back"), npcLineKey("back"))));
         return choices;
     }
 
     private List<ChoiceSpec> identityChoices() {
         List<ChoiceSpec> choices = new ArrayList<>();
         choices.add(customChoice(
-                Component.translatable("screen.cyberneticenhancements.npc.identity.save_name"),
-                menu.identityUnlocked(),
-                this::sendNicknameUpdate
-        ));
-        choices.add(customChoice(
+                ChoiceIcon.RESET,
                 Component.translatable("screen.cyberneticenhancements.npc.identity.reset_name"),
                 menu.identityUnlocked(),
-                () -> {
-                    if (nicknameField != null) {
-                        nicknameField.setValue("");
-                    }
-                    sendNicknameUpdate();
-                }
+                this::resetIdentityCustomization
         ));
         choices.add(customChoice(
+                ChoiceIcon.PREV,
                 Component.translatable("screen.cyberneticenhancements.npc.identity.previous_page"),
                 skinPage > 0,
                 () -> scrollSkinGallery(-1)
         ));
         choices.add(customChoice(
+                ChoiceIcon.NEXT,
                 Component.translatable("screen.cyberneticenhancements.npc.identity.next_page"),
                 hasNextSkinScroll(),
                 () -> scrollSkinGallery(1)
         ));
-        choices.add(localChoice("screen.cyberneticenhancements.fixer.choice.back", playerKey("back"), npcLineKey("back"), () -> switchMode(ConversationMode.DIALOGUE, playerKey("back"), npcLineKey("back"))));
+        choices.add(localChoice(ChoiceIcon.BACK, "screen.cyberneticenhancements.fixer.choice.back", playerKey("back"), npcLineKey("back"), () -> switchMode(ConversationMode.DIALOGUE, playerKey("back"), npcLineKey("back"))));
         return choices;
     }
 
     private ChoiceSpec shopChoice(int optionId, int slot) {
         return customChoice(
+                ChoiceIcon.SHOP,
                 Component.translatable("screen.cyberneticenhancements.npc.choice.shop.entry", shopChoiceLabel(slot), menu.priceForOption(optionId)),
                 menu.isOptionAvailable(optionId),
                 () -> {
@@ -429,25 +495,29 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         return Component.translatable(choiceKey(suffix));
     }
 
-    private ChoiceSpec localChoice(String labelKey, String playerLineKey, String npcLineKey, Runnable action) {
-        return new ChoiceSpec(Component.translatable(labelKey), true, () -> {
+    private ChoiceSpec localChoice(ChoiceIcon icon, String labelKey, String playerLineKey, String npcLineKey, Runnable action) {
+        return new ChoiceSpec(icon, Component.translatable(labelKey), true, null, () -> {
             lastPlayerLineKey = playerLineKey;
             localNpcLineKey = npcLineKey;
             action.run();
         });
     }
 
-    private ChoiceSpec serverChoice(String labelKey, String playerLineKey, int optionId, int price, boolean showPrice, boolean enabled) {
+    private ChoiceSpec serverChoice(ChoiceIcon icon, String labelKey, String playerLineKey, int optionId, int price, boolean showPrice, boolean enabled) {
         Object[] args = showPrice ? new Object[]{price} : new Object[0];
         Component message = args.length == 0 ? Component.translatable(labelKey) : Component.translatable(labelKey, args);
-        return new ChoiceSpec(message, enabled, () -> {
+        return new ChoiceSpec(icon, message, enabled, null, () -> {
             lastPlayerLineKey = playerLineKey;
             PacketDistributor.sendToServer(new FixerDialogueChoicePayload(optionId));
         });
     }
 
-    private ChoiceSpec customChoice(Component message, boolean enabled, Runnable action) {
-        return new ChoiceSpec(message, enabled, action);
+    private ChoiceSpec customChoice(ChoiceIcon icon, Component message, boolean enabled, Runnable action) {
+        return customChoice(icon, message, enabled, null, action);
+    }
+
+    private ChoiceSpec customChoice(ChoiceIcon icon, Component message, boolean enabled, Component tooltip, Runnable action) {
+        return new ChoiceSpec(icon, message, enabled, tooltip, action);
     }
 
     private void switchMode(ConversationMode newMode, String playerLineKey, String npcLineKey) {
@@ -473,6 +543,35 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     private void sendNicknameUpdate() {
         String nickname = nicknameField == null ? "" : nicknameField.getValue();
         PacketDistributor.sendToServer(new NpcIdentityNicknamePayload(nickname));
+        AbstractCityNpcEntity npc = currentNpcEntity();
+        String sanitized = nickname == null ? "" : nickname.trim();
+        if (npc != null) {
+            String displayName = sanitized.isBlank() ? currentNpcBaseName() : sanitized;
+            npc.setCustomName(Component.literal(displayName).withStyle(resolveCurrentNameColor()));
+            npc.setCustomNameVisible(!"hidden".equals(currentNameColorId()));
+        }
+        TextFieldFocusHelper.clearFocus(this, List.of(nicknameField));
+    }
+
+    private void resetIdentityCustomization() {
+        if (nicknameField != null) {
+            nicknameField.setValue("");
+        }
+        selectedNameColorId = "aqua";
+        selectedAppearanceId = "";
+        AbstractCityNpcEntity npc = currentNpcEntity();
+        if (npc != null) {
+            npc.applyClientPreviewIdentity(
+                    "",
+                    npc.npcCategory(),
+                    currentNpcBaseName(),
+                    "aqua"
+            );
+        }
+        PacketDistributor.sendToServer(new NpcIdentityNicknamePayload(""));
+        PacketDistributor.sendToServer(new NpcIdentityNameColorPayload("aqua"));
+        PacketDistributor.sendToServer(new NpcIdentityAppearancePayload(""));
+        TextFieldFocusHelper.clearFocus(this, List.of(nicknameField));
     }
 
     private void syncIdentityEditorFromNpc() {
@@ -531,6 +630,14 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         return npc == null ? title.getString() : npc.getName().getString();
     }
 
+    private String currentNpcBaseName() {
+        AbstractCityNpcEntity npc = currentNpcEntity();
+        if (npc == null || npc.baseName().isBlank()) {
+            return title.getString();
+        }
+        return npc.baseName();
+    }
+
     private String currentAppearanceId() {
         AbstractCityNpcEntity npc = currentNpcEntity();
         if (npc == null) {
@@ -543,11 +650,40 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     }
 
     private String currentNameColorId() {
+        if (mode == ConversationMode.IDENTITY && selectedNameColorId != null && !selectedNameColorId.isBlank()) {
+            return selectedNameColorId;
+        }
         AbstractCityNpcEntity npc = currentNpcEntity();
         if (npc == null || npc.nameColorId().isBlank()) {
             return selectedNameColorId;
         }
         return npc.nameColorId();
+    }
+
+    private int currentNameColorRgb() {
+        return switch (currentNameColorId()) {
+            case "blue" -> 0x5D86F1;
+            case "gold" -> 0xF0C04D;
+            case "green" -> 0x57C26E;
+            case "red" -> 0xD65D5D;
+            case "white" -> 0xE8EDF2;
+            case "light_purple" -> 0xD88FF7;
+            case "hidden" -> 0xE8EDF2;
+            default -> 0x4FE9E2;
+        };
+    }
+
+    private net.minecraft.ChatFormatting resolveCurrentNameColor() {
+        return switch (currentNameColorId()) {
+            case "blue" -> net.minecraft.ChatFormatting.BLUE;
+            case "gold" -> net.minecraft.ChatFormatting.GOLD;
+            case "green" -> net.minecraft.ChatFormatting.GREEN;
+            case "red" -> net.minecraft.ChatFormatting.RED;
+            case "white" -> net.minecraft.ChatFormatting.WHITE;
+            case "light_purple" -> net.minecraft.ChatFormatting.LIGHT_PURPLE;
+            case "hidden" -> net.minecraft.ChatFormatting.WHITE;
+            default -> net.minecraft.ChatFormatting.AQUA;
+        };
     }
 
     private List<ResourceLocation> availableSkins() {
@@ -597,12 +733,13 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         int startX = identityGalleryX();
         int startY = identityGalleryY();
         int tileWidth = identityTileWidth();
+        int tileHeight = identityTileHeight();
         List<ResourceLocation> skins = availableSkins();
         int visible = Math.min(IDENTITY_VISIBLE_SKINS, Math.max(0, skins.size() - skinPage));
         for (int slot = 0; slot < visible; slot++) {
             int tileX = startX + slot * (tileWidth + IDENTITY_TILE_GAP);
             if (mouseX >= tileX && mouseX < tileX + tileWidth
-                    && mouseY >= startY && mouseY < startY + IDENTITY_TILE_HEIGHT) {
+                    && mouseY >= startY && mouseY < startY + tileHeight) {
                 return skinPage + slot;
             }
         }
@@ -640,30 +777,35 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     private void renderHeader(GuiGraphics guiGraphics) {
         int x = headerX() + PANEL_TEXT_PADDING_X;
         int y = headerY() + PANEL_TEXT_PADDING_Y;
-        guiGraphics.drawString(font, currentNpcDisplayName(), x, y, TEXT_PRIMARY, false);
+        guiGraphics.drawString(font, currentNpcDisplayName(), x, y, currentNameColorRgb(), false);
         guiGraphics.drawString(font, menu.npcTypeLabel(), x, y + 12, ACCENT, false);
         Component trust = Component.translatable("screen.cyberneticenhancements.fixer.trust", trustLabel());
         Component nextTrust = nextTrustLabel();
         int rightX = headerX() + headerWidth() - PANEL_TEXT_PADDING_X;
         guiGraphics.drawString(font, trust, rightX - font.width(trust), y, TEXT_SECONDARY, false);
-        guiGraphics.drawString(font, nextTrust, rightX - font.width(nextTrust), y + 12, TEXT_SECONDARY, false);
+        if (!nextTrust.getString().isBlank()) {
+            guiGraphics.drawString(font, nextTrust, rightX - font.width(nextTrust), y + 12, TEXT_SECONDARY, false);
+        }
         drawTrustBar(guiGraphics, x, headerY() + 32, headerWidth() - PANEL_TEXT_PADDING_X * 2, TRUST_BAR_HEIGHT);
     }
 
     private void renderStatus(GuiGraphics guiGraphics) {
         int x = statusX() + PANEL_TEXT_PADDING_X;
-        int rowY = statusY() + 8;
+        int headerY = statusY() + PANEL_TEXT_PADDING_Y;
+        int rowY = headerY + font.lineHeight + 8;
         if (mode == ConversationMode.IDENTITY) {
             int totalSkins = Math.max(1, availableSkins().size());
             Component unlockState = menu.identityUnlocked()
                     ? Component.translatable("screen.cyberneticenhancements.npc.identity.unlocked")
                     : Component.translatable("screen.cyberneticenhancements.npc.identity.locked");
             Component appearanceState = Component.translatable("screen.cyberneticenhancements.npc.identity.appearance_state", selectedAppearanceIndex() + 1, totalSkins);
+            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.npc.section.identity_status"), x, headerY, TEXT_PRIMARY, false);
             guiGraphics.drawString(font, trimStyled(unlockState, statusWidth() - PANEL_TEXT_PADDING_X * 2), x, rowY, menu.identityUnlocked() ? ACCENT : TEXT_SECONDARY, false);
             guiGraphics.drawString(font, trimStyled(appearanceState, statusWidth() - PANEL_TEXT_PADDING_X * 2), x, rowY + 14, TEXT_SECONDARY, false);
             return;
         }
         if (mode == ConversationMode.CONTRACTS) {
+            guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.npc.section.contract_status"), x, headerY, TEXT_PRIMARY, false);
             if (menu.hasActiveContract()) {
                 Component titleLine = Component.translatable("screen.cyberneticenhancements.fixer.contract.active", menu.activeContractTitle());
                 Component objectiveLine = menu.activeContractObjective();
@@ -682,6 +824,7 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
             }
             return;
         }
+        guiGraphics.drawString(font, Component.translatable("screen.cyberneticenhancements.npc.section.account"), x, headerY, TEXT_PRIMARY, false);
         Component wallet = Component.translatable("screen.cyberneticenhancements.fixer.summary.wallet", menu.balance());
         Component discount = Component.translatable("screen.cyberneticenhancements.fixer.summary.discount", discountLabel());
         guiGraphics.drawString(font, wallet, x, rowY + 4, TEXT_SECONDARY, false);
@@ -705,7 +848,7 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         int secondBubbleY = contentTop + bubbleHeight + TRANSCRIPT_BUBBLE_GAP;
 
         drawSpeakerBlock(guiGraphics, Component.translatable("screen.cyberneticenhancements.fixer.speaker.player"), Component.translatable(lastPlayerLineKey), x, contentTop, bubbleWidth, bubbleHeight, 0xFF15252D, TEXT_PRIMARY);
-        drawSpeakerBlock(guiGraphics, Component.literal(currentNpcDisplayName()), npcText(), x, secondBubbleY, bubbleWidth, bubbleHeight, 0xFF162E2A, ACCENT);
+        drawSpeakerBlock(guiGraphics, Component.literal(currentNpcDisplayName()), npcText(), x, secondBubbleY, bubbleWidth, bubbleHeight, 0xFF162E2A, currentNameColorRgb());
     }
 
     private void renderIdentityEditor(GuiGraphics guiGraphics) {
@@ -721,6 +864,7 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         int galleryX = identityGalleryX();
         int galleryY = identityGalleryY();
         int tileWidth = identityTileWidth();
+        int tileHeight = identityTileHeight();
         List<ResourceLocation> skins = availableSkins();
         String current = selectedAppearanceId == null || selectedAppearanceId.isBlank() ? currentAppearanceId() : selectedAppearanceId;
         int visible = Math.min(IDENTITY_VISIBLE_SKINS, Math.max(0, skins.size() - skinPage));
@@ -728,15 +872,33 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
             int index = skinPage + slot;
             int tileX = galleryX + slot * (tileWidth + IDENTITY_TILE_GAP);
             boolean selected = skins.get(index).toString().equals(current);
-            int border = selected ? ACCENT : PANEL_EDGE;
-            guiGraphics.fill(tileX, galleryY, tileX + tileWidth, galleryY + IDENTITY_TILE_HEIGHT, PANEL_BG);
-            guiGraphics.fill(tileX, galleryY, tileX + tileWidth, galleryY + 1, border);
-            guiGraphics.fill(tileX, galleryY + IDENTITY_TILE_HEIGHT - 1, tileX + tileWidth, galleryY + IDENTITY_TILE_HEIGHT, PANEL_DEEP);
-            guiGraphics.fill(tileX, galleryY, tileX + 1, galleryY + IDENTITY_TILE_HEIGHT, border);
-            guiGraphics.fill(tileX + tileWidth - 1, galleryY, tileX + tileWidth, galleryY + IDENTITY_TILE_HEIGHT, PANEL_DEEP);
-            renderNpcModel(guiGraphics, skins.get(index), tileX + 3, galleryY + 3, tileWidth - 6, IDENTITY_TILE_HEIGHT - 6, false);
+            boolean hovered = lastMouseX >= tileX && lastMouseX < tileX + tileWidth
+                    && lastMouseY >= galleryY && lastMouseY < galleryY + tileHeight;
+            renderIdentityTileBackground(guiGraphics, tileX, galleryY, tileWidth, tileHeight, selected, hovered);
+            guiGraphics.enableScissor(tileX + 1, galleryY + 1, tileX + tileWidth - 1, galleryY + tileHeight - 1);
+            renderNpcModel(guiGraphics, skins.get(index), tileX + 4, galleryY + 4, tileWidth - 8, tileHeight - 10, false);
+            guiGraphics.disableScissor();
+            renderIdentityTileOverlay(guiGraphics, tileX, galleryY, tileWidth, tileHeight, selected, hovered);
         }
         renderIdentityScrollbar(guiGraphics);
+    }
+
+    private void renderIdentityTileBackground(GuiGraphics guiGraphics, int x, int y, int width, int height, boolean selected, boolean hovered) {
+        int fill = selected ? 0xFF173B39 : hovered ? 0xFF142833 : PANEL_BG;
+        guiGraphics.fill(x, y, x + width, y + height, fill);
+    }
+
+    private void renderIdentityTileOverlay(GuiGraphics guiGraphics, int x, int y, int width, int height, boolean selected, boolean hovered) {
+        int activeEdge = selected ? ACCENT : hovered ? TEXT_PRIMARY : PANEL_EDGE;
+        int passiveEdge = selected ? ACCENT : hovered ? TEXT_PRIMARY : PANEL_DEEP;
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(0.0F, 0.0F, 250.0F);
+        guiGraphics.fill(x, y, x + width, y + 1, activeEdge);
+        guiGraphics.fill(x, y, x + 1, y + height, activeEdge);
+        guiGraphics.fill(x + width - 1, y, x + width, y + height, passiveEdge);
+        guiGraphics.fill(x, y + height - 1, x + width, y + height, passiveEdge);
+
+        guiGraphics.pose().popPose();
     }
 
     private void renderIdentityScrollbar(GuiGraphics guiGraphics) {
@@ -763,14 +925,14 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         }
         AbstractCityNpcEntity entity = previewNpc(texture);
         float centerX = x + renderWidth * 0.5F;
-        float bottomY = y + renderHeight - (preview ? 13.0F : 10.0F);
+        float bottomY = y + renderHeight - (preview ? 10.0F : 34.0F);
         float scale = preview
-                ? Math.max(42.0F, Math.min(renderWidth * 0.57F, renderHeight * 0.50F))
-                : Math.max(21.0F, Math.min(renderWidth * 0.50F, renderHeight * 0.38F));
-        Vector3f translation = new Vector3f(0.0F, preview ? entity.getBbHeight() * 0.28F : entity.getBbHeight() * 0.20F, 0.0F);
+                ? Math.max(42.0F, Math.min(renderWidth * 0.60F, renderHeight * 0.54F))
+                : Math.max(36.0F, Math.min(renderWidth * 0.84F, renderHeight * 0.69F));
+        Vector3f translation = new Vector3f(0.0F, preview ? entity.getBbHeight() * 0.24F : entity.getBbHeight() * 0.14F, 0.0F);
         Quaternionf bodyRotation = Axis.ZP.rotationDegrees(180.0F);
         bodyRotation.mul(Axis.YP.rotationDegrees(180.0F));
-        bodyRotation.mul(Axis.XP.rotationDegrees(preview ? 6.0F : 4.0F));
+        bodyRotation.mul(Axis.XP.rotationDegrees(preview ? 5.0F : 3.0F));
         Quaternionf cameraRotation = new Quaternionf(bodyRotation).conjugate();
         InventoryScreen.renderEntityInInventory(guiGraphics, centerX, bottomY, scale, translation, cameraRotation, bodyRotation, entity);
     }
@@ -886,6 +1048,27 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         return Language.getInstance().getVisualOrder(combined);
     }
 
+    private void renderChoiceTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        if (mode == ConversationMode.IDENTITY
+                && nicknameField != null
+                && nicknameField.isFocused()) {
+            return;
+        }
+        for (ChoiceButton button : choiceButtons) {
+            if (!button.visible || button.spec == null || !button.isHovered()) {
+                continue;
+            }
+            if (button.spec.tooltip() != null) {
+                guiGraphics.renderTooltip(font, button.spec.tooltip(), mouseX, mouseY);
+                return;
+            }
+            if (!button.labelFits()) {
+                guiGraphics.renderTooltip(font, button.tooltip(), mouseX, mouseY);
+                return;
+            }
+        }
+    }
+
     private void drawPanel(GuiGraphics guiGraphics, int x, int y, int width, int height, int fill) {
         guiGraphics.fill(x, y, x + width, y + height, fill);
         guiGraphics.fill(x, y, x + width, y + 1, PANEL_EDGE);
@@ -922,7 +1105,7 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
             case 1 -> Component.translatable("screen.cyberneticenhancements.fixer.trust.next", Component.translatable("screen.cyberneticenhancements.fixer.trust.2"), 45);
             case 2 -> Component.translatable("screen.cyberneticenhancements.fixer.trust.next", Component.translatable("screen.cyberneticenhancements.fixer.trust.3"), 70);
             case 3 -> Component.translatable("screen.cyberneticenhancements.fixer.trust.next", Component.translatable("screen.cyberneticenhancements.fixer.trust.4"), 90);
-            default -> Component.translatable("screen.cyberneticenhancements.fixer.trust.next_max");
+            default -> Component.empty();
         };
     }
 
@@ -970,7 +1153,9 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     }
 
     private int transcriptY() {
-        return statusY() + statusHeight() + PANEL_GAP;
+        return mode == ConversationMode.IDENTITY
+                ? statusY()
+                : statusY() + statusHeight() + PANEL_GAP;
     }
 
     private int transcriptWidth() {
@@ -978,7 +1163,10 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     }
 
     private int transcriptHeight() {
-        return imageHeight - CONTENT_PADDING * 2 - HEADER_HEIGHT - STATUS_HEIGHT - CHOICES_HEIGHT - PANEL_GAP * 3;
+        int baseHeight = imageHeight - CONTENT_PADDING * 2 - HEADER_HEIGHT - STATUS_HEIGHT - CHOICES_HEIGHT - PANEL_GAP * 3;
+        return mode == ConversationMode.IDENTITY
+                ? baseHeight + STATUS_HEIGHT + CHOICES_HEIGHT + PANEL_GAP * 2
+                : baseHeight;
     }
 
     private int identityFieldX() {
@@ -990,11 +1178,23 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     }
 
     private int identityColorButtonsX() {
-        return identityFieldX() + Math.min(IDENTITY_FIELD_WIDTH, transcriptWidth() - PANEL_TEXT_PADDING_X * 2) + 8;
+        return identityGalleryRight() - identityColorButtonsWidth();
+    }
+
+    private int identityColorButtonsWidth() {
+        return NAME_COLOR_PRESETS.length * IDENTITY_COLOR_BUTTON_SIZE + (NAME_COLOR_PRESETS.length - 1) * IDENTITY_COLOR_BUTTON_GAP;
+    }
+
+    private int identityFieldWidth() {
+        return Math.max(120, identityColorButtonsX() - 8 - identityFieldX());
     }
 
     private int identityGalleryX() {
         return transcriptX() + PANEL_TEXT_PADDING_X;
+    }
+
+    private int identityGalleryRight() {
+        return identityGalleryX() + identityGalleryContentWidth();
     }
 
     private int identityGalleryY() {
@@ -1006,17 +1206,26 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
     }
 
     private int identityScrollbarY() {
-        return identityGalleryY() + IDENTITY_TILE_HEIGHT + 10;
+        return actionButtonsStartY() - IDENTITY_SCROLLBAR_GAP - IDENTITY_SCROLLBAR_HEIGHT;
     }
 
     private int identityScrollbarWidth() {
-        return transcriptWidth() - PANEL_TEXT_PADDING_X * 2;
+        return identityGalleryContentWidth();
+    }
+
+    private int identityTileHeight() {
+        int availableHeight = identityScrollbarY() - IDENTITY_SCROLLBAR_GAP - identityGalleryY();
+        return Math.max(IDENTITY_TILE_MIN_HEIGHT, availableHeight);
     }
 
     private int identityTileWidth() {
         int availableWidth = transcriptWidth() - PANEL_TEXT_PADDING_X * 2;
         int totalGapWidth = (IDENTITY_VISIBLE_SKINS - 1) * IDENTITY_TILE_GAP;
         return Math.max(44, (availableWidth - totalGapWidth) / IDENTITY_VISIBLE_SKINS);
+    }
+
+    private int identityGalleryContentWidth() {
+        return identityTileWidth() * IDENTITY_VISIBLE_SKINS + (IDENTITY_VISIBLE_SKINS - 1) * IDENTITY_TILE_GAP;
     }
 
     private int choicesX() {
@@ -1035,6 +1244,31 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         return CHOICES_HEIGHT;
     }
 
+    private int actionButtonsX() {
+        return mode == ConversationMode.IDENTITY
+                ? transcriptX() + PANEL_TEXT_PADDING_X
+                : choicesX() + PANEL_TEXT_PADDING_X;
+    }
+
+    private int actionButtonsWidth() {
+        return mode == ConversationMode.IDENTITY
+                ? transcriptWidth() - PANEL_TEXT_PADDING_X * 2
+                : choicesWidth() - PANEL_TEXT_PADDING_X * 2;
+    }
+
+    private int actionButtonsStartY() {
+        int buttonCount = visibleActionButtonCount();
+        int totalHeight = buttonCount * CHOICE_BUTTON_HEIGHT + Math.max(0, buttonCount - 1) * CHOICE_BUTTON_GAP;
+        if (mode == ConversationMode.IDENTITY) {
+            return transcriptY() + transcriptHeight() - PANEL_TEXT_PADDING_Y - totalHeight;
+        }
+        return choicesY() + choicesHeight() - PANEL_TEXT_PADDING_Y - totalHeight;
+    }
+
+    private int visibleActionButtonCount() {
+        return Math.max(1, currentChoices().size());
+    }
+
     private enum ConversationMode {
         DIALOGUE("screen.cyberneticenhancements.fixer.mode.dialogue"),
         SERVICES("screen.cyberneticenhancements.fixer.mode.services"),
@@ -1049,10 +1283,31 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         }
     }
 
-    private record ChoiceSpec(Component message, boolean enabled, Runnable action) {
+    private enum ChoiceIcon {
+        TALK(Icons.DIALOGUE),
+        QUEST(Icons.QUEST),
+        SHOP(Icons.SHOP),
+        SERVICE(Icons.CRAFTING),
+        IDENTITY(Icons.SETTINGS),
+        RESET(Icons.RESET),
+        PREV(Icons.BACK),
+        NEXT(Icons.NEXT),
+        BACK(Icons.BACK);
+
+        private final Icons icon;
+
+        ChoiceIcon(Icons icon) {
+            this.icon = icon;
+        }
+    }
+
+    private record ChoiceSpec(ChoiceIcon icon, Component message, boolean enabled, Component tooltip, Runnable action) {
     }
 
     private record NameColorPreset(String colorId, int rgb) {
+        private boolean hidden() {
+            return "hidden".equals(colorId);
+        }
     }
 
     private final class ChoiceButton extends Button {
@@ -1068,22 +1323,50 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
 
         @Override
         public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-            int fill = !active ? 0xFF172028 : isHoveredOrFocused() ? 0xFF173B39 : PANEL_BG;
-            int top = !active ? PANEL_EDGE : isHoveredOrFocused() ? ACCENT : PANEL_EDGE;
+            boolean hovered = isHovered();
+            int fill = !active ? 0xFF172028 : hovered ? 0xFF173B39 : PANEL_BG;
+            int top = !active ? PANEL_EDGE : hovered ? ACCENT : PANEL_EDGE;
             guiGraphics.fill(getX(), getY(), getX() + width, getY() + height, fill);
             guiGraphics.fill(getX(), getY(), getX() + width, getY() + 1, top);
             guiGraphics.fill(getX(), getY() + height - 1, getX() + width, getY() + height, PANEL_DEEP);
             guiGraphics.fill(getX(), getY(), getX() + 1, getY() + height, PANEL_EDGE);
             guiGraphics.fill(getX() + width - 1, getY(), getX() + width, getY() + height, PANEL_DEEP);
+            int contentInset = Math.max(3, (height - font.lineHeight) / 2);
+            int textY = getY() + contentInset;
+            int iconY = getY() + Math.max(0, (height - font.lineHeight) / 2) + CHOICE_ICON_Y_OFFSET;
+            int textX = getX() + contentInset;
+            int availableWidth = width - contentInset * 2;
+            if (spec != null && spec.icon() != null) {
+                Component iconComponent = spec.icon().icon.component();
+                guiGraphics.drawString(font, iconComponent, textX, iconY, active ? ACCENT : TEXT_SECONDARY, false);
+                int iconWidth = font.width(iconComponent);
+                textX += iconWidth + contentInset;
+                availableWidth -= iconWidth + contentInset;
+            }
             Component message = getMessage();
-            int textX = getX() + 8;
-            int textY = getY() + (height - 8) / 2;
-            if (font.width(message) > width - 16) {
-                String trimmed = font.plainSubstrByWidth(message.getString(), Math.max(0, width - 20 - font.width("..."))) + "...";
-                guiGraphics.drawString(font, trimmed, textX, textY, active ? TEXT_PRIMARY : TEXT_SECONDARY, false);
+            if (font.width(message) > availableWidth) {
+                guiGraphics.drawString(font, trimStyled(message, availableWidth), textX, textY, active ? TEXT_PRIMARY : TEXT_SECONDARY, false);
                 return;
             }
             guiGraphics.drawString(font, message, textX, textY, active ? TEXT_PRIMARY : TEXT_SECONDARY, false);
+        }
+
+        private Component label() {
+            if (spec == null) {
+                return Component.empty();
+            }
+            return spec.icon() == null ? spec.message() : spec.icon().icon.withText(spec.message());
+        }
+
+        private boolean labelFits() {
+            return font.width(label()) <= width - 16;
+        }
+
+        private Component tooltip() {
+            if (spec == null) {
+                return Component.empty();
+            }
+            return spec.icon() == null ? spec.message() : spec.icon().icon.withText(spec.message());
         }
     }
 
@@ -1094,6 +1377,11 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
         private ColorPresetButton(int x, int y, int width, int height, NameColorPreset preset) {
             super(x, y, width, height, Component.empty(), button -> {
                 selectedNameColorId = ((ColorPresetButton) button).preset.colorId();
+                AbstractCityNpcEntity npc = currentNpcEntity();
+                if (npc != null) {
+                    npc.setCustomName(Component.literal(currentNpcDisplayName()).withStyle(resolveCurrentNameColor()));
+                    npc.setCustomNameVisible(!((ColorPresetButton) button).preset.hidden());
+                }
                 PacketDistributor.sendToServer(new NpcIdentityNameColorPayload(((ColorPresetButton) button).preset.colorId()));
             }, DEFAULT_NARRATION);
             this.preset = preset;
@@ -1101,13 +1389,18 @@ public final class FixerDialogScreen extends AbstractContainerScreen<FixerDialog
 
         @Override
         public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-            int fill = active ? preset.rgb() : 0xFF2B2F36;
-            int top = selected ? ACCENT : isHoveredOrFocused() ? TEXT_PRIMARY : PANEL_EDGE;
+            int fill = preset.hidden()
+                    ? (active ? PANEL_BG : 0xFF2B2F36)
+                    : (active ? preset.rgb() : 0xFF2B2F36);
+            int top = selected ? ACCENT : isHovered() ? TEXT_PRIMARY : PANEL_EDGE;
             guiGraphics.fill(getX(), getY(), getX() + width, getY() + height, fill);
             guiGraphics.fill(getX(), getY(), getX() + width, getY() + 1, top);
             guiGraphics.fill(getX(), getY() + height - 1, getX() + width, getY() + height, PANEL_DEEP);
             guiGraphics.fill(getX(), getY(), getX() + 1, getY() + height, top);
             guiGraphics.fill(getX() + width - 1, getY(), getX() + width, getY() + height, PANEL_DEEP);
+            if (preset.hidden()) {
+                guiGraphics.renderItem(new ItemStack(Items.BARRIER), getX() + (width - 16) / 2, getY() + (height - 16) / 2);
+            }
         }
     }
 }

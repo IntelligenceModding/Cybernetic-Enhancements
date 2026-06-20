@@ -70,7 +70,7 @@ public final class MoneyCommand {
 
     private static int setBalance(CommandSourceStack source, Collection<ServerPlayer> targets, int amount) {
         for (ServerPlayer target : targets) {
-            PlayerEurodollarManager.setBalance(target, amount);
+            PlayerEurodollarManager.setBalance(target, amount, "admin_set", "Administrative balance set", null, null);
         }
         sendOperationFeedback(source, "command.cyberneticenhancements.money.set", targets, amount);
         return targets.size();
@@ -78,7 +78,7 @@ public final class MoneyCommand {
 
     private static int addBalance(CommandSourceStack source, Collection<ServerPlayer> targets, int amount) {
         for (ServerPlayer target : targets) {
-            PlayerEurodollarManager.add(target, amount);
+            PlayerEurodollarManager.add(target, amount, "admin_add", "Administrative balance credit", null, null);
         }
         sendOperationFeedback(source, "command.cyberneticenhancements.money.add", targets, amount);
         return targets.size();
@@ -86,7 +86,7 @@ public final class MoneyCommand {
 
     private static int removeBalance(CommandSourceStack source, Collection<ServerPlayer> targets, int amount) {
         for (ServerPlayer target : targets) {
-            PlayerEurodollarManager.remove(target, amount);
+            PlayerEurodollarManager.remove(target, amount, "admin_remove", "Administrative balance debit", null, null);
         }
         sendOperationFeedback(source, "command.cyberneticenhancements.money.remove", targets, amount);
         return targets.size();
@@ -94,7 +94,7 @@ public final class MoneyCommand {
 
     private static int changeBalance(CommandSourceStack source, Collection<ServerPlayer> targets, int delta) {
         for (ServerPlayer target : targets) {
-            PlayerEurodollarManager.change(target, delta);
+            PlayerEurodollarManager.change(target, delta, "admin_change", "Administrative balance adjustment", null, null);
         }
         sendOperationFeedback(source, "command.cyberneticenhancements.money.change", targets, delta);
         return targets.size();
